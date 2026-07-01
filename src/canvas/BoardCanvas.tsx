@@ -128,10 +128,13 @@ interface Gesture {
   startScale: number;
   worldMid: { x: number; y: number };
 }
-/** The active in-place text edit: which object, its pre-edit snapshot flag. */
+/** The active in-place text edit: which object, its pre-edit snapshot flag, and
+ *  the uniform scale a resize applied to it (so the textarea matches the on-canvas
+ *  font size and the scale survives the edit). */
 interface Editor {
   objId: string;
   isNew: boolean;
+  scale: number;
 }
 
 type HitKind = "object" | "stroke";
@@ -177,17 +180,21 @@ function singleResizableObject(
 
 /**
  * New box for an object whose `handle` is dragged to world point (wx, wy). The
- * opposite edge(s) stay anchored; each moving edge is clamped to keep at least
- * MIN_OBJ on its axis. With `aspect` (Shift on a corner) the box keeps its
- * original w:h ratio, growing on the axis the pointer moved furthest.
+ * object ALWAYS keeps its original w:h aspect ratio. The opposite edge/corner
+ * stays anchored; each moving edge is clamped to keep at least MIN_OBJ.
+ *
+ *   - Corner handle: the pointer drives both axes; the box grows on whichever
+ *     axis moved furthest and the other axis is derived from the ratio.
+ *   - Edge handle: the dragged axis drives, the perpendicular axis is derived
+ *     and kept centred on the object's unchanged mid-line.
  */
 function resizeRect(
   o: { x: number; y: number; w: number; h: number },
   handle: ResizeHandle,
   wx: number,
   wy: number,
-  aspect: boolean,
 ): { x: number; y: number; w: number; h: number } {
+  const ar = o.h > 0 ? o.w / o.h : 1;
   let l = o.x;
   let t = o.y;
   let r = o.x + o.w;
@@ -200,16 +207,32 @@ function resizeRect(
   if (right) r = Math.max(wx, l + MIN_OBJ);
   if (top) t = Math.min(wy, b - MIN_OBJ);
   if (bottom) b = Math.max(wy, t + MIN_OBJ);
-  if (aspect && (left || right) && (top || bottom) && o.h > 0) {
-    const ar = o.w / o.h;
-    let w = r - l;
-    let h = b - t;
+
+  let w = r - l;
+  let h = b - t;
+  const horiz = left || right;
+  const vert = top || bottom;
+
+  if (horiz && vert) {
+    // Corner: dominant axis wins, derive the other, anchor opposite corner.
     if (w / ar >= h) h = w / ar;
     else w = h * ar;
     if (left) l = r - w;
     else r = l + w;
     if (top) t = b - h;
     else b = t + h;
+  } else if (horiz) {
+    // Side handle: width drives, derive height, keep vertically centred.
+    h = w / ar;
+    const cy = o.y + o.h / 2;
+    t = cy - h / 2;
+    b = cy + h / 2;
+  } else if (vert) {
+    // Top/bottom handle: height drives, derive width, keep horizontally centred.
+    w = h * ar;
+    const cx = o.x + o.w / 2;
+    l = cx - w / 2;
+    r = cx + w / 2;
   }
   return { x: l, y: t, w: r - l, h: b - t };
 }
@@ -281,11 +304,24 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     });
 
     // Canvas objects only -- widget objects render in the WidgetLayer overlay.
+    // Each object is drawn in its tool's NATURAL coordinate space and uniformly
+    // scaled to fit its (resizable) box, so every part of the widget -- text,
+    // lines, tick marks, stroke widths -- grows and shrinks together rather than
+    // only the bounding box. At scale 1 this is identical to drawing in place.
     for (const o of board.objects) {
       if (o.id === editingId) continue; // hidden while its textarea is open
       const t = getTool(o.type);
       if (!t || t.kind !== "canvas") continue;
-      t.draw({ ctx: tctx, theme, font: FONT }, o as never);
+      const nat = t.size(o as never); // intrinsic size for the current params
+      const s = nat.w > 0 ? o.w / nat.w : 1; // uniform scale (aspect is locked)
+      tctx.save();
+      tctx.translate(o.x, o.y);
+      tctx.scale(s, s);
+      t.draw(
+        { ctx: tctx, theme, font: FONT },
+        { ...o, x: 0, y: 0, w: nat.w, h: nat.h } as never,
+      );
+      tctx.restore();
     }
 
     // Selection outlines + live lasso (select tool only).
@@ -398,7 +434,11 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       const ta = taRef.current;
       if (!ta) return;
       const { camera, setEditingId } = store.getState();
-      editorRef.current = { objId: obj.id, isNew };
+      // Recover the uniform resize scale (stored box vs. natural text box) so the
+      // textarea renders at the same size as the committed text on the canvas.
+      const nat = textSizeOf((obj.text as string) || "", obj.size as number);
+      const s = nat.w > 0 ? obj.w / nat.w : 1;
+      editorRef.current = { objId: obj.id, isNew, scale: s };
       setEditingId(obj.id); // hides obj from renderBack
       renderBack();
       const sx = obj.x * camera.scale + camera.x;
@@ -407,7 +447,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       ta.style.left = sx + "px";
       ta.style.top = sy + "px";
       ta.style.font =
-        "500 " + (obj.size as number) * camera.scale + "px " + FONT;
+        "500 " + (obj.size as number) * s * camera.scale + "px " + FONT;
       ta.style.color = obj.color as string;
       ta.value = (obj.text as string) || "";
       autoSize();
@@ -444,7 +484,8 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     }
     const size = (obj.size as number) ?? 26;
     const sz = textSizeOf(text, size);
-    st.updateObject(obj.id, { text, w: sz.w, h: sz.h });
+    const s = ed.scale ?? 1; // keep any resize scale across the edit
+    st.updateObject(obj.id, { text, w: sz.w * s, h: sz.h * s });
     renderAll();
   }, [renderAll, store]);
 
@@ -720,7 +761,6 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
           resizing.handle,
           w.x,
           w.y,
-          e.shiftKey,
         );
         const cur = st.board.objects.find((o) => o.id === resizing.id);
         if (

@@ -187,9 +187,14 @@ export default function App(): JSX.Element {
         .getState()
         .board.objects.find((o) => o.id === objId);
       if (!existing) return;
+      // Preserve any uniform resize: derive the current scale from the stored box
+      // vs. the natural size for the OLD params, then re-apply it to the new
+      // natural size so editing settings doesn't snap the widget back to 1x.
+      const oldNat = toolSize(existing.type, paramsOf(existing));
+      const scale = oldNat && oldNat.w > 0 ? existing.w / oldNat.w : 1;
       const size = toolSize(existing.type, params);
       if (!size) return;
-      updateObject(objId, { ...params, w: size.w, h: size.h });
+      updateObject(objId, { ...params, w: size.w * scale, h: size.h * scale });
     },
     [updateObject],
   );
