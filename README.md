@@ -18,6 +18,11 @@ npm run build      # typecheck + production build
 npm run preview    # preview the production build
 ```
 
+A `Makefile` wraps these and the Docker/Playwright commands below as short
+targets — run `make help` for the full list (`make install`, `make dev`,
+`make up`, `make e2e`, `make deploy`, ...). Every target is just a shortcut for
+the raw command shown in each section, so `make` is optional.
+
 Path alias: `@/` -> `src/`.
 
 The app is fully usable solo with no backend (boards live in localStorage).
@@ -60,10 +65,16 @@ reverts a collaborator's edit; `canUndo` / `canRedo` are exposed as booleans.
 - `session.ts` — the session singleton: solo (local doc, same code path) or
   shared (doc connected through `createYjsProvider(doc, boardId, "/api/token")`
   to the self-hosted Y-Sweet server, with IndexedDB offline caching).
-- Board id in the URL: `?board=<id>`. **Share** mints a fresh id, seeds the
-  shared doc with the current content and copies the link; opening a link asks
-  for a display name and joins. Leaving keeps what's on screen as the local
-  draft.
+- Board id in the URL: `?board=<id>`. **Share** mints a short 8-hex-char code
+  (`4f2a9c1b`) that doubles as the board id, seeds the shared doc with the
+  current content and shows both the code and the link. Others join by opening
+  the link (prompts for a display name) or by typing the code — in any
+  case/dash format — into **Share → Join a board someone shared**. Leaving
+  keeps what's on screen as the local draft.
+- Widget state is document state: the worksheet's typed answers and marks live
+  on the object as per-question fields (`ans:<qid>` / `mark:<qid>`) written
+  under `INPUT_ORIGIN`, so they sync live and persist but never enter anyone's
+  undo history.
 
 The backend is three pieces: `server/` (token endpoint — keeps the Y-Sweet
 connection string server-side and mints per-board client tokens — plus image
@@ -126,6 +137,7 @@ throwaway dev credentials baked in:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+# or: make up   (make down to stop, make reset to also wipe MinIO data)
 ```
 
 Open <http://localhost:8080> in two browser windows, click **Share** in one,
@@ -138,12 +150,14 @@ domain or S3 account required.
 
 The Playwright suite in `e2e/` runs that same two-browser collaboration
 session automatically against the compose stack above: share/join/leave,
-live stroke sync both ways, concurrent-edit merging, presence (cursors,
-selections, who's-here) and per-user undo isolation.
+join-by-code, live stroke sync both ways, concurrent-edit merging, presence
+(cursors, selections, who's-here), per-user undo isolation, and shared quiz
+widgets (any collaborator selects/edits/deletes them; typed answers and marks
+sync).
 
 ```bash
-npx playwright install chromium   # once
-npm run test:e2e                  # boots the compose stack itself if not running
+npx playwright install chromium   # once      (make e2e-install)
+npm run test:e2e                  # boots the compose stack itself if not running (make e2e)
 ```
 
 If you already have the stack up, the tests reuse it — but remember the web
@@ -176,7 +190,7 @@ there is no CORS anywhere and `wss://` rides the one TLS certificate.
    - An S3-compatible bucket + credentials (any provider). Y-Sweet documents
      persist under `s3://<bucket>/ysweet`, uploaded images under
      `s3://<bucket>/assets`.
-5. **Run** — `docker compose up -d --build`.
+5. **Run** — `docker compose up -d --build` (or `make deploy`).
 6. **First visit** — the first HTTPS request provisions the TLS certificate
    via Let's Encrypt (a few seconds); after that it renews automatically.
    Certificates live in the `caddy_data` volume — keep it.
