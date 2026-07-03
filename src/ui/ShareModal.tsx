@@ -1,9 +1,10 @@
-// The Share dialog (card body only; the host wraps it in <Modal>).
+// The Share dialog (card body only; the host wraps it in <Modal>). SHARE
+// ONLY — joining lives on the welcome screen and behind the toolbar's Join
+// button (see JoinForm/WelcomeModal), so this dialog has exactly one job:
 //
-//   solo   -> explain + name field + "Start sharing" (mints a short board code,
-//             seeds the shared session with the CURRENT board content, puts
-//             ?board=<code> in the URL), OR "Join with a code": type the code
-//             someone read out / sent you and hop onto their board.
+//   solo   -> explain + name field + "Start sharing": mints a short board
+//             code, seeds the shared session with the CURRENT board content
+//             and puts ?board=<code> in the URL.
 //   shared -> the join code (big, easy to read out) + the share link + copy
 //             buttons, a connection-status line, the "who's here" list (self +
 //             peers), and "Leave board" (keeps the current content as the
@@ -13,7 +14,7 @@ import { useState } from "react";
 import { useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
 import { getStoredName, setStoredName } from "@/collab/profile";
-import { normalizeBoardCode, shareLink } from "@/collab/session";
+import { shareLink } from "@/collab/session";
 import type { CollabStatus } from "@/collab/collabStore";
 
 const STATUS_LABEL: Record<CollabStatus, string> = {
@@ -36,11 +37,9 @@ export function ShareModal({ onClose }: { onClose: () => void }): JSX.Element {
   const self = useCollabStore((s) => s.self);
   const boardId = useCollabStore((s) => s.boardId);
   const shareBoard = useBoardStore((s) => s.shareBoard);
-  const joinBoard = useBoardStore((s) => s.joinBoard);
   const leaveBoard = useBoardStore((s) => s.leaveBoard);
 
   const [name, setName] = useState(getStoredName() ?? "");
-  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
@@ -55,27 +54,6 @@ export function ShareModal({ onClose }: { onClose: () => void }): JSX.Element {
       await shareBoard();
     } catch {
       setError("Could not start sharing — is the server reachable?");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const joinWithCode = async (): Promise<void> => {
-    const trimmed = name.trim();
-    if (!trimmed || busy) return;
-    const target = normalizeBoardCode(code);
-    if (!target) {
-      setError("That code doesn't look right — check it and try again.");
-      return;
-    }
-    setStoredName(trimmed);
-    setBusy(true);
-    setError("");
-    try {
-      await joinBoard(target);
-      onClose();
-    } catch {
-      setError("Could not join — is the server reachable?");
     } finally {
       setBusy(false);
     }
@@ -96,8 +74,8 @@ export function ShareModal({ onClose }: { onClose: () => void }): JSX.Element {
       <>
         <h2>Share this board</h2>
         <p className="hint">
-          Share it and others join with a short code or the link — you edit it
-          together live. Pick the name others will see next to your cursor.
+          Others hop on with a short code (or the link) and you edit it
+          together live. Pick the name they'll see next to your cursor.
         </p>
         <div className="namefield">
           <input
@@ -115,30 +93,6 @@ export function ShareModal({ onClose }: { onClose: () => void }): JSX.Element {
             autoFocus
           />
         </div>
-
-        <div className="subhead">Join a board someone shared</div>
-        <div className="share-joinrow">
-          <input
-            type="text"
-            value={code}
-            placeholder="Code or link, e.g. 4F2A-9C1B"
-            onChange={(e) => setCode(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                void joinWithCode();
-              }
-            }}
-          />
-          <button
-            className="btn"
-            disabled={!name.trim() || !code.trim() || busy}
-            onClick={() => void joinWithCode()}
-          >
-            Join
-          </button>
-        </div>
-
         <p className="err">{error}</p>
         <div className="card-actions">
           <button className="btn" onClick={onClose}>
@@ -167,7 +121,8 @@ export function ShareModal({ onClose }: { onClose: () => void }): JSX.Element {
       {joinCode && (
         <>
           <p className="hint">
-            Others join with this code (Share → Join) or the link below.
+            Others type this code into <b>Join</b> (toolbar or welcome screen),
+            or open the link below.
           </p>
           <div className="share-coderow">
             <span className="share-code" data-code={boardId ?? ""}>

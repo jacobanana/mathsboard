@@ -22,8 +22,10 @@ export interface ToolbarCallbacks {
   onSaveImage: () => void;
   onHelp: () => void;
   onEditSelected: () => void;
-  /** Open the Share dialog (start sharing / link + who's here). */
+  /** Open the Share dialog (start sharing / code + link + who's here). */
   onShare: () => void;
+  /** Open the Join dialog (enter a code someone shared). */
+  onJoin: () => void;
 }
 
 export function Toolbar(props: ToolbarCallbacks): JSX.Element {
@@ -195,6 +197,20 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
       </button>
 
       <div className="spacer" />
+
+      {/* Join a shared board by code. Hidden while already in a shared
+          session (the Share button carries the live status then). */}
+      {collabMode !== "shared" && (
+        <button
+          className="btn keep-label"
+          id="joinBtn"
+          title="Join a board someone shared — enter their code"
+          onClick={props.onJoin}
+        >
+          <span className="ico">{GLYPH.join}</span>
+          <span className="label">Join</span>
+        </button>
+      )}
 
       {/* Share / live-session status. In a shared session the dot mirrors the
           connection state and the label shows how many people are here. */}

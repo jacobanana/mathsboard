@@ -32,6 +32,8 @@ import { BoardCanvas } from "@/canvas/BoardCanvas";
 import { WidgetLayer } from "@/canvas/WidgetLayer";
 import { PresenceLayer } from "@/ui/PresenceLayer";
 import { ShareModal } from "@/ui/ShareModal";
+import { WelcomeModal } from "@/ui/WelcomeModal";
+import { JoinForm } from "@/ui/JoinForm";
 import { boardIdFromUrl } from "@/collab/session";
 import { getStoredName, setStoredName } from "@/collab/profile";
 import { Toolbar } from "@/ui/Toolbar";
@@ -55,12 +57,14 @@ import type { CanvasTool, WidgetTool } from "@/tools/registry";
 // --- modal routing ---------------------------------------------------------
 
 type ModalState =
+  | { kind: "welcome" }
   | { kind: "insert" }
   | { kind: "dialog"; toolType: string; objId?: string; initial?: Record<string, unknown> }
   | { kind: "help" }
   | { kind: "boards" }
   | { kind: "saveAs"; initial: string }
   | { kind: "share" }
+  | { kind: "join" }
   | { kind: "joinName" }
   | null;
 
@@ -112,14 +116,22 @@ export default function App(): JSX.Element {
     return { w: r?.width ?? 0, h: r?.height ?? 0 };
   }, []);
 
-  // Load (or create) the current board once on mount. When the URL carries a
-  // share link (?board=<id>) and no display name is stored yet, ask for the
-  // name FIRST — init() then joins the shared board with it.
+  // Load (or create) the current board once on mount.
+  //   - Share link (?board=<id>): join directly, asking for a display name
+  //     FIRST if none is stored — init() then joins the shared board with it.
+  //   - Plain load: show the WELCOME screen while init() loads the draft
+  //     behind it. Continue just closes it; Join / New / Open replace the
+  //     draft from inside the modal.
   useEffect(() => {
-    if (boardIdFromUrl() && !getStoredName()) {
-      setModal({ kind: "joinName" });
-      return; // init() runs from the prompt's onSubmit
+    if (boardIdFromUrl()) {
+      if (!getStoredName()) {
+        setModal({ kind: "joinName" });
+        return; // init() runs from the prompt's onSubmit
+      }
+      void init();
+      return;
     }
+    setModal({ kind: "welcome" });
     void init();
   }, [init]);
 
@@ -361,6 +373,7 @@ export default function App(): JSX.Element {
         onHelp={() => setModal({ kind: "help" })}
         onEditSelected={editSelected}
         onShare={() => setModal({ kind: "share" })}
+        onJoin={() => setModal({ kind: "join" })}
       />
 
       {/* #stage is the positioned board viewport. It holds the two stacked
@@ -377,6 +390,36 @@ export default function App(): JSX.Element {
       <FloatButtons container={stageEl} onEditSelected={editSelected} />
 
       <PaperMenu anchor={paperAnchor} onClose={() => setPaperAnchor(null)} />
+
+      {/* Welcome screen (plain loads only; share links join directly). Closing
+          it any way — Continue, backdrop, Escape — resumes the draft. */}
+      <Modal open={modal?.kind === "welcome"} onClose={closeModal}>
+        {modal?.kind === "welcome" && (
+          <WelcomeModal
+            onClose={closeModal}
+            onOpenBoards={() => setModal({ kind: "boards" })}
+          />
+        )}
+      </Modal>
+
+      {/* Mid-session "Join a board" (toolbar Join button). */}
+      <Modal open={modal?.kind === "join"} onClose={closeModal}>
+        {modal?.kind === "join" && (
+          <>
+            <h2>Join a board</h2>
+            <p className="hint">
+              Type the code you were given, or paste the link. Your current
+              drawing stays saved as your own draft.
+            </p>
+            <JoinForm autoFocus onJoined={closeModal} />
+            <div className="card-actions">
+              <button className="btn" onClick={closeModal}>
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
 
       <Modal open={modal?.kind === "insert"} onClose={closeModal}>
         <InsertGallery onPick={handlePick} />

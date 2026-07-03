@@ -69,9 +69,15 @@ reverts a collaborator's edit; `canUndo` / `canRedo` are exposed as booleans.
 - Board id in the URL: `?board=<id>`. **Share** mints a short 8-hex-char code
   (`4f2a9c1b`) that doubles as the board id, seeds the shared doc with the
   current content and shows both the code and the link. Others join by opening
-  the link (prompts for a display name) or by typing the code — in any
-  case/dash format — into **Share → Join a board someone shared**. Leaving
-  keeps what's on screen as the local draft.
+  the link (prompts for a display name), or by typing the code — in any
+  case/dash format — into the **welcome screen** that fronts every plain page
+  load, or the toolbar **Join** button mid-session (hidden while already
+  shared). Leaving keeps what's on screen as the local draft.
+- The welcome screen (`src/ui/WelcomeModal.tsx`) is a launcher, not a gate:
+  the working draft loads behind it, so **Continue** (or Escape / clicking the
+  backdrop) resumes it instantly; it also offers New board, the saved-boards
+  manager and the join form (`src/ui/JoinForm.tsx`, shared with the Join
+  dialog). Share links bypass it.
 - Widget state is document state: the worksheet's typed answers and marks live
   on the object as per-question fields (`ans:<qid>` / `mark:<qid>`) written
   under `INPUT_ORIGIN`, so they sync live and persist but never enter anyone's

@@ -137,12 +137,20 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .share-code{flex:1;text-align:center;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:26px;font-weight:700;letter-spacing:.12em;color:var(--ink);background:#F7F9F8;border:2px solid #E0E4E2;border-radius:10px;padding:8px 12px;user-select:all;}
 .share-coderow .btn{color:#fff;background:var(--bar);min-height:42px;}
 .share-coderow .btn:hover{background:#15302f;}
-.share-joinrow{display:flex;gap:8px;margin:8px 0 2px;}
-.share-joinrow input{flex:1;min-width:0;font-family:inherit;font-size:15px;font-weight:600;border:2px solid #E0E4E2;border-radius:10px;padding:9px 11px;color:var(--ink);background:#fff;}
-.share-joinrow input:focus{outline:none;border-color:var(--accent);}
-.share-joinrow .btn{color:var(--ink);background:#EEF1F0;min-height:42px;}
-.share-joinrow .btn:hover{background:#E3E8E6;}
-.share-joinrow .btn[disabled]{opacity:.4;}
+.joinrow{display:flex;gap:8px;margin:8px 0 2px;}
+.joinrow input{flex:1;min-width:0;font-family:inherit;font-size:15px;font-weight:600;border:2px solid #E0E4E2;border-radius:10px;padding:9px 11px;color:var(--ink);background:#fff;}
+.joinrow input:focus{outline:none;border-color:var(--accent);}
+.joinrow .btn{color:var(--ink);background:#EEF1F0;min-height:42px;}
+.joinrow .btn:hover{background:#E3E8E6;}
+.joinrow .btn[disabled]{opacity:.4;}
+
+/* --- Welcome screen (fronts plain page loads) --- */
+.welcome-continue{width:100%;justify-content:center;min-height:52px;font-size:16px;color:#fff;background:var(--bar);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.welcome-continue:hover{background:#15302f;}
+.welcome-continue[disabled]{opacity:.5;}
+.welcome-row{display:flex;gap:10px;margin-top:10px;}
+.welcome-row .btn{flex:1;justify-content:center;min-height:44px;color:var(--ink);background:#EEF1F0;}
+.welcome-row .btn:hover{background:#E3E8E6;}
 .share-linkrow{display:flex;gap:8px;margin:12px 0 4px;}
 .share-linkrow input{flex:1;min-width:0;font-family:inherit;font-size:13.5px;font-weight:600;border:2px solid #E0E4E2;border-radius:10px;padding:9px 11px;color:var(--ink);background:#F7F9F8;}
 .share-linkrow input:focus{outline:none;border-color:var(--accent);}

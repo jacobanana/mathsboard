@@ -1,6 +1,6 @@
-// Short join codes: sharing mints an 8-hex-char board id, the Share dialog
-// shows it as a read-out-loud code, and a second client can join by typing the
-// code (in any format) instead of opening the full link.
+// Short join codes: sharing mints an 8-hex-char board id and the Share dialog
+// shows it as a read-out-loud code. Joining by typed code has two entry
+// points: the welcome screen on load, and the toolbar Join button mid-session.
 
 import {
   test,
@@ -12,6 +12,25 @@ import {
   waitForConnected,
   waitForStrokeCount,
 } from "./helpers";
+import type { Page } from "@playwright/test";
+
+/** Share the host's board and return the code a human would read out. */
+async function shareAndGetCode(host: Page): Promise<string> {
+  await startSharing(host, "Hana");
+  await waitForConnected(host);
+  const { boardId } = await collabState(host);
+  if (!boardId) throw new Error("host has no board id");
+  return (
+    boardId.slice(0, 4).toUpperCase() + "-" + boardId.slice(4).toUpperCase()
+  );
+}
+
+async function waitForJoined(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const c = window.__mathsboard?.collab();
+    return c?.mode === "shared" && c.synced;
+  });
+}
 
 test("sharing mints a short code and shows it in the dialog", async ({
   newClient,
@@ -34,7 +53,7 @@ test("sharing mints a short code and shows it in the dialog", async ({
   await expect(page.locator(".share-linkrow input")).toHaveValue(link);
 });
 
-test("a client can join with the typed code instead of the link", async ({
+test("the welcome screen joins a board by typed code", async ({
   newClient,
 }) => {
   const host = await newClient();
@@ -42,34 +61,55 @@ test("a client can join with the typed code instead of the link", async ({
   await openApp(host);
   await drawStroke(host, { x: 200, y: 200 }, { x: 340, y: 260 });
   await waitForStrokeCount(host, 1);
+  const code = await shareAndGetCode(host);
 
-  await startSharing(host, "Hana");
-  await waitForConnected(host);
-  const { boardId } = await collabState(host);
-  if (!boardId) throw new Error("host has no board id");
-
-  // Guest types the code as a human would: uppercase, dashed, from the Share
-  // dialog of a plain (unshared) session.
-  const humanCode =
-    boardId.slice(0, 4).toUpperCase() + "-" + boardId.slice(4).toUpperCase();
-  await openApp(guest);
-  await guest.locator("#shareBtn").click();
+  // Guest lands on the welcome screen and joins straight from it, typing the
+  // code the way a human would (uppercase, dashed).
+  await guest.goto("/");
   await guest.getByPlaceholder("Your name").fill("Gus");
-  await guest.getByPlaceholder(/Code or link/).fill(humanCode);
-  await guest.getByRole("button", { name: "Join", exact: true }).click();
+  await guest.getByPlaceholder(/Code or link/).fill(code);
+  await guest.locator("#joinGo").click();
 
-  await guest.waitForFunction(() => {
-    const c = window.__mathsboard?.collab();
-    return c?.mode === "shared" && c.synced;
-  });
-  expect((await collabState(guest)).boardId).toBe(boardId);
-  expect(guest.url()).toContain(`board=${boardId}`);
-
+  await waitForJoined(guest);
+  expect((await collabState(guest)).boardId).toBe(
+    (await collabState(host)).boardId,
+  );
   // The host's drawing arrived; edits flow both ways from here.
   await waitForStrokeCount(guest, 1);
   await host.waitForFunction(
     () => window.__mathsboard?.collab().peers.length === 1,
   );
+});
+
+test("the toolbar Join button joins mid-session and hides while shared", async ({
+  newClient,
+}) => {
+  const host = await newClient();
+  const guest = await newClient();
+  await openApp(host);
+  await drawStroke(host, { x: 200, y: 200 }, { x: 340, y: 260 });
+  await waitForStrokeCount(host, 1);
+  const code = await shareAndGetCode(host);
+
+  // Guest is already working on their own board when the code is read out.
+  await openApp(guest);
+  await drawStroke(guest, { x: 500, y: 400 }, { x: 560, y: 460 });
+  await waitForStrokeCount(guest, 1);
+
+  await guest.locator("#joinBtn").click();
+  await guest.getByPlaceholder("Your name").fill("Gus");
+  await guest.getByPlaceholder(/Code or link/).fill(code);
+  await guest.locator("#joinGo").click();
+
+  await waitForJoined(guest);
+  // Now on the host's board (their stroke, not the guest's own doodle).
+  await waitForStrokeCount(guest, 1);
+  expect((await collabState(guest)).boardId).toBe(
+    (await collabState(host)).boardId,
+  );
+  // While shared, Join disappears; the Share button carries the status.
+  await expect(guest.locator("#joinBtn")).toHaveCount(0);
+  await expect(guest.locator("#shareBtn .label")).toHaveText("2 here");
 });
 
 test("a nonsense code is rejected without leaving the board", async ({
@@ -78,10 +118,10 @@ test("a nonsense code is rejected without leaving the board", async ({
   const page = await newClient();
   await openApp(page);
 
-  await page.locator("#shareBtn").click();
+  await page.locator("#joinBtn").click();
   await page.getByPlaceholder("Your name").fill("Hana");
   await page.getByPlaceholder(/Code or link/).fill("not a code!");
-  await page.getByRole("button", { name: "Join", exact: true }).click();
+  await page.locator("#joinGo").click();
 
   await expect(page.locator(".err")).toContainText("doesn't look right");
   expect((await collabState(page)).mode).toBe("solo");

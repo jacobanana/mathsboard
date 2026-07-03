@@ -104,11 +104,15 @@ export async function waitForConnected(page: Page): Promise<void> {
 
 // --- app entry -----------------------------------------------------------------
 
-/** Load the app at `/` and wait for the initial board to be in place. */
+/** Load the app at `/`, dismiss the welcome screen ("Continue"), and wait for
+ *  the initial board to be in place. Share-link loads bypass the welcome
+ *  screen entirely - use joinBoard for those. */
 export async function openApp(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.locator("#toolbar")).toBeVisible();
-  // init() swaps out the synchronous "pending" placeholder document.
+  // Continue is disabled until init() swaps out the "pending" placeholder
+  // document; Playwright's click auto-waits for it to become enabled.
+  await page.locator("#welcomeContinue").click();
   await page.waitForFunction(
     () => window.__mathsboard?.board().id !== "pending",
   );
@@ -173,7 +177,8 @@ export async function joinBoard(
     page.getByRole("heading", { name: /Joining a shared board/ }),
   ).toBeVisible();
   await page.locator("#card input").fill(name);
-  await page.getByRole("button", { name: "Join" }).click();
+  // Scoped to the card: the toolbar now has its own "Join" button.
+  await page.locator("#card").getByRole("button", { name: "Join" }).click();
   await page.waitForFunction(() => {
     const c = window.__mathsboard?.collab();
     return c?.mode === "shared" && c.synced;
