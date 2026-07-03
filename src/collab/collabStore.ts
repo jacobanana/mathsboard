@@ -6,7 +6,7 @@
 // over the Yjs awareness protocol and vanishes when a client disconnects.
 //
 // Written by src/collab/session.ts; read by the toolbar (status / who's here)
-// and the PresenceLayer (remote cursors + selections).
+// and the PresenceLayer (remote cursors).
 
 import { create } from "zustand";
 
@@ -24,8 +24,6 @@ export interface PeerPresence {
   color: string;
   /** Cursor position in WORLD coordinates (each user has their own camera). */
   cursor: { x: number; y: number } | null;
-  /** The peer's current selection, for remote-selection outlines. */
-  selection: { objectIds: string[]; strokeIds: string[] } | null;
 }
 
 interface CollabState {

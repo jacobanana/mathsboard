@@ -35,7 +35,6 @@ interface CollabSnapshot {
     name: string;
     color: string;
     cursor: { x: number; y: number } | null;
-    selection: { objectIds: string[]; strokeIds: string[] } | null;
   }[];
 }
 declare global {

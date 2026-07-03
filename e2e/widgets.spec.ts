@@ -43,17 +43,11 @@ test("a guest can select a host's widget by clicking it and delete it", async ({
   await insertWorksheet(host);
   await waitForObjectCount(guest, 1);
 
-  // Select mode + click on the card (a question label, not a control).
+  // Select mode + click on the card (a question label, not a control), then
+  // the Delete key: the deletion syncing everywhere proves the click selected
+  // (selection itself is local-only, so there's nothing remote to assert on).
   await guest.locator("#selectBtn").click();
   await guest.locator(".iworksheet .iw-q").first().click();
-
-  // The selection reaches the host over awareness — proof the click selected.
-  await host.waitForFunction(
-    () =>
-      window.__mathsboard?.collab().peers[0]?.selection?.objectIds.length === 1,
-  );
-
-  // Delete key removes it for everyone.
   await guest.keyboard.press("Delete");
   await waitForObjectCount(guest, 0);
   await waitForObjectCount(host, 0);

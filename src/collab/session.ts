@@ -217,10 +217,11 @@ export function joinShared(
   core.provider = provider;
 
   // PRESENCE - awareness protocol only, never written into the document.
-  // Local state: identity + cursor + selection. Peers are read back out of
+  // Local state: identity + cursor. Selection is deliberately NOT shared -
+  // what someone has selected stays local to them. Peers are read back out of
   // awareness.getStates() on every change and mirrored into the collab store.
   const awareness = provider.awareness;
-  awareness.setLocalState({ user: { name, color }, cursor: null, selection: null });
+  awareness.setLocalState({ user: { name, color }, cursor: null });
   const onAwareness = () => {
     useCollabStore.setState({ peers: readPeers(awareness, doc.clientID) });
   };
@@ -266,7 +267,6 @@ function readPeers(awareness: Awareness, ownId: number): PeerPresence[] {
       name: user.name || "Guest",
       color: user.color || colorForClient(clientId),
       cursor: (state.cursor as PeerPresence["cursor"]) ?? null,
-      selection: (state.selection as PeerPresence["selection"]) ?? null,
     });
   });
   peers.sort((a, b) => a.clientId - b.clientId);
@@ -283,15 +283,6 @@ export function currentBoard(): BoardDocument {
 
 export function publishCursor(pos: { x: number; y: number } | null): void {
   session?.provider?.awareness.setLocalStateField("cursor", pos);
-}
-
-export function publishSelection(
-  sel: { objectIds: string[]; strokeIds: string[] } | null,
-): void {
-  session?.provider?.awareness.setLocalStateField(
-    "selection",
-    sel && sel.objectIds.length + sel.strokeIds.length > 0 ? sel : null,
-  );
 }
 
 // --- undo/redo ----------------------------------------------------------------

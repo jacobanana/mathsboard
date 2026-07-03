@@ -118,12 +118,11 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 /* --- Saved confirmation toast --- */
 #savedToast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--bar);color:#fff;font-weight:700;font-size:14px;padding:10px 18px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.28);z-index:60;animation:pop .14s ease;}
 
-/* --- Collaboration: presence overlay (remote cursors + selections) --- */
+/* --- Collaboration: presence overlay (remote cursors) --- */
 .presence-layer{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden;}
 .remote-cursor{position:absolute;transform:translate(-2px,-2px);display:flex;align-items:flex-start;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25));}
 .remote-cursor svg{flex:0 0 auto;}
 .rc-name{margin:12px 0 0 -4px;color:#fff;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:9px;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;}
-.remote-sel{position:absolute;border:2px dashed;border-radius:4px;opacity:.75;}
 
 /* --- Collaboration: toolbar share button + status dot --- */
 .btn.sharing{background:rgba(255,255,255,.16);}

@@ -1,15 +1,8 @@
-// Presence (awareness protocol): who's-here lists, live remote cursors and
-// remote selection outlines. All of it is ephemeral - it must appear while a
-// peer is active and vanish when they leave.
+// Presence (awareness protocol): who's-here lists and live remote cursors.
+// All of it is ephemeral - it must appear while a peer is active and vanish
+// when they leave. Selections are NOT presence: they stay local to each user.
 
-import {
-  test,
-  expect,
-  drawStroke,
-  openApp,
-  shareAndJoin,
-  waitForStrokeCount,
-} from "./helpers";
+import { test, expect, openApp, shareAndJoin } from "./helpers";
 
 test("both participants see each other in the toolbar and share dialog", async ({
   newClient,
@@ -45,22 +38,6 @@ test("a peer's cursor appears with their name and hides when they leave the stag
   // Leaving the stage publishes a null cursor - the tag disappears.
   await guest.mouse.move(stage.x + 320, stage.y - 30);
   await expect(host.locator(".remote-cursor")).toHaveCount(0);
-});
-
-test("a peer's selection shows as a coloured outline", async ({ newClient }) => {
-  const host = await newClient();
-  const guest = await newClient();
-  await openApp(host);
-  await shareAndJoin(host, guest);
-
-  await drawStroke(host, { x: 200, y: 200 }, { x: 340, y: 260 });
-  await waitForStrokeCount(guest, 1);
-
-  await guest.keyboard.press("Control+a");
-  await expect(host.locator(".remote-sel")).toHaveCount(1);
-
-  await guest.keyboard.press("Escape");
-  await expect(host.locator(".remote-sel")).toHaveCount(0);
 });
 
 test("a departing peer disappears from the counter", async ({ newClient }) => {

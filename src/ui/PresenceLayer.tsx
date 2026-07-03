@@ -1,28 +1,25 @@
-// Live presence overlay: remote cursors (name-tagged) and remote selection
-// outlines, plus the PUBLISHING side of local presence (cursor + selection).
+// Live presence overlay: remote cursors (name-tagged), plus the PUBLISHING
+// side of the local cursor. Selections are deliberately NOT part of presence -
+// what someone has selected stays local to them.
 //
 // PRESENCE IS EPHEMERAL BY CONSTRUCTION: everything here travels over the Yjs
-// awareness protocol (session.publishCursor / publishSelection) and is never
-// written into the persisted document. Cursor positions are exchanged in WORLD
-// coordinates because every participant has their own camera; this layer maps
-// them to screen space with the local camera, exactly like the WidgetLayer.
+// awareness protocol (session.publishCursor) and is never written into the
+// persisted document. Cursor positions are exchanged in WORLD coordinates
+// because every participant has their own camera; this layer maps them to
+// screen space with the local camera, exactly like the WidgetLayer.
 //
 // Rendered inside #stage as a pointer-events:none sibling of the canvases.
 
 import { useEffect } from "react";
 import { useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
-import { publishCursor, publishSelection } from "@/collab/session";
-import { screenToWorld, worldToScreen, strokeBounds } from "@/board/geometry";
-
-/** Selection outline padding in screen px (matches the local canvas outline). */
-const PAD = 8;
+import { publishCursor } from "@/collab/session";
+import { screenToWorld, worldToScreen } from "@/board/geometry";
 
 export function PresenceLayer(): JSX.Element | null {
   const mode = useCollabStore((s) => s.mode);
   const peers = useCollabStore((s) => s.peers);
   const camera = useBoardStore((s) => s.camera);
-  const board = useBoardStore((s) => s.board);
 
   // --- publish the local cursor, throttled to animation frames --------------
   useEffect(() => {
@@ -59,67 +56,10 @@ export function PresenceLayer(): JSX.Element | null {
     };
   }, [mode]);
 
-  // --- publish the local selection whenever it changes -----------------------
-  useEffect(() => {
-    if (mode !== "shared") return;
-    publishSelection(useBoardStore.getState().selection);
-    const unsub = useBoardStore.subscribe((s, prev) => {
-      if (s.selection !== prev.selection) publishSelection(s.selection);
-    });
-    return () => {
-      unsub();
-      publishSelection(null);
-    };
-  }, [mode]);
-
   if (mode !== "shared" || peers.length === 0) return null;
 
   return (
     <div className="presence-layer" aria-hidden>
-      {/* Remote selection outlines (dashed, in each peer's colour). */}
-      {peers.flatMap((p) => {
-        if (!p.selection) return [];
-        const boxes: JSX.Element[] = [];
-        for (const id of p.selection.objectIds) {
-          const o = board.objects.find((x) => x.id === id);
-          if (!o) continue;
-          const s = worldToScreen(camera, o.x, o.y);
-          boxes.push(
-            <div
-              key={p.clientId + ":" + id}
-              className="remote-sel"
-              style={{
-                left: s.x - PAD,
-                top: s.y - PAD,
-                width: o.w * camera.scale + PAD * 2,
-                height: o.h * camera.scale + PAD * 2,
-                borderColor: p.color,
-              }}
-            />,
-          );
-        }
-        for (const id of p.selection.strokeIds) {
-          const stroke = board.strokes.find((x) => x.id === id);
-          if (!stroke) continue;
-          const b = strokeBounds(stroke);
-          const s = worldToScreen(camera, b.x, b.y);
-          boxes.push(
-            <div
-              key={p.clientId + ":" + id}
-              className="remote-sel"
-              style={{
-                left: s.x - PAD,
-                top: s.y - PAD,
-                width: b.w * camera.scale + PAD * 2,
-                height: b.h * camera.scale + PAD * 2,
-                borderColor: p.color,
-              }}
-            />,
-          );
-        }
-        return boxes;
-      })}
-
       {/* Remote cursors with name tags. */}
       {peers.map((p) => {
         if (!p.cursor) return null;

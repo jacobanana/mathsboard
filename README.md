@@ -43,8 +43,9 @@ State splits in two (see `src/board/store.ts`):
   string `id` (`src/board/types.ts`, `id()`).
 - **Ephemeral state** — camera, current tool, colour, pen/text size, selection,
   and the in-progress text `editingId`. Local-only; never persisted into the
-  document, never synced. Presence (cursors, names, selections) travels over
-  the Yjs *awareness* protocol only — it is never written into the document.
+  document, never synced (selection included: what you select is your own
+  business). Presence (cursors, names) travels over the Yjs *awareness*
+  protocol only — it is never written into the document.
 
 **Rule:** never mutate the document outside a store action. All document changes
 go through named actions (`addObject`, `updateObject`, `moveObject`,
@@ -151,9 +152,8 @@ domain or S3 account required.
 The Playwright suite in `e2e/` runs that same two-browser collaboration
 session automatically against the compose stack above: share/join/leave,
 join-by-code, live stroke sync both ways, concurrent-edit merging, presence
-(cursors, selections, who's-here), per-user undo isolation, and shared quiz
-widgets (any collaborator selects/edits/deletes them; typed answers and marks
-sync).
+(cursors, who's-here), per-user undo isolation, and shared quiz widgets (any
+collaborator selects/edits/deletes them; typed answers and marks sync).
 
 ```bash
 npx playwright install chromium   # once      (make e2e-install)

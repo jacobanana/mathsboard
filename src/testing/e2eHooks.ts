@@ -28,7 +28,6 @@ export interface E2EHooks {
       name: string;
       color: string;
       cursor: { x: number; y: number } | null;
-      selection: { objectIds: string[]; strokeIds: string[] } | null;
     }[];
   };
 }
@@ -55,7 +54,6 @@ window.__mathsboard = {
         name: p.name,
         color: p.color,
         cursor: p.cursor,
-        selection: p.selection,
       })),
     };
   },
