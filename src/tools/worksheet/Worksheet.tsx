@@ -1,10 +1,13 @@
 // WIDGET COMPONENT — the .iworksheet overlay card.
 //
 // Renders the header (title, New, Check, settings ✎, ×) and the body rows
-// (question label · input · mark). Typed answers, per-question marks and the
-// score are EPHEMERAL React state — they are not persisted in v1. The generated
-// questions live on the object (store), so "New" writes them back via
-// updateObject and they persist/sync.
+// (question label · input · mark). Typed answers and marks are SHARED STATE:
+// they live on the object as per-question fields ("ans:<qid>" / "mark:<qid>")
+// written under INPUT_ORIGIN via updateWidgetState, so every collaborator sees
+// them live and they persist with the document — but Ctrl+Z never reverts
+// them. Keying by question id (not index) means a fresh question set (New /
+// settings edit) starts blank everywhere without any clearing pass. The score
+// line is derived from the marks, so it can never go stale.
 //
 // The WidgetLayer positions and scales this element, so we never set
 // left/top/transform here. Header drag moves the object through the store
@@ -14,38 +17,44 @@
 // Ported from buildBody, checkWidget, createWidgetEl and attachDrag
 // (maths-whiteboard.html lines 580-593).
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import {
   genQuestions,
   widgetTitle,
+  type Question,
   type WorksheetParams,
 } from "@/tools/worksheet";
 
 type Mark = { kind: "ok" | "no"; text: string } | null;
 
+/** Per-question field keys. Documents saved before questions had ids fall
+ *  back to the index (until "New" regenerates the set with ids). */
+const qKey = (q: Question, i: number): string => q.id ?? String(i);
+const ansField = (q: Question, i: number): string => "ans:" + qKey(q, i);
+const markField = (q: Question, i: number): string => "mark:" + qKey(q, i);
+
 export function Worksheet({ obj, onEdit }: WidgetProps<WorksheetParams>) {
   const updateObject = useBoardStore((s) => s.updateObject);
+  const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
   const removeObject = useBoardStore((s) => s.removeObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
 
-  // Ephemeral, not persisted: typed answers, marks and score.
-  const [answers, setAnswers] = useState<string[]>(() =>
-    obj.questions.map(() => ""),
+  // Shared state, read straight off the object (no local copies to reset).
+  const rec = obj as unknown as Record<string, unknown>;
+  const answers = obj.questions.map(
+    (q, i) => (rec[ansField(q, i)] as string) ?? "",
   );
-  const [marks, setMarks] = useState<Mark[]>(() => obj.questions.map(() => null));
-  const [score, setScore] = useState("");
-
-  // When the question set changes (New, or a settings edit via the dialog),
-  // clear typed answers/marks/score — mirrors the prototype rebuilding the body.
-  // moveObject keeps obj.questions identity, so dragging never resets answers.
-  useEffect(() => {
-    setAnswers(obj.questions.map(() => ""));
-    setMarks(obj.questions.map(() => null));
-    setScore("");
-  }, [obj.questions]);
+  const marks = obj.questions.map(
+    (q, i) => (rec[markField(q, i)] as Mark) ?? null,
+  );
+  const checked = marks.some((m) => m !== null);
+  const correct = marks.filter((m) => m?.kind === "ok").length;
+  const score = checked
+    ? correct + " / " + obj.questions.length + " correct"
+    : "";
 
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -76,37 +85,35 @@ export function Worksheet({ obj, onEdit }: WidgetProps<WorksheetParams>) {
     head.addEventListener("pointerup", up);
   }
 
-  // --- check (port of checkWidget) ----------------------------------------
+  // --- check (port of checkWidget; marks are shared, score derives) --------
   function check() {
-    let correct = 0;
-    const next: Mark[] = obj.questions.map((q, i) => {
+    const patch: Record<string, unknown> = {};
+    obj.questions.forEach((q, i) => {
       const raw = (answers[i] ?? "").trim();
-      if (raw === "") return null;
-      if (Number(raw) === q.ans) {
-        correct++;
-        return { kind: "ok", text: "✓" };
-      }
-      return { kind: "no", text: "✗ " + q.ans };
+      patch[markField(q, i)] =
+        raw === ""
+          ? null
+          : Number(raw) === q.ans
+            ? { kind: "ok", text: "✓" }
+            : { kind: "no", text: "✗ " + q.ans };
     });
-    setMarks(next);
-    setScore(correct + " / " + obj.questions.length + " correct");
+    updateWidgetState(obj.id, patch);
   }
 
   // --- new questions (port of regenWidget — persists via the store) -------
   function regen() {
     const questions = genQuestions(obj);
-    updateObject(obj.id, { questions });
-    setAnswers(questions.map(() => ""));
-    setMarks(questions.map(() => null));
-    setScore("");
+    // Replace the questions AND prune every stale answer/mark field in the
+    // same (undoable) patch — undo restores the old set with its answers.
+    const patch: Record<string, unknown> = { questions };
+    for (const k of Object.keys(rec)) {
+      if (k.startsWith("ans:") || k.startsWith("mark:")) patch[k] = undefined;
+    }
+    updateObject(obj.id, patch);
   }
 
   function setAnswer(i: number, v: string) {
-    setAnswers((prev) => {
-      const next = prev.slice();
-      next[i] = v;
-      return next;
-    });
+    updateWidgetState(obj.id, { [ansField(obj.questions[i], i)]: v });
   }
 
   function onInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>, i: number) {
@@ -151,7 +158,7 @@ export function Worksheet({ obj, onEdit }: WidgetProps<WorksheetParams>) {
           const inOk = mark?.kind === "ok";
           const inNo = mark?.kind === "no";
           return (
-            <div className="iw-row" key={i}>
+            <div className="iw-row" key={qKey(q, i)}>
               <span className="iw-q">
                 {q.a} {q.op} {q.b} =
               </span>

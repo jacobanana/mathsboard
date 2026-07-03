@@ -39,6 +39,12 @@ import { UNTITLED_NAME } from "@/board/types";
 export const LOCAL_ORIGIN = "mathsboard:local";
 /** Origin for programmatic document loading/seeding - never undoable. */
 export const SEED_ORIGIN = "mathsboard:seed";
+/**
+ * Origin for LIVE WIDGET STATE edits (typed quiz answers, marks). These sync
+ * and persist like any document edit, but the UndoManager doesn't track this
+ * origin - Ctrl+Z never reverts something someone typed into a widget.
+ */
+export const INPUT_ORIGIN = "mathsboard:input";
 
 export interface DocHandles {
   doc: Y.Doc;

@@ -28,6 +28,7 @@ import type {
 import {
   DocHandles,
   DocMirror,
+  INPUT_ORIGIN,
   LOCAL_ORIGIN,
   SEED_ORIGIN,
   openHandles,
@@ -317,6 +318,21 @@ export function insertObject(obj: AnyBoardObject): void {
   tx(() => objects.set(obj.id, toYShape({ order: nextOrder(), ...obj })));
 }
 
+/** Apply a patch onto a shape's Y.Map: set changed fields; `undefined` DELETES
+ *  the field (used to prune per-question answer/mark keys on regeneration). */
+function applyShapePatch(
+  y: Y.Map<unknown>,
+  patch: Record<string, unknown>,
+): void {
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined) {
+      if (y.has(k)) y.delete(k);
+    } else if (y.get(k) !== v) {
+      y.set(k, v);
+    }
+  }
+}
+
 /** Patch fields on one object - per-field CRDT writes (see docModel.ts). */
 export function patchObject(
   id: string,
@@ -326,10 +342,26 @@ export function patchObject(
   tx(() => {
     const y = objects.get(id);
     if (!y) return; // deleted concurrently - drop the edit, delete wins
-    for (const [k, v] of Object.entries(patch)) {
-      if (y.get(k) !== v) y.set(k, v);
-    }
+    applyShapePatch(y, patch);
   });
+}
+
+/**
+ * Patch fields on one object as LIVE WIDGET STATE (typed quiz answers, marks).
+ * Identical to patchObject except the transaction runs under INPUT_ORIGIN,
+ * which the UndoManager does not track - the edit syncs to peers and persists
+ * in the document, but Ctrl+Z never reverts it.
+ */
+export function patchObjectInput(
+  id: string,
+  patch: Record<string, unknown>,
+): void {
+  const s = must();
+  s.h.doc.transact(() => {
+    const y = s.h.objects.get(id);
+    if (!y) return; // deleted concurrently - drop the edit, delete wins
+    applyShapePatch(y, patch);
+  }, INPUT_ORIGIN);
 }
 
 export function insertStroke(stroke: Stroke): void {
@@ -409,6 +441,33 @@ export function setBoardName(name: string): void {
 // --- board id <-> URL ----------------------------------------------------------
 
 const BOARD_ID_RE = /^[A-Za-z0-9_-]{6,64}$/;
+
+/**
+ * Short, shareable board id: 8 hex chars ("4f2a9c1b"), readable enough to say
+ * out loud or type from a whiteboard. ~4 billion codes, so random collisions
+ * are vanishingly unlikely at this deployment's scale, and it satisfies
+ * BOARD_ID_RE on both client and server like any other id.
+ */
+export function newBoardCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(4));
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Parse "join a board" input: a bare code in any case, with or without
+ * dashes/spaces ("4F2A-9C1B"), a full share link, or a legacy long board id.
+ * Returns the canonical board id, or null when it can't be one.
+ */
+export function normalizeBoardCode(input: string): string | null {
+  let raw = input.trim();
+  if (raw.includes("board=")) {
+    const m = /board=([A-Za-z0-9_-]+)/.exec(raw);
+    raw = m?.[1] ?? "";
+  }
+  const compact = raw.replace(/[\s-]+/g, "");
+  if (/^[0-9a-fA-F]{6,12}$/.test(compact)) return compact.toLowerCase();
+  return BOARD_ID_RE.test(raw) ? raw : null;
+}
 
 export function boardIdFromUrl(): string | null {
   const id = new URLSearchParams(window.location.search).get("board");

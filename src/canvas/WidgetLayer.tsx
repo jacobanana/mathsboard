@@ -7,6 +7,17 @@
 // the camera scale (transform-origin 0 0, as set by .iworksheet in the CSS).
 // The layer itself (.ilayer) is pointer-events:none; each widget re-enables
 // pointer events for itself.
+//
+// SELECTION: because a widget card swallows pointer events, the canvas
+// hit-test never sees it — without help, a widget could only ever be selected
+// by whoever placed it (auto-select on insert) or via lasso/Ctrl+A. The
+// wrapper therefore mirrors the canvas selection gestures itself, so EVERY
+// collaborator can select (then delete/edit via toolbar, float buttons or the
+// Delete key) any widget:
+//   - Select tool + press on the card  -> select it (shift toggles membership)
+//   - double-click on the card          -> open its settings Dialog
+// Presses on the widget's own controls (buttons, inputs) are left alone so the
+// widget stays fully interactive whatever the active tool.
 
 import { useBoardStore } from "@/board/store";
 import { worldToScreen } from "@/board/geometry";
@@ -19,6 +30,14 @@ interface WidgetLayerProps {
   onEditObject?: (obj: AnyBoardObject) => void;
 }
 
+/** A press on one of the widget's own controls, not on its card/chrome. */
+function onControl(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest("button, input, select, textarea") != null
+  );
+}
+
 export function WidgetLayer({ onEditObject }: WidgetLayerProps) {
   // Re-render on board (objects) or camera change.
   const objects = useBoardStore((s) => s.board.objects);
@@ -28,6 +47,33 @@ export function WidgetLayer({ onEditObject }: WidgetLayerProps) {
     const t = getTool(o.type);
     return t?.kind === "widget";
   });
+
+  // Capture phase: the worksheet header's own drag handler stopPropagation()s,
+  // and selection must land before the drag starts anyway.
+  const selectWidget = (o: AnyBoardObject, e: React.PointerEvent) => {
+    const st = useBoardStore.getState();
+    if (st.tool !== "select" || onControl(e.target)) return;
+    if (e.shiftKey) {
+      const ids = st.selection.objectIds;
+      st.setSelection({
+        ...st.selection,
+        objectIds: ids.includes(o.id)
+          ? ids.filter((x) => x !== o.id)
+          : [...ids, o.id],
+      });
+    } else if (!st.selection.objectIds.includes(o.id)) {
+      st.select(o.id);
+    }
+  };
+
+  // Mirrors BoardCanvas's onDblClick for canvas objects (select | pan tools).
+  const editWidget = (o: AnyBoardObject, e: React.MouseEvent) => {
+    const st = useBoardStore.getState();
+    if (st.tool !== "select" && st.tool !== "pan") return;
+    if (onControl(e.target)) return;
+    st.select(o.id);
+    onEditObject?.(o);
+  };
 
   return (
     <div className="ilayer">
@@ -48,6 +94,8 @@ export function WidgetLayer({ onEditObject }: WidgetLayerProps) {
               transform: "scale(" + camera.scale + ")",
               transformOrigin: "0 0",
             }}
+            onPointerDownCapture={(e) => selectWidget(o, e)}
+            onDoubleClick={(e) => editWidget(o, e)}
           >
             <Component
               obj={o as AnyBoardObject as never}

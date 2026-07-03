@@ -142,6 +142,13 @@ interface BoardState {
   /** Patch an object's fields. Pushes a history entry. */
   updateObject(id: string, patch: Partial<AnyBoardObject>): void;
   /**
+   * Patch LIVE WIDGET STATE on an object (typed quiz answers, marks). Syncs to
+   * peers and persists in the document like updateObject, but never enters the
+   * undo history and never starts a new undo step. `undefined` values delete
+   * their field.
+   */
+  updateWidgetState(id: string, patch: Record<string, unknown>): void;
+  /**
    * Move an object. Does NOT push history -- the drag handler pushes once at
    * drag start so the whole drag is a single undo step.
    */
@@ -312,6 +319,12 @@ export const useBoardStore = create<BoardState>((set, get) => {
       session.patchObject(id, patch);
     },
 
+    updateWidgetState(id, patch) {
+      // No stopCapture: this must not cut an undo step boundary, and the
+      // INPUT_ORIGIN transaction is invisible to the UndoManager anyway.
+      session.patchObjectInput(id, patch);
+    },
+
     moveObject(id, x, y) {
       // No history boundary here -- caller pushed once at drag start.
       session.patchObject(id, { x, y });
@@ -439,7 +452,9 @@ export const useBoardStore = create<BoardState>((set, get) => {
 
     async shareBoard() {
       const current = session.currentBoard();
-      const boardId = newId();
+      // Short hex code, not a UUID: it doubles as the join code people can
+      // type in by hand (Share dialog -> "Join with a code").
+      const boardId = session.newBoardCode();
       const board = session.joinShared(boardId, displayName(), current);
       session.putBoardIdInUrl(boardId);
       // Same content, same ids: keep selection/camera/source link; only the
