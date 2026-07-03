@@ -1,3 +1,5 @@
 node_modules
 dist
 *.tsbuildinfo
+# Deployment secrets (copy .env.example -> .env and fill in)
+.env

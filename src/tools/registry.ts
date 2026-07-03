@@ -21,7 +21,8 @@ export type ToolCategory =
   | "fractions"
   | "geometry"
   | "time"
-  | "word";
+  | "word"
+  | "media";
 
 /** Display order of category sections in the Insert gallery. */
 export const CATEGORY_ORDER: ToolCategory[] = [
@@ -31,6 +32,7 @@ export const CATEGORY_ORDER: ToolCategory[] = [
   "geometry",
   "time",
   "word",
+  "media",
 ];
 
 /** Section headings, matching the prototype gallery exactly. */
@@ -41,6 +43,7 @@ export const CATEGORY_LABELS: Record<ToolCategory, string> = {
   geometry: "Geometry",
   time: "Time",
   word: "Word problems",
+  media: "Pictures",
 };
 
 // --- draw + dialog contracts ----------------------------------------------

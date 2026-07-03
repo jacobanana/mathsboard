@@ -1,0 +1,31 @@
+# One domain, three routes, all same-origin (so no CORS anywhere and the
+# websocket rides the same TLS cert):
+#
+#   /api/*  -> the token/upload service
+#   /ys/*   -> the Y-Sweet sync server (websocket; prefix stripped - the
+#              container serves at root, and the token endpoint rewrites the
+#              URLs inside minted tokens to point here)
+#   rest    -> the static frontend build
+#
+# SITE_ADDRESS comes from the environment:
+#   production      SITE_ADDRESS=board.example.com   (automatic HTTPS via ACME;
+#                   the FIRST request after DNS is live provisions the cert)
+#   local testing   SITE_ADDRESS=:8080               (plain HTTP on port 8080)
+
+{$SITE_ADDRESS}
+
+encode zstd gzip
+
+handle /api/* {
+	reverse_proxy api:8787
+}
+
+handle_path /ys/* {
+	reverse_proxy ysweet:8080
+}
+
+handle {
+	root * /srv
+	try_files {path} /index.html
+	file_server
+}

@@ -1,0 +1,14 @@
+# Build the static frontend, then serve it (plus TLS + routing) with Caddy.
+# The Caddyfile is bind-mounted by docker-compose so routing edits don't
+# require an image rebuild.
+
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY tsconfig.json tsconfig.node.json vite.config.ts index.html ./
+COPY src ./src
+RUN npm run build
+
+FROM caddy:2-alpine
+COPY --from=build /app/dist /srv

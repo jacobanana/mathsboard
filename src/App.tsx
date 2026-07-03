@@ -30,6 +30,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BoardCanvas } from "@/canvas/BoardCanvas";
 import { WidgetLayer } from "@/canvas/WidgetLayer";
+import { PresenceLayer } from "@/ui/PresenceLayer";
+import { ShareModal } from "@/ui/ShareModal";
+import { boardIdFromUrl } from "@/collab/session";
+import { getStoredName, setStoredName } from "@/collab/profile";
 import { Toolbar } from "@/ui/Toolbar";
 import { FloatButtons } from "@/ui/FloatButtons";
 import { ZoomCluster } from "@/ui/ZoomCluster";
@@ -56,6 +60,8 @@ type ModalState =
   | { kind: "help" }
   | { kind: "boards" }
   | { kind: "saveAs"; initial: string }
+  | { kind: "share" }
+  | { kind: "joinName" }
   | null;
 
 /** Pull the registered tool's size for given params (canvas: size(p); widget: fixed). */
@@ -106,10 +112,25 @@ export default function App(): JSX.Element {
     return { w: r?.width ?? 0, h: r?.height ?? 0 };
   }, []);
 
-  // Load (or create) the current board once on mount.
+  // Load (or create) the current board once on mount. When the URL carries a
+  // share link (?board=<id>) and no display name is stored yet, ask for the
+  // name FIRST — init() then joins the shared board with it.
   useEffect(() => {
+    if (boardIdFromUrl() && !getStoredName()) {
+      setModal({ kind: "joinName" });
+      return; // init() runs from the prompt's onSubmit
+    }
     void init();
   }, [init]);
+
+  const handleJoinName = useCallback(
+    (name: string) => {
+      setStoredName(name);
+      setModal(null);
+      void init();
+    },
+    [init],
+  );
 
   const closeModal = useCallback(() => setModal(null), []);
 
@@ -339,6 +360,7 @@ export default function App(): JSX.Element {
         onSaveImage={saveImage}
         onHelp={() => setModal({ kind: "help" })}
         onEditSelected={editSelected}
+        onShare={() => setModal({ kind: "share" })}
       />
 
       {/* #stage is the positioned board viewport. It holds the two stacked
@@ -347,6 +369,7 @@ export default function App(): JSX.Element {
       <div id="stage" ref={setStageRef}>
         <BoardCanvas onEditObject={openEditFor} />
         <WidgetLayer onEditObject={openEditFor} />
+        <PresenceLayer />
         <ZoomCluster getStageSize={getStageSize} />
       </div>
 
@@ -379,6 +402,26 @@ export default function App(): JSX.Element {
             confirmLabel="Save"
             onSubmit={handleSaveAsSubmit}
             onCancel={closeModal}
+          />
+        )}
+      </Modal>
+
+      <Modal open={modal?.kind === "share"} onClose={closeModal}>
+        {modal?.kind === "share" && <ShareModal onClose={closeModal} />}
+      </Modal>
+
+      {/* Joining a shared link: ask for a display name, then join. Closing the
+          prompt joins as "Guest" rather than stranding the user on a blank app. */}
+      <Modal
+        open={modal?.kind === "joinName"}
+        onClose={() => handleJoinName("Guest")}
+      >
+        {modal?.kind === "joinName" && (
+          <NamePrompt
+            title="Joining a shared board — what's your name?"
+            confirmLabel="Join"
+            onSubmit={handleJoinName}
+            onCancel={() => handleJoinName("Guest")}
           />
         )}
       </Modal>

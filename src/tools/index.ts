@@ -31,6 +31,7 @@ import fdpTool from "@/tools/fdp";
 import clockTool from "@/tools/clock";
 import noteTool from "@/tools/note";
 import worksheetTool from "@/tools/worksheet";
+import imageTool from "@/tools/image";
 
 // Gallery order (also the registration order listByCategory preserves).
 const ALL_TOOLS = [
@@ -61,6 +62,8 @@ const ALL_TOOLS = [
   clockTool,
   // Word problems
   noteTool,
+  // Pictures
+  imageTool,
 ];
 
 for (const tool of ALL_TOOLS) registerTool(tool);

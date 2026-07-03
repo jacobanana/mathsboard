@@ -63,4 +63,5 @@ export const GLYPH = {
   save: "⤓",
   help: "?",
   boards: "🗂",
+  share: "🔗",
 } as const;

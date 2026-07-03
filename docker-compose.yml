@@ -1,0 +1,60 @@
+# Production stack - one VPS, one domain, three containers:
+#
+#   web    - Caddy: TLS + routing + the static frontend build
+#   api    - token endpoint + image upload proxy (server/)
+#   ysweet - the Y-Sweet sync server, persisting to S3
+#
+# Setup:  cp .env.example .env   (fill it in - see the README "Deploy" section)
+# Run:    docker compose up -d --build
+#
+# For a full LOCAL end-to-end test (no domain, no S3 account, no .env needed):
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+# then open http://localhost:8080 - see docker-compose.local.yml.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:8080}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # ACME account + certificates - keep across restarts
+      - caddy_config:/config
+    depends_on:
+      - api
+      - ysweet
+
+  api:
+    build: ./server
+    restart: unless-stopped
+    # All configuration (connection string, S3 bucket + creds) comes from .env;
+    # required:false lets the local-test overlay run without one.
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      - ysweet
+
+  ysweet:
+    image: ghcr.io/jamsocket/y-sweet:latest
+    restart: unless-stopped
+    command: ["serve", "--prod"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Reachable from the other containers (the binary binds 127.0.0.1 by
+      # default); never published on the host - only Caddy talks to it.
+      Y_SWEET_HOST: 0.0.0.0
+      PORT: "8080"
+
+volumes:
+  caddy_data:
+  caddy_config:

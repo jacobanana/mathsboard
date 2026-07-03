@@ -10,6 +10,7 @@
 // selected) is delegated to callbacks the host (App) wires.
 
 import { useBoardStore } from "@/board/store";
+import { useCollabStore } from "@/collab/collabStore";
 import type { ToolName } from "@/board/types";
 import { OptionsStrip } from "@/ui/OptionsStrip";
 import { DrawIcon, TextIcon, EraserIcon, GLYPH } from "@/ui/icons";
@@ -21,6 +22,8 @@ export interface ToolbarCallbacks {
   onSaveImage: () => void;
   onHelp: () => void;
   onEditSelected: () => void;
+  /** Open the Share dialog (start sharing / link + who's here). */
+  onShare: () => void;
 }
 
 export function Toolbar(props: ToolbarCallbacks): JSX.Element {
@@ -35,6 +38,9 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
   const boardName = useBoardStore((s) => s.board.name);
   const sourceId = useBoardStore((s) => s.sourceId);
   const dirty = useBoardStore((s) => s.dirty);
+  const collabMode = useCollabStore((s) => s.mode);
+  const collabStatus = useCollabStore((s) => s.status);
+  const peerCount = useCollabStore((s) => s.peers.length);
 
   const isMode = (t: ToolName) => tool === t;
   const selCount = selection.objectIds.length + selection.strokeIds.length;
@@ -189,6 +195,32 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
       </button>
 
       <div className="spacer" />
+
+      {/* Share / live-session status. In a shared session the dot mirrors the
+          connection state and the label shows how many people are here. */}
+      <button
+        className={
+          "btn keep-label" + (collabMode === "shared" ? " sharing" : "")
+        }
+        id="shareBtn"
+        title={
+          collabMode === "shared"
+            ? "Shared board — link, who's here, leave"
+            : "Share this board with a link"
+        }
+        onClick={props.onShare}
+      >
+        {collabMode === "shared" ? (
+          <span className={"status-dot status-" + collabStatus} />
+        ) : (
+          <span className="ico">{GLYPH.share}</span>
+        )}
+        <span className="label">
+          {collabMode === "shared"
+            ? peerCount + 1 + " here"
+            : "Share"}
+        </span>
+      </button>
 
       <button
         className="btn keep-label"
