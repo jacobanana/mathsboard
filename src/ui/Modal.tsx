@@ -5,7 +5,10 @@
 //     (<h2>, .field rows, .card-actions) per the dialog contract, so the .card
 //     wrapper belongs here, not in the dialog.
 //   - Closes on backdrop (scrim) click, exactly like the prototype
-//     (scrim click where e.target === scrim).
+//     (scrim click where e.target === scrim), and on Escape. A child that
+//     handles Escape itself (NamePrompt, the BoardsManager's inline rename)
+//     marks the event consumed via preventDefault, which suppresses the
+//     shell's close so an inner cancel doesn't also dismiss the whole modal.
 //   - Sets the shared uiStore.modalOpen flag while mounted so the canvas can
 //     suppress its keyboard shortcuts (Delete / Ctrl+Z) — mirrors the
 //     prototype's `modalOpen` boolean.
@@ -27,6 +30,20 @@ export function Modal({ open, onClose, children }: ModalProps): JSX.Element | nu
     setModalOpen(open);
     return () => setModalOpen(false);
   }, [open, setModalOpen]);
+
+  // Escape closes. Window-level so it works wherever focus sits; children's
+  // own Escape handling runs first (React root is below window) and opts out
+  // by consuming the event.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
   if (!open) return null;
 
