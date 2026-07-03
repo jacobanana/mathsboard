@@ -6,6 +6,7 @@
 // a new file keeps the existing one.
 
 import { useEffect, useRef, useState } from "react";
+import type React from "react";
 import type { ToolDialogProps } from "@/tools/registry";
 import type { ImageParams } from "@/tools/image";
 import { uploadImage, validateImageFile } from "@/collab/upload";
@@ -26,6 +27,7 @@ export function ImageDialog({
   const [picked, setPicked] = useState<Picked | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [dragging, setDragging] = useState(false);
   const pickedRef = useRef<Picked | null>(null);
   pickedRef.current = picked;
 
@@ -65,6 +67,43 @@ export function ImageDialog({
     probe.src = objectUrl;
   };
 
+  // Drag-and-drop straight onto the dialog. This feeds the file through the
+  // SAME onFile path as the "Choose an image…" input, so a dropped picture
+  // lands in the preview and is added on submit — identical to the button
+  // flow. (The board-level drop on #stage is unreachable while the modal's
+  // scrim is up, so the dialog has to accept the drop itself.)
+  const isFileDrag = (e: React.DragEvent): boolean =>
+    Array.from(e.dataTransfer.types).includes("Files");
+
+  const onDragOver = (e: React.DragEvent<HTMLDivElement>): void => {
+    if (!isFileDrag(e)) return;
+    // Required to make this a valid drop target and stop the browser from
+    // navigating away to open the dropped file.
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setDragging(true);
+  };
+
+  const onDragLeave = (e: React.DragEvent<HTMLDivElement>): void => {
+    // dragleave also fires when crossing into a child; ignore those.
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setDragging(false);
+  };
+
+  const onDrop = (e: React.DragEvent<HTMLDivElement>): void => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    setDragging(false);
+    const file = Array.from(e.dataTransfer.files).find((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (!file) {
+      setErr("Drop an image file (PNG, JPEG, WebP or GIF).");
+      return;
+    }
+    onFile(file);
+  };
+
   const submit = async (): Promise<void> => {
     if (busy) return;
     if (!picked) {
@@ -90,7 +129,12 @@ export function ImageDialog({
   const previewUrl = picked?.objectUrl ?? (editing ? initial.url : "");
 
   return (
-    <>
+    <div
+      className={"img-drop" + (dragging ? " dragover" : "")}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <h2>{editing ? "Picture" : "Add a picture"}</h2>
       <p className="hint">
         PNG, JPEG, WebP or GIF up to 8 MB. The picture is uploaded and shared
@@ -103,7 +147,7 @@ export function ImageDialog({
           accept="image/png,image/jpeg,image/webp,image/gif"
           onChange={(e) => onFile(e.target.files?.[0])}
         />
-        {picked ? picked.file.name : "Choose an image…"}
+        {picked ? picked.file.name : "Choose an image, or drop one here…"}
       </label>
 
       {previewUrl && (
@@ -124,6 +168,6 @@ export function ImageDialog({
           {busy ? "Uploading…" : editing ? "Save" : "Add to board"}
         </button>
       </div>
-    </>
+    </div>
   );
 }

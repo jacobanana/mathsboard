@@ -64,6 +64,40 @@ test("the toolbar picture button uploads a chosen file and places it", async ({
   expect(img?.url).toMatch(/^\/api\/img\//);
 });
 
+test("dropping an image file onto the open picture dialog loads it into the preview", async ({
+  newClient,
+}) => {
+  const page = await newClient();
+  await openApp(page);
+
+  // Open the dialog via the toolbar button, then drop a file onto it. The
+  // dialog's scrim covers #stage, so the board drop is unreachable — the drop
+  // has to be handled by the dialog itself, feeding the same onFile path as the
+  // "Choose an image…" input.
+  await page.locator("#imageBtn").click();
+  const dialog = page.locator(".img-drop");
+  await expect(dialog).toBeVisible();
+
+  const dataTransfer = await page.evaluateHandle((b64) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], "dot.png", { type: "image/png" }));
+    return dt;
+  }, PNG_B64);
+
+  await dialog.dispatchEvent("dragover", { dataTransfer });
+  await dialog.dispatchEvent("drop", { dataTransfer });
+
+  // The preview appears (probe done), then confirming places the uploaded image
+  // — identical to picking the file through the button.
+  await expect(page.locator("img.img-preview")).toBeVisible();
+  await page.getByRole("button", { name: "Add to board" }).click();
+
+  await waitForOneImage(page);
+  const img = await imageObject(page);
+  expect(img?.url).toMatch(/^\/api\/img\//);
+});
+
 test("dropping an image file on the board uploads and places it at the drop point", async ({
   newClient,
 }) => {
