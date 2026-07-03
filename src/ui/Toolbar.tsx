@@ -23,6 +23,7 @@
 
 import { useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
+import { COLLAB_ENABLED } from "@/config";
 import type { ToolName } from "@/board/types";
 import { OptionsStrip } from "@/ui/OptionsStrip";
 import { OverflowMenu } from "@/ui/OverflowMenu";
@@ -165,8 +166,8 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
 
       {/* Live share status chip — only while in a shared session (otherwise
           Share lives in the burger menu). The dot mirrors the connection state
-          and the label shows how many people are here. */}
-      {collabMode === "shared" && (
+          and the label shows how many people are here. Collab builds only. */}
+      {COLLAB_ENABLED && collabMode === "shared" && (
         <button
           className="btn keep-label sharing"
           id="shareBtn"

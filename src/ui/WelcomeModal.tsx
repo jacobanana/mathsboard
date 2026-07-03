@@ -9,6 +9,7 @@
 
 import { useEffect, useRef } from "react";
 import { useBoardStore } from "@/board/store";
+import { COLLAB_ENABLED } from "@/config";
 import { JoinForm } from "@/ui/JoinForm";
 
 interface WelcomeModalProps {
@@ -46,7 +47,9 @@ export function WelcomeModal({
     <>
       <h2>Maths Board</h2>
       <p className="hint">
-        Pick up where you left off, or join a board someone shared with you.
+        {COLLAB_ENABLED
+          ? "Pick up where you left off, or join a board someone shared with you."
+          : "Pick up where you left off."}
       </p>
 
       <button
@@ -80,8 +83,12 @@ export function WelcomeModal({
         </button>
       </div>
 
-      <div className="subhead">Join a board someone shared</div>
-      <JoinForm disabled={pending} onJoined={onClose} />
+      {COLLAB_ENABLED && (
+        <>
+          <div className="subhead">Join a board someone shared</div>
+          <JoinForm disabled={pending} onJoined={onClose} />
+        </>
+      )}
     </>
   );
 }

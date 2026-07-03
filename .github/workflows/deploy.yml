@@ -34,7 +34,12 @@ jobs:
         run: npm ci
 
       - name: Build
+        # GitHub Pages is static hosting with no backend, so compile out the
+        # collaboration + image-upload features (see src/config.ts). The app
+        # ships as a fully-working single-user whiteboard.
         run: npm run build
+        env:
+          VITE_COLLAB: "0"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

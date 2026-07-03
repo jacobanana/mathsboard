@@ -9,6 +9,7 @@
 
 import { useRef, useState } from "react";
 import { useCollabStore } from "@/collab/collabStore";
+import { COLLAB_ENABLED } from "@/config";
 import { Popover } from "@/ui/Popover";
 import { GLYPH } from "@/ui/icons";
 
@@ -50,7 +51,7 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
         align="right"
         id="overflowMenu"
       >
-        {collabMode !== "shared" && (
+        {COLLAB_ENABLED && collabMode !== "shared" && (
             <button
               id="joinBtn"
               title="Join a board someone shared — enter their code"
@@ -60,7 +61,7 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
               <span className="label">Join a board</span>
             </button>
           )}
-          {collabMode !== "shared" && (
+          {COLLAB_ENABLED && collabMode !== "shared" && (
             <button
               id="shareBtn"
               title="Share this board with a link"

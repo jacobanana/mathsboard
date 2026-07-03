@@ -37,6 +37,7 @@ import {
 } from "@/collab/docModel";
 import { useCollabStore, type PeerPresence } from "@/collab/collabStore";
 import { colorForClient } from "@/collab/profile";
+import { COLLAB_ENABLED } from "@/config";
 
 const TOKEN_ENDPOINT = "/api/token";
 
@@ -461,6 +462,12 @@ export function normalizeBoardCode(input: string): string | null {
 }
 
 export function boardIdFromUrl(): string | null {
+  // When collaboration is compiled out (static build), a ?board=<code> link
+  // can't be honoured — there is no backend to join. Returning null here is the
+  // single chokepoint that disables share-link auto-join from BOTH the app
+  // shell (mount effect) and the store's init(), so a stale link just loads the
+  // normal single-user app instead of hanging on a connection that can't exist.
+  if (!COLLAB_ENABLED) return null;
   const id = new URLSearchParams(window.location.search).get("board");
   return id && BOARD_ID_RE.test(id) ? id : null;
 }

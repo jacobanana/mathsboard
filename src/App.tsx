@@ -47,6 +47,7 @@ import { NamePrompt } from "@/ui/NamePrompt";
 import { useBoardStore, activeTextObjectId } from "@/board/store";
 import { useUiStore } from "@/ui/uiStore";
 import { screenToWorld } from "@/board/geometry";
+import { COLLAB_ENABLED } from "@/config";
 import { getTool } from "@/tools/registry";
 import { id as makeId } from "@/board/types";
 import { theme } from "@/styles/theme";
@@ -453,7 +454,7 @@ export default function App(): JSX.Element {
       <div id="stage" ref={setStageRef}>
         <BoardCanvas onEditObject={openEditFor} />
         <WidgetLayer onEditObject={openEditFor} />
-        <PresenceLayer />
+        {COLLAB_ENABLED && <PresenceLayer />}
         <ZoomCluster getStageSize={getStageSize} />
       </div>
 
@@ -473,9 +474,9 @@ export default function App(): JSX.Element {
         )}
       </Modal>
 
-      {/* Mid-session "Join a board" (toolbar Join button). */}
-      <Modal open={modal?.kind === "join"} onClose={closeModal}>
-        {modal?.kind === "join" && (
+      {/* Mid-session "Join a board" (toolbar Join button). Collab builds only. */}
+      <Modal open={COLLAB_ENABLED && modal?.kind === "join"} onClose={closeModal}>
+        {COLLAB_ENABLED && modal?.kind === "join" && (
           <>
             <h2>Join a board</h2>
             <p className="hint">
@@ -516,17 +517,21 @@ export default function App(): JSX.Element {
         )}
       </Modal>
 
-      <Modal open={modal?.kind === "share"} onClose={closeModal}>
-        {modal?.kind === "share" && <ShareModal onClose={closeModal} />}
+      <Modal open={COLLAB_ENABLED && modal?.kind === "share"} onClose={closeModal}>
+        {COLLAB_ENABLED && modal?.kind === "share" && (
+          <ShareModal onClose={closeModal} />
+        )}
       </Modal>
 
       {/* Joining a shared link: ask for a display name, then join. Closing the
-          prompt joins as "Guest" rather than stranding the user on a blank app. */}
+          prompt joins as "Guest" rather than stranding the user on a blank app.
+          Collab builds only — plain loads never reach the joinName modal since
+          boardIdFromUrl() returns null when collaboration is compiled out. */}
       <Modal
-        open={modal?.kind === "joinName"}
+        open={COLLAB_ENABLED && modal?.kind === "joinName"}
         onClose={() => handleJoinName("Guest")}
       >
-        {modal?.kind === "joinName" && (
+        {COLLAB_ENABLED && modal?.kind === "joinName" && (
           <NamePrompt
             title="Joining a shared board — what's your name?"
             confirmLabel="Join"
