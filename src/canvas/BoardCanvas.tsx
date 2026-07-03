@@ -42,8 +42,6 @@ import { theme } from "@/styles/theme";
 import type { AnyBoardObject, Camera, Stroke } from "@/board/types";
 import { id as newId } from "@/board/types";
 
-const ERASER = 60;
-
 /** Resize-handle hit tolerance (screen px) and minimum object size (world px). */
 const HANDLE_SLOP = 12;
 const MIN_OBJ = 24;
@@ -255,6 +253,11 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
   const gestureRef = useRef<Gesture | null>(null);
   const ignoreSingleRef = useRef(false);
   const editorRef = useRef<Editor | null>(null);
+  // Last pointer position (screen px) while a brush tool (pen / eraser) is
+  // active, so the ink layer can draw a light ring showing the brush footprint.
+  // The ring IS the cursor for these tools. Null when the pointer is off-canvas
+  // or a non-brush tool is selected.
+  const brushCursorRef = useRef<{ x: number; y: number } | null>(null);
 
   // ---- live store reads via getState (render fns must not be stale) --------
   const store = useBoardStore;
@@ -383,7 +386,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     if (!iCanvas) return;
     const ictx = iCanvas.getContext("2d");
     if (!ictx) return;
-    const { camera, board } = store.getState();
+    const { camera, board, tool, penSize, eraserSize } = store.getState();
     ictx.setTransform(1, 0, 0, 1, 0, 0);
     ictx.clearRect(0, 0, iCanvas.width, iCanvas.height);
     applyCam(ictx, camera);
@@ -391,6 +394,31 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     // Re-paint any in-progress live stroke on top.
     const live = strokeRef.current;
     if (live) drawStrokeFull(ictx, live);
+
+    // Brush cursor ring: a light circle the exact size of the pen / eraser
+    // footprint. The diameter (eraserSize / penSize) is a screen-px value, so
+    // the world radius scales with zoom. The native cursor is hidden for these
+    // tools, so the ring + centre dot ARE the cursor.
+    const bc = brushCursorRef.current;
+    if ((tool === "eraser" || tool === "pen") && bc) {
+      const diam = tool === "eraser" ? eraserSize : penSize;
+      const w = screenToWorld(camera, bc.x, bc.y);
+      ictx.save();
+      ictx.beginPath();
+      ictx.arc(w.x, w.y, diam / 2 / camera.scale, 0, Math.PI * 2);
+      ictx.fillStyle = "rgba(126,152,151,0.12)";
+      ictx.fill();
+      ictx.lineWidth = 1.5 / camera.scale;
+      ictx.strokeStyle = theme.muted;
+      ictx.stroke();
+      // Centre dot: the exact aim point (stays visible even when the ring is
+      // barely larger than it, e.g. the small pen).
+      ictx.beginPath();
+      ictx.arc(w.x, w.y, 1.5 / camera.scale, 0, Math.PI * 2);
+      ictx.fillStyle = theme.muted;
+      ictx.fill();
+      ictx.restore();
+    }
   }, [applyCam, store]);
 
   const renderAll = useCallback(() => {
@@ -614,7 +642,8 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
 
       if (tool === "pen" || tool === "eraser") {
         const sizeW =
-          (tool === "eraser" ? ERASER : st.penSize) / camera.scale;
+          (tool === "eraser" ? st.eraserSize : st.penSize) / camera.scale;
+        brushCursorRef.current = pp;
         strokeRef.current = {
           pid: e.pointerId,
           mode: tool === "eraser" ? "eraser" : "pen",
@@ -731,6 +760,11 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
               )
             : null;
           iCanvas.style.cursor = h ? RESIZE_CURSOR[h] : "default";
+        } else if (sh.tool === "eraser" || sh.tool === "pen") {
+          // Track the bare hover so the brush ring follows the cursor even
+          // before a stroke begins.
+          brushCursorRef.current = evPos(e);
+          renderInk();
         }
       }
       if (!pointers.current.has(e.pointerId)) return;
@@ -752,6 +786,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       const panning = panningRef.current;
 
       if (stroke && e.pointerId === stroke.pid) {
+        brushCursorRef.current = pp; // keep the brush ring on the cursor tip
         stroke.points.push(screenToWorld(camera, pp.x, pp.y));
         renderInk();
       } else if (resizing && e.pointerId === resizing.pid) {
@@ -916,10 +951,20 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       }
     };
 
+    // Hide the eraser ring once the cursor leaves the canvas (but not mid-stroke,
+    // where the next move re-anchors it and would only flicker).
+    const onPointerLeave = () => {
+      if (brushCursorRef.current && !strokeRef.current) {
+        brushCursorRef.current = null;
+        renderInk();
+      }
+    };
+
     iCanvas.addEventListener("pointerdown", onPointerDown);
     iCanvas.addEventListener("pointermove", onPointerMove);
     iCanvas.addEventListener("pointerup", release);
     iCanvas.addEventListener("pointercancel", release);
+    iCanvas.addEventListener("pointerleave", onPointerLeave);
     iCanvas.addEventListener("dblclick", onDblClick);
     stage.addEventListener("wheel", onWheel, { passive: false });
     return () => {
@@ -927,6 +972,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       iCanvas.removeEventListener("pointermove", onPointerMove);
       iCanvas.removeEventListener("pointerup", release);
       iCanvas.removeEventListener("pointercancel", release);
+      iCanvas.removeEventListener("pointerleave", onPointerLeave);
       iCanvas.removeEventListener("dblclick", onDblClick);
       stage.removeEventListener("wheel", onWheel);
     };
@@ -981,6 +1027,8 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
         s.board !== prev.board ||
         s.camera !== prev.camera ||
         s.tool !== prev.tool ||
+        s.penSize !== prev.penSize ||
+        s.eraserSize !== prev.eraserSize ||
         s.selection !== prev.selection ||
         s.editingId !== prev.editingId
       ) {
@@ -1002,7 +1050,10 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
           ? "default"
           : tool === "text"
             ? "text"
-            : "crosshair";
+            : // pen + eraser: the brush ring (drawn in renderInk) IS the cursor,
+              // so hide the native one -- a separate crosshair reads as off-centre
+              // next to the ring.
+              "none";
   }, [tool]);
 
   // The host (App) owns the #stage wrapper and renders WidgetLayer / ZoomCluster

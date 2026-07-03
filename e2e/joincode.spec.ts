@@ -8,6 +8,7 @@ import {
   collabState,
   drawStroke,
   openApp,
+  openToolbarMenu,
   startSharing,
   waitForConnected,
   waitForStrokeCount,
@@ -96,6 +97,7 @@ test("the toolbar Join button joins mid-session and hides while shared", async (
   await drawStroke(guest, { x: 500, y: 400 }, { x: 560, y: 460 });
   await waitForStrokeCount(guest, 1);
 
+  await openToolbarMenu(guest);
   await guest.locator("#joinBtn").click();
   await guest.getByPlaceholder("Your name").fill("Gus");
   await guest.getByPlaceholder(/Code or link/).fill(code);
@@ -107,7 +109,9 @@ test("the toolbar Join button joins mid-session and hides while shared", async (
   expect((await collabState(guest)).boardId).toBe(
     (await collabState(host)).boardId,
   );
-  // While shared, Join disappears; the Share button carries the status.
+  // While shared, Join disappears from the burger menu; the Share status chip
+  // on the toolbar carries the participant count.
+  await openToolbarMenu(guest);
   await expect(guest.locator("#joinBtn")).toHaveCount(0);
   await expect(guest.locator("#shareBtn .label")).toHaveText("2 here");
 });
@@ -118,6 +122,7 @@ test("a nonsense code is rejected without leaving the board", async ({
   const page = await newClient();
   await openApp(page);
 
+  await openToolbarMenu(page);
   await page.locator("#joinBtn").click();
   await page.getByPlaceholder("Your name").fill("Hana");
   await page.getByPlaceholder(/Code or link/).fill("not a code!");

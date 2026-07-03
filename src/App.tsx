@@ -42,7 +42,6 @@ import { ZoomCluster } from "@/ui/ZoomCluster";
 import { Modal } from "@/ui/Modal";
 import { InsertGallery } from "@/ui/InsertGallery";
 import { PaperMenu } from "@/ui/PaperMenu";
-import { HelpModal } from "@/ui/HelpModal";
 import { BoardsManager } from "@/ui/BoardsManager";
 import { NamePrompt } from "@/ui/NamePrompt";
 import { useBoardStore } from "@/board/store";
@@ -60,7 +59,6 @@ type ModalState =
   | { kind: "welcome" }
   | { kind: "insert" }
   | { kind: "dialog"; toolType: string; objId?: string; initial?: Record<string, unknown> }
-  | { kind: "help" }
   | { kind: "boards" }
   | { kind: "saveAs"; initial: string }
   | { kind: "share" }
@@ -308,10 +306,12 @@ export default function App(): JSX.Element {
   // --- global keyboard shortcuts (port of prototype line 340) --------------
   // Delete/Backspace removes the whole selection (objects + strokes); Ctrl/Cmd+A
   // selects everything; Escape clears the selection; Ctrl/Cmd+Z undoes,
-  // +Shift redoes. Suppressed while any modal is open or a text object is being
-  // edited in place (the textarea/worksheet inputs stopPropagation on their own
-  // keys).
+  // +Shift redoes; 1-5 pick a tool (toolbar order). Suppressed while any modal
+  // is open or a text object is being edited in place (the textarea/worksheet
+  // inputs stopPropagation on their own keys).
   useEffect(() => {
+    // 1-5 mirror the toolbar's button order.
+    const TOOL_KEYS = ["pen", "eraser", "text", "select", "pan"] as const;
     const onKey = (e: KeyboardEvent) => {
       const st = useBoardStore.getState();
       // Save shortcuts work even while editing text, but defer to any open
@@ -340,6 +340,19 @@ export default function App(): JSX.Element {
         e.preventDefault();
         if (e.shiftKey) st.redo();
         else st.undo();
+      } else if (
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        e.key >= "1" &&
+        e.key <= String(TOOL_KEYS.length)
+      ) {
+        // Never steal digits from a focused field (widget answer boxes, the
+        // join-code input, ...) - only bare canvas presses pick tools.
+        const t = e.target as HTMLElement | null;
+        if (t?.closest("input,textarea,select,[contenteditable]")) return;
+        e.preventDefault();
+        st.setTool(TOOL_KEYS[Number(e.key) - 1]);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -370,7 +383,6 @@ export default function App(): JSX.Element {
         onBoards={() => setModal({ kind: "boards" })}
         onPaper={(anchor) => setPaperAnchor(anchor)}
         onSaveImage={saveImage}
-        onHelp={() => setModal({ kind: "help" })}
         onEditSelected={editSelected}
         onShare={() => setModal({ kind: "share" })}
         onJoin={() => setModal({ kind: "join" })}
@@ -427,10 +439,6 @@ export default function App(): JSX.Element {
 
       <Modal open={modal?.kind === "dialog"} onClose={closeModal}>
         {dialogNode}
-      </Modal>
-
-      <Modal open={modal?.kind === "help"} onClose={closeModal}>
-        <HelpModal onClose={closeModal} />
       </Modal>
 
       <Modal open={modal?.kind === "boards"} onClose={closeModal}>

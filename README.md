@@ -26,7 +26,8 @@ the raw command shown in each section, so `make` is optional.
 Path alias: `@/` -> `src/`.
 
 The app is fully usable solo with no backend (boards live in localStorage).
-Pressing **Share** needs the backend running — for local development, start the
+Sharing a board (**☰ menu → Share this board**) needs the backend running — for
+local development, start the
 local stack (`docker compose -f docker-compose.yml -f docker-compose.local.yml
 up --build`); the Vite dev server proxies `/api` and `/ys` to it.
 
@@ -71,8 +72,8 @@ reverts a collaborator's edit; `canUndo` / `canRedo` are exposed as booleans.
   current content and shows both the code and the link. Others join by opening
   the link (prompts for a display name), or by typing the code — in any
   case/dash format — into the **welcome screen** that fronts every plain page
-  load, or the toolbar **Join** button mid-session (hidden while already
-  shared). Leaving keeps what's on screen as the local draft.
+  load, or **Join a board** in the toolbar's burger menu mid-session (hidden
+  while already shared). Leaving keeps what's on screen as the local draft.
 - The welcome screen (`src/ui/WelcomeModal.tsx`) is a launcher, not a gate:
   the working draft loads behind it, so **Continue** (or Escape / clicking the
   backdrop) resumes it instantly; it also offers New board, the saved-boards
@@ -147,8 +148,9 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 # or: make up   (make down to stop, make reset to also wipe MinIO data)
 ```
 
-Open <http://localhost:8080> in two browser windows, click **Share** in one,
-paste the link into the other, and draw — strokes, widgets, pictures and
+Open <http://localhost:8080> in two browser windows, share from one (**☰ menu →
+Share this board**), paste the link into the other, and draw — strokes, widgets,
+pictures and
 cursors sync live. Documents and uploaded images land in MinIO (console at
 <http://localhost:9001>, login `dev-minio` / `dev-minio-secret`). No `.env`,
 domain or S3 account required.

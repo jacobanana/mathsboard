@@ -124,6 +124,8 @@ interface BoardState {
   color: string;
   penSize: number;
   textSize: number;
+  /** Eraser footprint diameter (screen px, like penSize). */
+  eraserSize: number;
   /** Object + stroke ids currently selected (multi-select). */
   selection: Selection;
   /**
@@ -192,6 +194,7 @@ interface BoardState {
   setColor(c: string): void;
   setPenSize(n: number): void;
   setTextSize(n: number): void;
+  setEraserSize(n: number): void;
   setCamera(patch: Partial<Camera>): void;
   /** Select exactly one object (or clear the selection when id is null). */
   select(id: string | null): void;
@@ -302,6 +305,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
     color: theme.ink,
     penSize: 6,
     textSize: 26,
+    eraserSize: 45,
     selection: EMPTY_SELECTION,
     editingId: null,
 
@@ -405,6 +409,9 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
     setTextSize(n) {
       set({ textSize: n });
+    },
+    setEraserSize(n) {
+      set({ eraserSize: n });
     },
     setCamera(patch) {
       set((state) => ({ camera: { ...state.camera, ...patch } }));

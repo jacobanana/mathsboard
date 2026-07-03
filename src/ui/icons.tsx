@@ -61,7 +61,6 @@ export const GLYPH = {
   redo: "↷",
   delete: "🗙",
   save: "⤓",
-  help: "?",
   boards: "🗂",
   share: "🔗",
   join: "⇥",

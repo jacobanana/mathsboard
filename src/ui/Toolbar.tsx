@@ -1,18 +1,24 @@
-// The top toolbar. Ported from the prototype markup (lines 89-111) and its
-// wiring (setTool line 192-194, undo/redo/delete/edit line 338-339).
+// The top toolbar.
 //
-// Mode buttons (Draw / Text / Select / Pan / Eraser) reflect store.tool via the
-// .active class and call setTool. The #options group is rendered as a separate
-// component (OptionsStrip) and slotted between the dividers, matching the
-// prototype's <div class="group" id="options"></div>.
+// Layout (left to right):
+//   1. The five mode buttons — Draw, Eraser, Text, Select, Pan — selectable
+//      with keys 1-5 (wired in App). Eraser sits next to Draw since the two
+//      alternate constantly while working.
+//   2. The contextual options strip (OptionsStrip): size slider + colour
+//      dropdown for the active tool.
+//   3. Insert, then the history/selection cluster (Undo, Redo, Edit, Delete).
+//   4. Right side: the board-title chip, the live share status chip (only
+//      while shared), and the burger menu (OverflowMenu) holding the
+//      lesser-used actions — Join, Share, Paper, Boards, Save image.
 //
-// Everything that isn't pure store state (Insert, Paper, Save image, Help, Edit
-// selected) is delegated to callbacks the host (App) wires.
+// Everything that isn't pure store state is delegated to callbacks the host
+// (App) wires.
 
 import { useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
 import type { ToolName } from "@/board/types";
 import { OptionsStrip } from "@/ui/OptionsStrip";
+import { OverflowMenu } from "@/ui/OverflowMenu";
 import { DrawIcon, TextIcon, EraserIcon, GLYPH } from "@/ui/icons";
 
 export interface ToolbarCallbacks {
@@ -20,7 +26,6 @@ export interface ToolbarCallbacks {
   onBoards: () => void;
   onPaper: (anchor: HTMLElement) => void;
   onSaveImage: () => void;
-  onHelp: () => void;
   onEditSelected: () => void;
   /** Open the Share dialog (start sharing / code + link + who's here). */
   onShare: () => void;
@@ -56,7 +61,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
         <button
           className={"btn" + (isMode("pen") ? " active" : "")}
           id="drawBtn"
-          title="Draw"
+          title="Draw (1)"
           onClick={() => setTool("pen")}
         >
           <span className="ico" id="drawIco">
@@ -65,9 +70,20 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
           <span className="label">Draw</span>
         </button>
         <button
+          className={"btn" + (isMode("eraser") ? " active" : "")}
+          id="eraserBtn"
+          title="Eraser (2)"
+          onClick={() => setTool("eraser")}
+        >
+          <span className="ico" id="eraserIco">
+            <EraserIcon />
+          </span>
+          <span className="label">Eraser</span>
+        </button>
+        <button
           className={"btn" + (isMode("text") ? " active" : "")}
           id="textBtn"
-          title="Type text"
+          title="Type text (3)"
           onClick={() => setTool("text")}
         >
           <span className="ico" id="textIco">
@@ -75,43 +91,29 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
           </span>
           <span className="label">Text</span>
         </button>
+        <button
+          className={"btn" + (isMode("select") ? " active" : "")}
+          id="selectBtn"
+          title="Select & move (4) — click a shape or drawing, drag empty space to lasso, Ctrl+A for all"
+          onClick={() => setTool("select")}
+        >
+          <span className="ico">{GLYPH.select}</span>
+          <span className="label">Select</span>
+        </button>
+        <button
+          className={"btn" + (isMode("pan") ? " active" : "")}
+          id="panBtn"
+          title="Move the view (5)"
+          onClick={() => setTool("pan")}
+        >
+          <span className="ico">{GLYPH.pan}</span>
+          <span className="label">Pan</span>
+        </button>
       </div>
 
       <div className="divider" />
 
       <OptionsStrip />
-
-      <div className="divider" />
-
-      <button
-        className={"btn" + (isMode("select") ? " active" : "")}
-        id="selectBtn"
-        title="Select & move — click a shape or drawing, drag empty space to lasso, Ctrl+A for all"
-        onClick={() => setTool("select")}
-      >
-        <span className="ico">{GLYPH.select}</span>
-        <span className="label">Select</span>
-      </button>
-      <button
-        className={"btn" + (isMode("pan") ? " active" : "")}
-        id="panBtn"
-        title="Move the view"
-        onClick={() => setTool("pan")}
-      >
-        <span className="ico">{GLYPH.pan}</span>
-        <span className="label">Pan</span>
-      </button>
-      <button
-        className={"btn" + (isMode("eraser") ? " active" : "")}
-        id="eraserBtn"
-        title="Eraser"
-        onClick={() => setTool("eraser")}
-      >
-        <span className="ico" id="eraserIco">
-          <EraserIcon />
-        </span>
-        <span className="label">Eraser</span>
-      </button>
 
       <div className="divider" />
 
@@ -127,37 +129,9 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
       <div className="divider" />
 
       <button
-        className="btn keep-label"
-        id="boardsBtn"
-        title="Boards — save, open, rename & delete whiteboards (Ctrl+S save · Ctrl+Shift+S save as)"
-        onClick={props.onBoards}
-      >
-        <span className="ico">{GLYPH.boards}</span>
-        <span className="label">Boards</span>
-      </button>
-      <button
-        className="board-title"
-        id="boardTitle"
-        title="Open the boards manager"
-        onClick={props.onBoards}
-      >
-        <span className="bt-name">{sourceId ? boardName : "Untitled draft"}</span>
-        {dirty && <span className="bt-dot" title="Unsaved changes" />}
-      </button>
-
-      <div className="divider" />
-
-      <button
-        className="btn"
-        id="paperBtn"
-        onClick={(e) => props.onPaper(e.currentTarget)}
-      >
-        <span className="ico">{GLYPH.paper}</span>
-        <span className="label">Paper</span>
-      </button>
-      <button
         className="btn"
         id="undoBtn"
+        title="Undo (Ctrl+Z)"
         disabled={!canUndo}
         onClick={undo}
       >
@@ -167,6 +141,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
       <button
         className="btn"
         id="redoBtn"
+        title="Redo (Ctrl+Shift+Z)"
         disabled={!canRedo}
         onClick={redo}
       >
@@ -198,58 +173,38 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
 
       <div className="spacer" />
 
-      {/* Join a shared board by code. Hidden while already in a shared
-          session (the Share button carries the live status then). */}
-      {collabMode !== "shared" && (
+      <button
+        className="board-title"
+        id="boardTitle"
+        title="Open the boards manager"
+        onClick={props.onBoards}
+      >
+        <span className="bt-name">{sourceId ? boardName : "Untitled draft"}</span>
+        {dirty && <span className="bt-dot" title="Unsaved changes" />}
+      </button>
+
+      {/* Live share status chip — only while in a shared session (otherwise
+          Share lives in the burger menu). The dot mirrors the connection state
+          and the label shows how many people are here. */}
+      {collabMode === "shared" && (
         <button
-          className="btn keep-label"
-          id="joinBtn"
-          title="Join a board someone shared — enter their code"
-          onClick={props.onJoin}
+          className="btn keep-label sharing"
+          id="shareBtn"
+          title="Shared board — link, who's here, leave"
+          onClick={props.onShare}
         >
-          <span className="ico">{GLYPH.join}</span>
-          <span className="label">Join</span>
+          <span className={"status-dot status-" + collabStatus} />
+          <span className="label">{peerCount + 1 + " here"}</span>
         </button>
       )}
 
-      {/* Share / live-session status. In a shared session the dot mirrors the
-          connection state and the label shows how many people are here. */}
-      <button
-        className={
-          "btn keep-label" + (collabMode === "shared" ? " sharing" : "")
-        }
-        id="shareBtn"
-        title={
-          collabMode === "shared"
-            ? "Shared board — link, who's here, leave"
-            : "Share this board with a link"
-        }
-        onClick={props.onShare}
-      >
-        {collabMode === "shared" ? (
-          <span className={"status-dot status-" + collabStatus} />
-        ) : (
-          <span className="ico">{GLYPH.share}</span>
-        )}
-        <span className="label">
-          {collabMode === "shared"
-            ? peerCount + 1 + " here"
-            : "Share"}
-        </span>
-      </button>
-
-      <button
-        className="btn keep-label"
-        id="saveBtn"
-        onClick={props.onSaveImage}
-      >
-        <span className="ico">{GLYPH.save}</span>
-        <span className="label">Save image</span>
-      </button>
-      <button className="btn keep-label" id="helpBtn" onClick={props.onHelp}>
-        <span className="ico">{GLYPH.help}</span>
-        <span className="label">Help</span>
-      </button>
+      <OverflowMenu
+        onJoin={props.onJoin}
+        onShare={props.onShare}
+        onPaper={props.onPaper}
+        onBoards={props.onBoards}
+        onSaveImage={props.onSaveImage}
+      />
     </div>
   );
 }
