@@ -361,6 +361,22 @@ export function insertStroke(stroke: Stroke): void {
   tx(() => strokes.set(stroke.id, toYShape({ order: nextOrder(), ...stroke })));
 }
 
+/**
+ * Insert several shapes as ONE transaction (so a duplicate / paste of many
+ * shapes is a single undo step). Each gets a fresh, increasing `order` — the
+ * trailing spread means any `order` carried on the input is overridden — so the
+ * batch lands on top with its relative stacking preserved (callers pass shapes
+ * already in draw order).
+ */
+export function insertShapes(objects: AnyBoardObject[], strokes: Stroke[]): void {
+  const h = must().h;
+  let order = nextOrder();
+  tx(() => {
+    for (const o of objects) h.objects.set(o.id, toYShape({ ...o, order: order++ }));
+    for (const s of strokes) h.strokes.set(s.id, toYShape({ ...s, order: order++ }));
+  });
+}
+
 /** Translate a set of objects + strokes by (dx, dy) as ONE transaction. */
 export function translateShapes(
   objectIds: string[],

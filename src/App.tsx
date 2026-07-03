@@ -58,7 +58,7 @@ import {
   TEXT_SIZE_RANGE,
   ERASER_SIZE_RANGE,
 } from "@/ui/constants";
-import type { AnyBoardObject } from "@/board/types";
+import type { AnyBoardObject, Stroke } from "@/board/types";
 import type { CanvasTool, WidgetTool } from "@/tools/registry";
 
 // --- modal routing ---------------------------------------------------------
@@ -140,6 +140,89 @@ function adjustSize(dir: 1 | -1): void {
   }
 }
 
+// --- copy / cut / paste / duplicate --------------------------------------
+// An INTERNAL clipboard (not the OS clipboard): Ctrl+C/X snapshot the selected
+// shapes here, Ctrl+V / Ctrl+D re-insert clones with fresh ids and a cascading
+// offset. Matches how Excalidraw/Miro handle in-app copy.
+
+type ShapeBag = { objects: AnyBoardObject[]; strokes: Stroke[] };
+
+/** World-px offset applied to each paste/duplicate so a copy doesn't land
+ *  exactly on top of its source. */
+const PASTE_OFFSET = 24;
+
+let clipboard: ShapeBag | null = null;
+// How many times the CURRENT clipboard has been pasted, so repeated pastes
+// cascade instead of stacking. Reset on every copy/cut.
+let pasteSeq = 0;
+
+/** The selected objects + strokes, resolved to their document shapes. */
+function selectedShapes(): ShapeBag {
+  const st = useBoardStore.getState();
+  const objects = st.selection.objectIds
+    .map((id) => st.board.objects.find((o) => o.id === id))
+    .filter((o): o is AnyBoardObject => o != null);
+  const strokes = st.selection.strokeIds
+    .map((id) => st.board.strokes.find((s) => s.id === id))
+    .filter((s): s is Stroke => s != null);
+  return { objects, strokes };
+}
+
+/** Deep-clone shapes with fresh ids and a world offset; strips `order` so the
+ *  batch re-inserts on top (insertShapes assigns fresh order keys). */
+function cloneShapes(src: ShapeBag, dx: number, dy: number): ShapeBag {
+  const objects = src.objects.map((o) => {
+    const { order, ...rest } = structuredClone(o);
+    void order;
+    return { ...rest, id: makeId(), x: o.x + dx, y: o.y + dy };
+  });
+  const strokes = src.strokes.map((s) => {
+    const { order, ...rest } = structuredClone(s);
+    void order;
+    return {
+      ...rest,
+      id: makeId(),
+      points: rest.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+    };
+  });
+  return { objects, strokes };
+}
+
+/** Insert a clone batch, then select it and switch to the select tool so the
+ *  fresh copy can be moved immediately (mirrors placeNew). */
+function placeClones(batch: ShapeBag): void {
+  if (batch.objects.length === 0 && batch.strokes.length === 0) return;
+  const st = useBoardStore.getState();
+  st.addShapes(batch.objects, batch.strokes);
+  st.setSelection({
+    objectIds: batch.objects.map((o) => o.id),
+    strokeIds: batch.strokes.map((s) => s.id),
+  });
+  st.setTool("select");
+}
+
+function copySelection(): void {
+  const sel = selectedShapes();
+  if (sel.objects.length === 0 && sel.strokes.length === 0) return;
+  clipboard = {
+    objects: sel.objects.map((o) => structuredClone(o)),
+    strokes: sel.strokes.map((s) => structuredClone(s)),
+  };
+  pasteSeq = 0;
+}
+
+function pasteClipboard(): void {
+  if (!clipboard) return;
+  pasteSeq += 1;
+  const d = PASTE_OFFSET * pasteSeq;
+  placeClones(cloneShapes(clipboard, d, d));
+}
+
+function duplicateSelection(): void {
+  const sel = selectedShapes();
+  placeClones(cloneShapes(sel, PASTE_OFFSET, PASTE_OFFSET));
+}
+
 export default function App(): JSX.Element {
   const init = useBoardStore((s) => s.init);
   const addObject = useBoardStore((s) => s.addObject);
@@ -151,6 +234,9 @@ export default function App(): JSX.Element {
   const [paperAnchor, setPaperAnchor] = useState<HTMLElement | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Timestamp of the last arrow-key nudge, so a held/rapid burst collapses into
+  // one undo step while a fresh press after a pause starts a new one.
+  const nudgeAtRef = useRef(0);
   // The #stage element (owned by App) FloatButtons portals into and ZoomCluster
   // measures. Captured via a callback ref so it's available on first commit.
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -355,11 +441,13 @@ export default function App(): JSX.Element {
 
   // --- global keyboard shortcuts (port of prototype line 340) --------------
   // Delete/Backspace removes the whole selection (objects + strokes); Ctrl/Cmd+A
-  // selects everything; Escape clears the selection; Ctrl/Cmd+Z undoes,
-  // +Shift redoes; 1-5 pick a tool (toolbar order); I / 6 open the Insert
-  // gallery; C cycles the draw colour; +/- resize the active tool. Suppressed
-  // while any modal is open or a text object is being edited in place (the
-  // textarea/worksheet inputs stopPropagation on their own keys).
+  // selects everything; Ctrl/Cmd+C / X / V copy / cut / paste the selection;
+  // Ctrl/Cmd+D duplicates it; arrow keys nudge it (Shift = bigger); Escape
+  // clears the selection; Ctrl/Cmd+Z undoes, +Shift redoes; 1-5 pick a tool
+  // (toolbar order); I / 6 open the Insert gallery; C cycles the draw colour;
+  // +/- resize the active tool. Suppressed while any modal is open or a text
+  // object is being edited in place (textarea/worksheet inputs stopPropagation
+  // on their own keys).
   useEffect(() => {
     // 1-5 mirror the toolbar's button order.
     const TOOL_KEYS = ["select", "pan", "pen", "eraser", "text"] as const;
@@ -377,33 +465,71 @@ export default function App(): JSX.Element {
       if (useUiStore.getState().modalOpen || st.editingId != null) return;
       const hasSelection =
         st.selection.objectIds.length + st.selection.strokeIds.length > 0;
+      const mod = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
+      // Focus in a real field (widget answer boxes, join-code input, ...): let
+      // native editing + copy/paste through; only stopPropagation-less inputs
+      // reach here, but guard anyway.
+      const inField =
+        (e.target as HTMLElement | null)?.closest(
+          "input,textarea,select,[contenteditable]",
+        ) != null;
+
       if ((e.key === "Delete" || e.key === "Backspace") && hasSelection) {
         e.preventDefault();
         st.deleteSelection();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
+      } else if (mod && key === "a") {
         e.preventDefault();
         st.setTool("select");
         st.selectAll();
+      } else if (mod && key === "c" && hasSelection && !inField) {
+        e.preventDefault();
+        copySelection();
+      } else if (mod && key === "x" && hasSelection && !inField) {
+        e.preventDefault();
+        copySelection();
+        st.deleteSelection();
+      } else if (mod && key === "v" && !inField) {
+        e.preventDefault();
+        pasteClipboard();
+      } else if (mod && key === "d" && hasSelection && !inField) {
+        e.preventDefault();
+        duplicateSelection();
       } else if (e.key === "Escape" && hasSelection) {
         e.preventDefault();
         st.clearSelection();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+      } else if (mod && key === "z") {
         e.preventDefault();
         if (e.shiftKey) st.redo();
         else st.undo();
-      } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+      } else if (
+        !mod &&
+        !e.altKey &&
+        e.key.startsWith("Arrow") &&
+        hasSelection &&
+        !inField
+      ) {
+        // Nudge the selection; Shift = a bigger step, held constant in screen px
+        // regardless of zoom. captureTimeout is Infinity, so a fresh press after
+        // a >500ms pause starts a new undo step; a burst merges into one.
+        e.preventDefault();
+        const px = (e.shiftKey ? 10 : 1) / st.camera.scale;
+        const dx = e.key === "ArrowLeft" ? -px : e.key === "ArrowRight" ? px : 0;
+        const dy = e.key === "ArrowUp" ? -px : e.key === "ArrowDown" ? px : 0;
+        const now = Date.now();
+        if (now - nudgeAtRef.current > 500) st.pushHistory();
+        nudgeAtRef.current = now;
+        st.nudgeSelection(dx, dy);
+      } else if (!mod && !e.altKey && !inField) {
         // Bare-key shortcuts: 1-5 pick a tool, I / 6 open the Insert gallery
-        // (6 continues the toolbar's number row). Never steal keys from a
-        // focused field (widget answer boxes, the join-code input, ...).
-        const t = e.target as HTMLElement | null;
-        if (t?.closest("input,textarea,select,[contenteditable]")) return;
+        // (6 continues the toolbar's number row), C cycles colour, +/- resize.
         if (e.key >= "1" && e.key <= String(TOOL_KEYS.length)) {
           e.preventDefault();
           st.setTool(TOOL_KEYS[Number(e.key) - 1]);
-        } else if (e.key.toLowerCase() === "i" || e.key === "6") {
+        } else if (key === "i" || e.key === "6") {
           e.preventDefault();
           setModal({ kind: "insert" });
-        } else if (e.key.toLowerCase() === "c") {
+        } else if (key === "c") {
           e.preventDefault();
           cycleColor();
         } else if (e.key === "+" || e.key === "=") {
@@ -446,6 +572,7 @@ export default function App(): JSX.Element {
         onSaveImage={saveImage}
         onShare={() => setModal({ kind: "share" })}
         onJoin={() => setModal({ kind: "join" })}
+        onAddImage={() => handlePick("image")}
       />
 
       {/* #stage is the positioned board viewport. It holds the two stacked

@@ -141,6 +141,12 @@ interface BoardState {
 
   // ---- DOCUMENT actions (the sync seam) ----
   addObject(obj: AnyBoardObject): void;
+  /**
+   * Add several objects + strokes at once as a SINGLE undoable step (duplicate
+   * / paste). They land on top, keeping the given array order as their relative
+   * z-order. No-op when both lists are empty.
+   */
+  addShapes(objects: AnyBoardObject[], strokes: Stroke[]): void;
   /** Patch an object's fields. Pushes a history entry. */
   updateObject(id: string, patch: Partial<AnyBoardObject>): void;
   /**
@@ -336,6 +342,12 @@ export const useBoardStore = create<BoardState>((set, get) => {
     addObject(obj) {
       session.stopCapture();
       session.insertObject(obj);
+    },
+
+    addShapes(objects, strokes) {
+      if (objects.length === 0 && strokes.length === 0) return;
+      session.stopCapture();
+      session.insertShapes(objects, strokes);
     },
 
     updateObject(id, patch) {

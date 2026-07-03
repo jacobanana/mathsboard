@@ -27,7 +27,7 @@ import { COLLAB_ENABLED } from "@/config";
 import type { ToolName } from "@/board/types";
 import { OptionsStrip } from "@/ui/OptionsStrip";
 import { OverflowMenu } from "@/ui/OverflowMenu";
-import { DrawIcon, TextIcon, EraserIcon, GLYPH } from "@/ui/icons";
+import { DrawIcon, TextIcon, EraserIcon, ImageIcon, GLYPH } from "@/ui/icons";
 
 export interface ToolbarCallbacks {
   onInsert: () => void;
@@ -38,6 +38,8 @@ export interface ToolbarCallbacks {
   onShare: () => void;
   /** Open the Join dialog (enter a code someone shared). */
   onJoin: () => void;
+  /** Insert a picture (opens the image tool's file-picker dialog directly). */
+  onAddImage: () => void;
 }
 
 export function Toolbar(props: ToolbarCallbacks): JSX.Element {
@@ -128,6 +130,24 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
       >
         <span className="ico">{GLYPH.insert}</span>
       </button>
+
+      {/* Picture insert — a first-class button since adding a photo/diagram is
+          a common action (cf. Excalidraw/Miro). Collab builds only: the image
+          tool uploads through the backend, so the static single-user build
+          neither registers the tool nor shows this button. */}
+      {COLLAB_ENABLED && (
+        <button
+          className="btn small"
+          id="imageBtn"
+          title="Add a picture"
+          aria-label="Add a picture"
+          onClick={props.onAddImage}
+        >
+          <span className="ico">
+            <ImageIcon />
+          </span>
+        </button>
+      )}
 
       <div className="divider" />
 
