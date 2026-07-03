@@ -10,10 +10,10 @@ body{font-family:var(--font);background:var(--bar);overflow:hidden;display:flex;
 #root{display:flex;flex-direction:column;height:100dvh;}
 #toolbar{flex:0 0 auto;background:var(--bar);color:var(--text-on-bar);display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;box-shadow:0 2px 10px rgba(0,0,0,.18);z-index:20;}
 .group{display:flex;align-items:center;gap:6px;}
-#options{min-height:44px;} #options:empty{display:none;}
-/* When the options strip is empty (select / pan) its trailing divider would
-   double up with the leading one - hide it. */
-#options:empty + .divider{display:none;}
+/* The contextual options zone is a FIXED-WIDTH slot: it stays reserved (and
+   simply sits empty for Select/Pan) so the toolbar never reflows on tool
+   change. Width fits its widest content: slider + preview + colour button. */
+#options{min-height:44px;width:218px;flex:0 0 auto;}
 .divider{width:1px;align-self:stretch;background:rgba(255,255,255,.16);margin:2px 4px;}
 .opt-sep{width:1px;height:30px;background:rgba(255,255,255,.16);margin:0 3px;}
 .spacer{flex:1 1 auto;}
@@ -77,7 +77,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 #overflowMenu button{display:flex;align-items:center;gap:10px;text-align:left;color:var(--ink);font-size:15px;font-weight:600;padding:11px 13px;border-radius:10px;}
 #overflowMenu button:hover{background:#EEF1F0;}
 #overflowMenu .ico{font-size:16px;width:20px;display:inline-flex;justify-content:center;}
-@media (max-width:760px){.btn{padding:0 10px;font-size:14px;}.btn .label{display:none;}.btn.keep-label .label{display:inline;}.swatch{width:34px;height:34px;}.size-slider{width:74px;}}
+@media (max-width:760px){.btn{padding:0 10px;font-size:14px;}.btn .label{display:none;}.btn.keep-label .label{display:inline;}.swatch{width:34px;height:34px;}.size-slider{width:74px;}#options{width:178px;}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 .ilayer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
 .iworksheet{position:absolute;transform-origin:0 0;pointer-events:auto;width:300px;background:#fff;border:1px solid #E4D9B8;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}

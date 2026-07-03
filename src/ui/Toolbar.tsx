@@ -1,12 +1,19 @@
-// The top toolbar.
+// The top toolbar. Deliberately STATIC: nothing appears, disappears or shifts
+// when the tool or selection changes, so users always find buttons where they
+// left them.
 //
 // Layout (left to right):
-//   1. The five mode buttons — Draw, Eraser, Text, Select, Pan — selectable
-//      with keys 1-5 (wired in App). Eraser sits next to Draw since the two
-//      alternate constantly while working.
-//   2. The contextual options strip (OptionsStrip): size slider + colour
-//      dropdown for the active tool.
-//   3. Insert, then the history/selection cluster (Undo, Redo, Edit, Delete).
+//   1. The five mode buttons — Select, Pan, Draw, Eraser, Text — icon-only,
+//      selectable with keys 1-5 (wired in App). Select/Pan lead, matching the
+//      Miro / Excalidraw convention (1 = select); Eraser sits next to Draw
+//      since the two alternate constantly while working. The startup tool is
+//      still the pen (order ≠ default).
+//   2. The contextual options zone (OptionsStrip): a FIXED-WIDTH slot that
+//      holds the size slider + colour dropdown for the active tool and simply
+//      sits empty for Select/Pan — neighbouring buttons never move into it.
+//   3. Insert, then Undo / Redo. Selection actions (edit / delete) are NOT on
+//      the bar: they float next to the selection itself (FloatButtons), plus
+//      the Delete key and double-click-to-edit.
 //   4. Right side: the board-title chip, the live share status chip (only
 //      while shared), and the burger menu (OverflowMenu) holding the
 //      lesser-used actions — Join, Share, Paper, Boards, Save image.
@@ -26,7 +33,6 @@ export interface ToolbarCallbacks {
   onBoards: () => void;
   onPaper: (anchor: HTMLElement) => void;
   onSaveImage: () => void;
-  onEditSelected: () => void;
   /** Open the Share dialog (start sharing / code + link + who's here). */
   onShare: () => void;
   /** Open the Join dialog (enter a code someone shared). */
@@ -40,8 +46,6 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
   const redo = useBoardStore((s) => s.redo);
   const canUndo = useBoardStore((s) => s.canUndo);
   const canRedo = useBoardStore((s) => s.canRedo);
-  const selection = useBoardStore((s) => s.selection);
-  const deleteSelection = useBoardStore((s) => s.deleteSelection);
   const boardName = useBoardStore((s) => s.board.name);
   const sourceId = useBoardStore((s) => s.sourceId);
   const dirty = useBoardStore((s) => s.dirty);
@@ -50,64 +54,61 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
   const peerCount = useCollabStore((s) => s.peers.length);
 
   const isMode = (t: ToolName) => tool === t;
-  const selCount = selection.objectIds.length + selection.strokeIds.length;
-  const hasSelection = selCount > 0;
-  // Editing settings only makes sense for a single placed object (not a stroke).
-  const canEdit = selection.objectIds.length === 1 && selection.strokeIds.length === 0;
 
   return (
     <div id="toolbar">
+      {/* Icon-only: the title tooltips + aria-labels carry the names. */}
       <div className="group" id="modes">
         <button
-          className={"btn" + (isMode("pen") ? " active" : "")}
+          className={"btn small" + (isMode("select") ? " active" : "")}
+          id="selectBtn"
+          title="Select & move (1) — click a shape or drawing, drag empty space to lasso, Ctrl+A for all"
+          aria-label="Select"
+          onClick={() => setTool("select")}
+        >
+          <span className="ico">{GLYPH.select}</span>
+        </button>
+        <button
+          className={"btn small" + (isMode("pan") ? " active" : "")}
+          id="panBtn"
+          title="Move the view (2)"
+          aria-label="Pan"
+          onClick={() => setTool("pan")}
+        >
+          <span className="ico">{GLYPH.pan}</span>
+        </button>
+        <button
+          className={"btn small" + (isMode("pen") ? " active" : "")}
           id="drawBtn"
-          title="Draw (1)"
+          title="Draw (3)"
+          aria-label="Draw"
           onClick={() => setTool("pen")}
         >
           <span className="ico" id="drawIco">
             <DrawIcon />
           </span>
-          <span className="label">Draw</span>
         </button>
         <button
-          className={"btn" + (isMode("eraser") ? " active" : "")}
+          className={"btn small" + (isMode("eraser") ? " active" : "")}
           id="eraserBtn"
-          title="Eraser (2)"
+          title="Eraser (4)"
+          aria-label="Eraser"
           onClick={() => setTool("eraser")}
         >
           <span className="ico" id="eraserIco">
             <EraserIcon />
           </span>
-          <span className="label">Eraser</span>
         </button>
         <button
-          className={"btn" + (isMode("text") ? " active" : "")}
+          className={"btn small" + (isMode("text") ? " active" : "")}
           id="textBtn"
-          title="Type text (3)"
+          title="Type text (5)"
+          aria-label="Text"
           onClick={() => setTool("text")}
         >
           <span className="ico" id="textIco">
             <TextIcon />
           </span>
-          <span className="label">Text</span>
-        </button>
-        <button
-          className={"btn" + (isMode("select") ? " active" : "")}
-          id="selectBtn"
-          title="Select & move (4) — click a shape or drawing, drag empty space to lasso, Ctrl+A for all"
-          onClick={() => setTool("select")}
-        >
-          <span className="ico">{GLYPH.select}</span>
-          <span className="label">Select</span>
-        </button>
-        <button
-          className={"btn" + (isMode("pan") ? " active" : "")}
-          id="panBtn"
-          title="Move the view (5)"
-          onClick={() => setTool("pan")}
-        >
-          <span className="ico">{GLYPH.pan}</span>
-          <span className="label">Pan</span>
         </button>
       </div>
 
@@ -118,57 +119,36 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
       <div className="divider" />
 
       <button
-        className="btn insert keep-label"
+        className="btn small insert"
         id="insertBtn"
+        title="Insert a maths widget (I)"
+        aria-label="Insert"
         onClick={props.onInsert}
       >
         <span className="ico">{GLYPH.insert}</span>
-        <span className="label">Insert</span>
       </button>
 
       <div className="divider" />
 
       <button
-        className="btn"
+        className="btn small"
         id="undoBtn"
         title="Undo (Ctrl+Z)"
+        aria-label="Undo"
         disabled={!canUndo}
         onClick={undo}
       >
         <span className="ico">{GLYPH.undo}</span>
-        <span className="label">Undo</span>
       </button>
       <button
-        className="btn"
+        className="btn small"
         id="redoBtn"
         title="Redo (Ctrl+Shift+Z)"
+        aria-label="Redo"
         disabled={!canRedo}
         onClick={redo}
       >
         <span className="ico">{GLYPH.redo}</span>
-        <span className="label">Redo</span>
-      </button>
-      <button
-        className="btn"
-        id="editObjBtn"
-        title="Edit selected object"
-        disabled={!canEdit}
-        onClick={props.onEditSelected}
-      >
-        <span className="ico" id="editIco">
-          <DrawIcon />
-        </span>
-        <span className="label">Edit</span>
-      </button>
-      <button
-        className="btn"
-        id="deleteObjBtn"
-        title="Delete selection"
-        disabled={!hasSelection}
-        onClick={() => deleteSelection()}
-      >
-        <span className="ico">{GLYPH.delete}</span>
-        <span className="label">Delete</span>
       </button>
 
       <div className="spacer" />

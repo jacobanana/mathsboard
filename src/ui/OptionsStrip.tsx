@@ -1,10 +1,14 @@
-// The contextual options strip (#options), rendered right after the tool
+// The contextual options zone (#options), rendered right after the tool
 // buttons:
 //
 //   tool === "pen"    -> size slider (penSize) + colour dropdown.
 //   tool === "text"   -> size slider (textSize) + colour dropdown.
 //   tool === "eraser" -> size slider (eraserSize) only.
-//   otherwise          -> empty (#options:empty is hidden by CSS).
+//   otherwise          -> the zone stays, empty.
+//
+// The zone has a FIXED width (CSS #options) and is always rendered, so the
+// toolbar never reflows when the tool changes — contextual controls appear
+// inside their dedicated slot, never displacing the buttons around it.
 //
 // The size presets of the prototype (S/M/L buttons) are replaced by a slider;
 // the colour swatch row is collapsed into ONE button showing the current
@@ -118,7 +122,7 @@ export function OptionsStrip(): JSX.Element | null {
   const activeTextId = useActiveTextObjectId();
 
   if (tool !== "pen" && tool !== "text" && tool !== "eraser") {
-    // Render nothing inside #options; CSS hides it when empty.
+    // Keep the zone (fixed width) so neighbouring buttons don't shift.
     return <div className="group" id="options" />;
   }
 

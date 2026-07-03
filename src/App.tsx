@@ -245,9 +245,9 @@ export default function App(): JSX.Element {
     });
   }, []);
 
-  // Toolbar / keyboard "edit selected": resolve the selection, then route.
-  // Editing applies to exactly one object (a stroke or multi-select has no
-  // settings dialog).
+  // Float-button "edit selected": resolve the selection, then route. Editing
+  // applies to exactly one object (a stroke or multi-select has no settings
+  // dialog).
   const editSelected = useCallback(() => {
     const { selection, board } = useBoardStore.getState();
     if (selection.strokeIds.length > 0 || selection.objectIds.length !== 1) return;
@@ -306,12 +306,13 @@ export default function App(): JSX.Element {
   // --- global keyboard shortcuts (port of prototype line 340) --------------
   // Delete/Backspace removes the whole selection (objects + strokes); Ctrl/Cmd+A
   // selects everything; Escape clears the selection; Ctrl/Cmd+Z undoes,
-  // +Shift redoes; 1-5 pick a tool (toolbar order). Suppressed while any modal
+  // +Shift redoes; 1-5 pick a tool (toolbar order); I / 6 open the Insert
+  // gallery. Suppressed while any modal
   // is open or a text object is being edited in place (the textarea/worksheet
   // inputs stopPropagation on their own keys).
   useEffect(() => {
     // 1-5 mirror the toolbar's button order.
-    const TOOL_KEYS = ["pen", "eraser", "text", "select", "pan"] as const;
+    const TOOL_KEYS = ["select", "pan", "pen", "eraser", "text"] as const;
     const onKey = (e: KeyboardEvent) => {
       const st = useBoardStore.getState();
       // Save shortcuts work even while editing text, but defer to any open
@@ -340,19 +341,19 @@ export default function App(): JSX.Element {
         e.preventDefault();
         if (e.shiftKey) st.redo();
         else st.undo();
-      } else if (
-        !e.ctrlKey &&
-        !e.metaKey &&
-        !e.altKey &&
-        e.key >= "1" &&
-        e.key <= String(TOOL_KEYS.length)
-      ) {
-        // Never steal digits from a focused field (widget answer boxes, the
-        // join-code input, ...) - only bare canvas presses pick tools.
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Bare-key shortcuts: 1-5 pick a tool, I / 6 open the Insert gallery
+        // (6 continues the toolbar's number row). Never steal keys from a
+        // focused field (widget answer boxes, the join-code input, ...).
         const t = e.target as HTMLElement | null;
         if (t?.closest("input,textarea,select,[contenteditable]")) return;
-        e.preventDefault();
-        st.setTool(TOOL_KEYS[Number(e.key) - 1]);
+        if (e.key >= "1" && e.key <= String(TOOL_KEYS.length)) {
+          e.preventDefault();
+          st.setTool(TOOL_KEYS[Number(e.key) - 1]);
+        } else if (e.key.toLowerCase() === "i" || e.key === "6") {
+          e.preventDefault();
+          setModal({ kind: "insert" });
+        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -383,7 +384,6 @@ export default function App(): JSX.Element {
         onBoards={() => setModal({ kind: "boards" })}
         onPaper={(anchor) => setPaperAnchor(anchor)}
         onSaveImage={saveImage}
-        onEditSelected={editSelected}
         onShare={() => setModal({ kind: "share" })}
         onJoin={() => setModal({ kind: "join" })}
       />
