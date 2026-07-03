@@ -44,6 +44,7 @@ import { InsertGallery } from "@/ui/InsertGallery";
 import { PaperMenu } from "@/ui/PaperMenu";
 import { BoardsManager } from "@/ui/BoardsManager";
 import { NamePrompt } from "@/ui/NamePrompt";
+import { useImageDrop } from "@/ui/useImageDrop";
 import { useBoardStore, activeTextObjectId } from "@/board/store";
 import { useUiStore } from "@/ui/uiStore";
 import { screenToWorld } from "@/board/geometry";
@@ -319,22 +320,28 @@ export default function App(): JSX.Element {
 
   // --- placement (CREATE) --------------------------------------------------
   // Ports prototype addObject (line 351): centre on screen, cascade 22px per
-  // object (mod 6) so successive inserts fan out instead of stacking.
+  // object (mod 6) so successive inserts fan out instead of stacking. `at`
+  // (screen px relative to #stage) overrides the centre for drag-dropped
+  // images so they land under the cursor; a dropped object skips the cascade.
   const placeNew = useCallback(
-    (toolType: string, params: Record<string, unknown>) => {
+    (
+      toolType: string,
+      params: Record<string, unknown>,
+      at?: { x: number; y: number },
+    ) => {
       const size = toolSize(toolType, params);
       if (!size) return;
       const { camera, board } = useBoardStore.getState();
       const r = document.getElementById("stage")?.getBoundingClientRect();
       const W = r?.width ?? 0;
       const H = r?.height ?? 0;
-      const centre = screenToWorld(camera, W / 2, H / 2);
-      const casc = (board.objects.length % 6) * 22;
+      const anchor = screenToWorld(camera, at ? at.x : W / 2, at ? at.y : H / 2);
+      const casc = at ? 0 : (board.objects.length % 6) * 22;
       const obj: AnyBoardObject = {
         id: makeId(),
         type: toolType,
-        x: centre.x - size.w / 2 + casc,
-        y: centre.y - size.h / 2 + casc,
+        x: anchor.x - size.w / 2 + casc,
+        y: anchor.y - size.h / 2 + casc,
         w: size.w,
         h: size.h,
         ...params,
@@ -344,6 +351,16 @@ export default function App(): JSX.Element {
       setTool("select");
     },
     [addObject, select, setTool],
+  );
+
+  // Drag-and-drop an image file onto the board: uploads via the same backend
+  // path as the Picture dialog, then places it at the drop point. Wired to
+  // #stage only in collab builds (COLLAB_ENABLED) — the backend does the upload.
+  const imageDrop = useImageDrop(
+    useCallback(
+      (image, at) => placeNew("image", { ...image }, at),
+      [placeNew],
+    ),
   );
 
   // --- editing (EDIT) ------------------------------------------------------
@@ -549,15 +566,20 @@ export default function App(): JSX.Element {
   // --- the open tool Dialog (create or edit), resolved from the registry ---
   let dialogNode: JSX.Element | null = null;
   if (modal?.kind === "dialog") {
-    const Dialog = getTool(modal.toolType)?.Dialog;
+    const tool = getTool(modal.toolType);
+    const Dialog = tool?.Dialog;
     if (Dialog) {
       const editing = modal.objId != null;
+      // CREATE cancel returns to the gallery — but only for tools that live in
+      // it. A tool opened from a dedicated entry point (e.g. the Picture
+      // button, inGallery:false) has nowhere to go back to, so cancel closes.
+      // EDIT cancel always just closes.
+      const backToGallery = !editing && tool?.inGallery !== false;
       dialogNode = (
         <Dialog
           initial={modal.initial as never}
           onSubmit={handleDialogSubmit as never}
-          // CREATE cancel returns to the gallery; EDIT cancel just closes.
-          onCancel={editing ? closeModal : () => setModal({ kind: "insert" })}
+          onCancel={backToGallery ? () => setModal({ kind: "insert" }) : closeModal}
         />
       );
     }
@@ -578,11 +600,21 @@ export default function App(): JSX.Element {
       {/* #stage is the positioned board viewport. It holds the two stacked
           canvases + in-place text editor (BoardCanvas), the interactive widget
           overlay (WidgetLayer), and the zoom cluster. FloatButtons portals in. */}
-      <div id="stage" ref={setStageRef}>
+      <div
+        id="stage"
+        ref={setStageRef}
+        className={COLLAB_ENABLED && imageDrop.active ? "stage-dropping" : undefined}
+        {...(COLLAB_ENABLED ? imageDrop.handlers : {})}
+      >
         <BoardCanvas onEditObject={openEditFor} />
         <WidgetLayer onEditObject={openEditFor} />
         {COLLAB_ENABLED && <PresenceLayer />}
         <ZoomCluster getStageSize={getStageSize} />
+        {COLLAB_ENABLED && imageDrop.active && (
+          <div className="drop-overlay" aria-hidden>
+            <span className="drop-hint">Drop image to add it</span>
+          </div>
+        )}
       </div>
 
       {/* Float edit/delete buttons portal into #stage (positioned absolute). */}
@@ -667,6 +699,12 @@ export default function App(): JSX.Element {
           />
         )}
       </Modal>
+
+      {COLLAB_ENABLED && imageDrop.error && (
+        <div id="dropError" role="alert">
+          {imageDrop.error}
+        </div>
+      )}
 
       {savedFlash && (
         <div id="savedToast" role="status">

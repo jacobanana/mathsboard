@@ -27,6 +27,9 @@ export const imageTool = defineCanvasTool<ImageParams>({
   name: "Picture",
   blurb: "photo · diagram · scan",
   category: "media",
+  // Opened from its own toolbar button (and drag-and-drop), not the Insert
+  // gallery — so it's kept out of the gallery list.
+  inGallery: false,
 
   defaults: () => ({ url: "", natW: 4, natH: 3 }),
 

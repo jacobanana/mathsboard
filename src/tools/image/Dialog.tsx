@@ -114,7 +114,7 @@ export function ImageDialog({
 
       <div className="card-actions">
         <button className="btn" onClick={onCancel} disabled={busy}>
-          {editing ? "Cancel" : "Back"}
+          Cancel
         </button>
         <button
           className="btn primary"
