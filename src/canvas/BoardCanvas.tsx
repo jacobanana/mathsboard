@@ -42,7 +42,7 @@ import { theme } from "@/styles/theme";
 import type { AnyBoardObject, Camera, Stroke } from "@/board/types";
 import { id as newId } from "@/board/types";
 
-const ERASER = 30;
+const ERASER = 60;
 
 /** Resize-handle hit tolerance (screen px) and minimum object size (world px). */
 const HANDLE_SLOP = 12;
