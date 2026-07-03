@@ -134,6 +134,25 @@ cursors sync live. Documents and uploaded images land in MinIO (console at
 <http://localhost:9001>, login `dev-minio` / `dev-minio-secret`). No `.env`,
 domain or S3 account required.
 
+### Automated end-to-end tests
+
+The Playwright suite in `e2e/` runs that same two-browser collaboration
+session automatically against the compose stack above: share/join/leave,
+live stroke sync both ways, concurrent-edit merging, presence (cursors,
+selections, who's-here) and per-user undo isolation.
+
+```bash
+npx playwright install chromium   # once
+npm run test:e2e                  # boots the compose stack itself if not running
+```
+
+If you already have the stack up, the tests reuse it — but remember the web
+image bakes the frontend in, so rebuild (`up --build`) after changing `src/`.
+Board content lives on `<canvas>`, so the tests assert document state through
+the read-only `window.__mathsboard` hook (`src/testing/e2eHooks.ts`) while
+driving all input through the real UI. CI runs the suite on every pull
+request (`.github/workflows/e2e.yml`).
+
 ## Deploy (single VPS, one domain)
 
 Everything runs same-origin behind Caddy: `/api/*` → the token/upload service,
