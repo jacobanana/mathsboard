@@ -45,7 +45,10 @@ services:
   ysweet:
     image: ghcr.io/jamsocket/y-sweet:latest
     restart: unless-stopped
-    command: ["serve", "--prod"]
+    # The image has no ENTRYPOINT, so `command` must name the binary itself
+    # (default CMD is ["y-sweet", ...]). Without "y-sweet" here Docker tries to
+    # exec "serve" directly and fails: `exec: "serve": executable file not found`.
+    command: ["y-sweet", "serve", "--prod"]
     env_file:
       - path: .env
         required: false
