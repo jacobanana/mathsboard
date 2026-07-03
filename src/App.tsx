@@ -44,12 +44,19 @@ import { InsertGallery } from "@/ui/InsertGallery";
 import { PaperMenu } from "@/ui/PaperMenu";
 import { BoardsManager } from "@/ui/BoardsManager";
 import { NamePrompt } from "@/ui/NamePrompt";
-import { useBoardStore } from "@/board/store";
+import { useBoardStore, activeTextObjectId } from "@/board/store";
 import { useUiStore } from "@/ui/uiStore";
 import { screenToWorld } from "@/board/geometry";
 import { getTool } from "@/tools/registry";
 import { id as makeId } from "@/board/types";
 import { theme } from "@/styles/theme";
+import { textSizeOf } from "@/canvas/drawHelpers";
+import {
+  PALETTE,
+  PEN_SIZE_RANGE,
+  TEXT_SIZE_RANGE,
+  ERASER_SIZE_RANGE,
+} from "@/ui/constants";
 import type { AnyBoardObject } from "@/board/types";
 import type { CanvasTool, WidgetTool } from "@/tools/registry";
 
@@ -88,6 +95,48 @@ function paramsOf(obj: AnyBoardObject): Record<string, unknown> {
   void w;
   void h;
   return params;
+}
+
+/** Cycle the draw colour to the next palette entry (C). Also recolours a live
+ *  text object, matching a swatch click. */
+function cycleColor(): void {
+  const st = useBoardStore.getState();
+  const idx = PALETTE.findIndex(([, hex]) => hex === st.color);
+  const [, next] = PALETTE[(idx + 1) % PALETTE.length];
+  st.setColor(next);
+  const tid = activeTextObjectId(st);
+  if (tid != null) st.updateObject(tid, { color: next });
+}
+
+/** Nudge the active tool's size one step (+/-), clamped to that tool's range.
+ *  No-op unless a size-bearing tool (pen / eraser / text) is active. */
+function adjustSize(dir: 1 | -1): void {
+  const st = useBoardStore.getState();
+  const conf =
+    st.tool === "pen"
+      ? { range: PEN_SIZE_RANGE, cur: st.penSize, set: st.setPenSize }
+      : st.tool === "eraser"
+        ? { range: ERASER_SIZE_RANGE, cur: st.eraserSize, set: st.setEraserSize }
+        : st.tool === "text"
+          ? { range: TEXT_SIZE_RANGE, cur: st.textSize, set: st.setTextSize }
+          : null;
+  if (!conf) return;
+  const next = Math.min(
+    conf.range.max,
+    Math.max(conf.range.min, conf.cur + dir * conf.range.step),
+  );
+  if (next === conf.cur) return;
+  conf.set(next);
+  // Text: re-measure the live object so its box tracks the new size.
+  if (st.tool === "text") {
+    const tid = activeTextObjectId(st);
+    if (tid != null) {
+      const obj = st.board.objects.find((o) => o.id === tid);
+      const text = (obj?.text as string) ?? "";
+      const { w, h } = textSizeOf(text, next);
+      st.updateObject(tid, { size: next, w, h });
+    }
+  }
 }
 
 export default function App(): JSX.Element {
@@ -307,9 +356,9 @@ export default function App(): JSX.Element {
   // Delete/Backspace removes the whole selection (objects + strokes); Ctrl/Cmd+A
   // selects everything; Escape clears the selection; Ctrl/Cmd+Z undoes,
   // +Shift redoes; 1-5 pick a tool (toolbar order); I / 6 open the Insert
-  // gallery. Suppressed while any modal
-  // is open or a text object is being edited in place (the textarea/worksheet
-  // inputs stopPropagation on their own keys).
+  // gallery; C cycles the draw colour; +/- resize the active tool. Suppressed
+  // while any modal is open or a text object is being edited in place (the
+  // textarea/worksheet inputs stopPropagation on their own keys).
   useEffect(() => {
     // 1-5 mirror the toolbar's button order.
     const TOOL_KEYS = ["select", "pan", "pen", "eraser", "text"] as const;
@@ -353,6 +402,16 @@ export default function App(): JSX.Element {
         } else if (e.key.toLowerCase() === "i" || e.key === "6") {
           e.preventDefault();
           setModal({ kind: "insert" });
+        } else if (e.key.toLowerCase() === "c") {
+          e.preventDefault();
+          cycleColor();
+        } else if (e.key === "+" || e.key === "=") {
+          // Accept "=" so the +/= key works without Shift.
+          e.preventDefault();
+          adjustSize(1);
+        } else if (e.key === "-" || e.key === "_") {
+          e.preventDefault();
+          adjustSize(-1);
         }
       }
     };

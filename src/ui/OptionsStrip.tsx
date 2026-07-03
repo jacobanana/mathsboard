@@ -21,8 +21,9 @@
 // the change is also written back through updateObject so the object updates
 // immediately.
 
-import { useEffect, useRef, useState } from "react";
-import { useBoardStore } from "@/board/store";
+import { useRef, useState } from "react";
+import { useBoardStore, activeTextObjectId } from "@/board/store";
+import { Popover } from "@/ui/Popover";
 import {
   PALETTE,
   PEN_SIZE_RANGE,
@@ -31,46 +32,13 @@ import {
 } from "@/ui/constants";
 import { textSizeOf } from "@/canvas/drawHelpers";
 
-/** The text object currently being styled, if any (editing wins over select).
- *  For selection, only a lone selected object qualifies (not a multi-select). */
-function useActiveTextObjectId(): string | null {
-  return useBoardStore((s) => {
-    const id =
-      s.editingId ??
-      (s.selection.objectIds.length === 1 && s.selection.strokeIds.length === 0
-        ? s.selection.objectIds[0]
-        : null);
-    if (id == null) return null;
-    const o = s.board.objects.find((obj) => obj.id === id);
-    return o && o.type === "text" ? o.id : null;
-  });
-}
-
 /** One swatch button showing the current colour; clicking opens a popover
  *  with the full palette. Closes on pick or any outside click. */
 function ColorPicker({ onPick }: { onPick: (hex: string) => void }): JSX.Element {
   const color = useBoardStore((s) => s.color);
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
-  const popRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function onDocClick(e: MouseEvent): void {
-      const target = e.target as Node;
-      if (popRef.current?.contains(target)) return;
-      if (btnRef.current?.contains(target)) return;
-      setOpen(false);
-    }
-    // Defer so the opening click doesn't immediately close it.
-    const t = setTimeout(() => document.addEventListener("click", onDocClick), 0);
-    return () => {
-      clearTimeout(t);
-      document.removeEventListener("click", onDocClick);
-    };
-  }, [open]);
-
-  const r = btnRef.current?.getBoundingClientRect();
   const name = PALETTE.find(([, hex]) => hex === color)?.[0] ?? color;
 
   return (
@@ -79,32 +47,30 @@ function ColorPicker({ onPick }: { onPick: (hex: string) => void }): JSX.Element
         ref={btnRef}
         className="btn small"
         id="colorBtn"
-        title={"Colour — " + name}
+        title={"Colour (C) — " + name}
         onClick={() => setOpen((o) => !o)}
       >
         <span className="color-cur" style={{ background: color }} />
         <span className="color-caret">▾</span>
       </button>
-      {open && r && (
-        <div
-          id="colorMenu"
-          ref={popRef}
-          style={{ left: r.left, top: r.bottom + 6 }}
-        >
-          {PALETTE.map(([label, hex]) => (
-            <button
-              key={hex}
-              className={"swatch" + (color === hex ? " active" : "")}
-              style={{ background: hex }}
-              title={label}
-              onClick={() => {
-                onPick(hex);
-                setOpen(false);
-              }}
-            />
-          ))}
-        </div>
-      )}
+      <Popover
+        anchor={open ? btnRef.current : null}
+        onClose={() => setOpen(false)}
+        id="colorMenu"
+      >
+        {PALETTE.map(([label, hex]) => (
+          <button
+            key={hex}
+            className={"swatch" + (color === hex ? " active" : "")}
+            style={{ background: hex }}
+            title={label}
+            onClick={() => {
+              onPick(hex);
+              setOpen(false);
+            }}
+          />
+        ))}
+      </Popover>
     </>
   );
 }
@@ -119,7 +85,7 @@ export function OptionsStrip(): JSX.Element | null {
   const setTextSize = useBoardStore((s) => s.setTextSize);
   const setEraserSize = useBoardStore((s) => s.setEraserSize);
   const updateObject = useBoardStore((s) => s.updateObject);
-  const activeTextId = useActiveTextObjectId();
+  const activeTextId = useBoardStore(activeTextObjectId);
 
   if (tool !== "pen" && tool !== "text" && tool !== "eraser") {
     // Keep the zone (fixed width) so neighbouring buttons don't shift.
@@ -158,7 +124,7 @@ export function OptionsStrip(): JSX.Element | null {
 
   return (
     <div className="group" id="options">
-      <label className="size-wrap" title={"Size — " + value + "px"}>
+      <label className="size-wrap" title={"Size (+/-) — " + value + "px"}>
         <input
           type="range"
           className="size-slider"

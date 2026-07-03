@@ -7,8 +7,9 @@
 // Toolbar). The Paper item re-anchors the existing PaperMenu popover to the
 // burger button, which stays mounted while the menu closes.
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useCollabStore } from "@/collab/collabStore";
+import { Popover } from "@/ui/Popover";
 import { GLYPH } from "@/ui/icons";
 
 export interface OverflowMenuProps {
@@ -23,23 +24,6 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
   const collabMode = useCollabStore((s) => s.mode);
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDocClick(e: MouseEvent): void {
-      const target = e.target as Node;
-      if (menuRef.current?.contains(target)) return;
-      if (btnRef.current?.contains(target)) return;
-      setOpen(false);
-    }
-    // Defer so the opening click doesn't immediately close it.
-    const t = setTimeout(() => document.addEventListener("click", onDocClick), 0);
-    return () => {
-      clearTimeout(t);
-      document.removeEventListener("click", onDocClick);
-    };
-  }, [open]);
 
   /** Close the menu, then run the action. */
   function pick(action: () => void): () => void {
@@ -48,8 +32,6 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
       action();
     };
   }
-
-  const r = btnRef.current?.getBoundingClientRect();
 
   return (
     <>
@@ -62,16 +44,13 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
       >
         <span className="ico">☰</span>
       </button>
-      {open && r && (
-        <div
-          id="overflowMenu"
-          ref={menuRef}
-          style={{
-            top: r.bottom + 6,
-            right: Math.max(6, window.innerWidth - r.right),
-          }}
-        >
-          {collabMode !== "shared" && (
+      <Popover
+        anchor={open ? btnRef.current : null}
+        onClose={() => setOpen(false)}
+        align="right"
+        id="overflowMenu"
+      >
+        {collabMode !== "shared" && (
             <button
               id="joinBtn"
               title="Join a board someone shared — enter their code"
@@ -114,8 +93,7 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
             <span className="ico">{GLYPH.save}</span>
             <span className="label">Save image</span>
           </button>
-        </div>
-      )}
+      </Popover>
     </>
   );
 }

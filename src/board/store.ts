@@ -281,6 +281,26 @@ const FRESH_DOC_STATE = {
   editingId: null as string | null,
 };
 
+/**
+ * The lone TEXT object currently being styled, or null. Editing (the overlay)
+ * wins over selection; for selection only a single selected object qualifies
+ * (never a multi-select or a stroke). Shared by the options strip and the
+ * colour / size keyboard shortcuts so "which text updates live" stays in one
+ * place.
+ */
+export function activeTextObjectId(
+  s: Pick<BoardState, "editingId" | "selection" | "board">,
+): string | null {
+  const id =
+    s.editingId ??
+    (s.selection.objectIds.length === 1 && s.selection.strokeIds.length === 0
+      ? s.selection.objectIds[0]
+      : null);
+  if (id == null) return null;
+  const o = s.board.objects.find((obj) => obj.id === id);
+  return o && o.type === "text" ? o.id : null;
+}
+
 /** Fallback display name when the user dismissed / never saw the prompt. */
 const displayName = (): string => getStoredName() ?? "Guest";
 
