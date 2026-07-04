@@ -26,7 +26,6 @@ export function FractionDialog({
   const b2: FractionBar =
     ex && ex.bars && ex.bars[1] ? ex.bars[1] : { parts: 8, shaded: 2 };
   const hasB2 = !!(ex && ex.bars && ex.bars[1]);
-  const fwMax = ex && ex.max ? ex.max : 8;
   const cp = ex && ex.parts ? ex.parts : 4;
   const cs = ex && ex.shaded != null ? ex.shaded : 1;
 
@@ -38,7 +37,6 @@ export function FractionDialog({
   const [f2on, setF2on] = useState(hasB2);
   const [f2p, setF2p] = useState(String(b2.parts));
   const [f2s, setF2s] = useState(String(b2.shaded));
-  const [fwMaxV, setFwMaxV] = useState(String(fwMax));
   const [fcP, setFcP] = useState(String(cp));
   const [fcS, setFcS] = useState(String(cs));
   const [err, setErr] = useState("");
@@ -70,8 +68,6 @@ export function FractionDialog({
         bars.push(x2);
       }
       onSubmit({ mode: "bars", bars });
-    } else if (mode === "wall") {
-      onSubmit({ mode: "wall", max: parseInt(fwMaxV, 10) });
     } else {
       const c = rp(fcP, fcS);
       if (!c) {
@@ -97,24 +93,12 @@ export function FractionDialog({
           }
         >
           <option value="bars">Bars (compare two)</option>
-          <option value="wall">Fraction wall</option>
           <option value="circle">Circle (pie)</option>
         </select>
       </div>
 
       <div id="frBars" style={{ display: mode === "bars" ? "block" : "none" }}>
         <div className="subhead">Bar 1</div>
-        <div className="field">
-          <label htmlFor="f1p">Number of parts</label>
-          <input
-            id="f1p"
-            type="number"
-            min="1"
-            max="12"
-            value={f1p}
-            onChange={(e) => setF1p(e.target.value)}
-          />
-        </div>
         <div className="field">
           <label htmlFor="f1s">Parts shaded</label>
           <input
@@ -124,6 +108,17 @@ export function FractionDialog({
             max="12"
             value={f1s}
             onChange={(e) => setF1s(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="f1p">Number of parts</label>
+          <input
+            id="f1p"
+            type="number"
+            min="1"
+            max="12"
+            value={f1p}
+            onChange={(e) => setF1p(e.target.value)}
           />
         </div>
         <label className="field check">
@@ -138,17 +133,6 @@ export function FractionDialog({
         <div id="f2box" style={{ display: f2on ? "block" : "none" }}>
           <div className="subhead">Bar 2</div>
           <div className="field">
-            <label htmlFor="f2p">Number of parts</label>
-            <input
-              id="f2p"
-              type="number"
-              min="1"
-              max="12"
-              value={f2p}
-              onChange={(e) => setF2p(e.target.value)}
-            />
-          </div>
-          <div className="field">
             <label htmlFor="f2s">Parts shaded</label>
             <input
               id="f2s"
@@ -159,22 +143,17 @@ export function FractionDialog({
               onChange={(e) => setF2s(e.target.value)}
             />
           </div>
-        </div>
-      </div>
-
-      <div id="frWall" style={{ display: mode === "wall" ? "block" : "none" }}>
-        <div className="field">
-          <label htmlFor="fwMax">Rows down to</label>
-          <select
-            id="fwMax"
-            value={fwMaxV}
-            onChange={(e) => setFwMaxV(e.target.value)}
-          >
-            <option value="6">halves … sixths</option>
-            <option value="8">halves … eighths</option>
-            <option value="10">halves … tenths</option>
-            <option value="12">halves … twelfths</option>
-          </select>
+          <div className="field">
+            <label htmlFor="f2p">Number of parts</label>
+            <input
+              id="f2p"
+              type="number"
+              min="1"
+              max="12"
+              value={f2p}
+              onChange={(e) => setF2p(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
@@ -182,17 +161,6 @@ export function FractionDialog({
         id="frCircle"
         style={{ display: mode === "circle" ? "block" : "none" }}
       >
-        <div className="field">
-          <label htmlFor="fcP">Number of parts</label>
-          <input
-            id="fcP"
-            type="number"
-            min="1"
-            max="12"
-            value={fcP}
-            onChange={(e) => setFcP(e.target.value)}
-          />
-        </div>
         <div className="field">
           <label htmlFor="fcS">Parts shaded</label>
           <input
@@ -202,6 +170,17 @@ export function FractionDialog({
             max="12"
             value={fcS}
             onChange={(e) => setFcS(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="fcP">Number of parts</label>
+          <input
+            id="fcP"
+            type="number"
+            min="1"
+            max="12"
+            value={fcP}
+            onChange={(e) => setFcP(e.target.value)}
           />
         </div>
       </div>

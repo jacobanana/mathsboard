@@ -4,7 +4,7 @@
 // document, what one "undo step" covers, and what undo must never touch.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { bakeErasers, useBoardStore } from "@/board/store";
+import { useBoardStore } from "@/board/store";
 import { aStroke, anObject, freshBoard } from "@/testing/fixtures";
 
 const st = () => useBoardStore.getState();
@@ -68,24 +68,6 @@ describe("drawing and erasing", () => {
 
     // The split-away fragment is NOT silently added to the selection.
     expect(st().selection.strokeIds).toEqual([s.id]);
-  });
-
-  it("bakeErasers folds legacy overlay erasers into geometry and is idempotent", () => {
-    const pen = aStroke({ points: [{ x: 0, y: 0 }, { x: 100, y: 0 }] });
-    const eraser = aStroke({
-      mode: "eraser",
-      points: [{ x: 50, y: -20 }, { x: 50, y: 20 }],
-      size: 20,
-    });
-
-    const baked = bakeErasers([pen, eraser]);
-    expect(baked.every((s) => s.mode === "pen")).toBe(true);
-    expect(baked).toHaveLength(2); // the pen split into two fragments
-
-    // Idempotent: with no erasers left, the SAME array comes back.
-    expect(bakeErasers(baked)).toBe(baked);
-    const pensOnly = [aStroke()];
-    expect(bakeErasers(pensOnly)).toBe(pensOnly);
   });
 });
 

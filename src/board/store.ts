@@ -33,7 +33,8 @@ import type {
   ToolName,
 } from "@/board/types";
 import { id as newId, newBoardDocument } from "@/board/types";
-import { eraseStrokeRuns, rectsIntersect, strokeBounds } from "@/board/geometry";
+import { applyEraser } from "@/board/geometry";
+import { migrateDocument } from "@/board/migrations";
 import { localRepository } from "@/board/persistence/LocalBoardRepository";
 import { theme } from "@/styles/theme";
 import * as session from "@/collab/session";
@@ -56,53 +57,6 @@ const EMPTY_SELECTION: Selection = { objectIds: [], strokeIds: [] };
 export const selectionCount = (s: Selection): number =>
   s.objectIds.length + s.strokeIds.length;
 
-/**
- * Apply one eraser path geometrically to a list of pen strokes: trim covered
- * points, splitting each stroke into its surviving fragments and dropping any
- * stroke that is fully erased. The first fragment keeps the original id so a
- * partially-erased selected stroke stays selected. Fragments inherit the
- * parent's fields (including its z-`order`) via the spread.
- */
-function applyEraser(
-  pens: Stroke[],
-  eraserPoints: { x: number; y: number }[],
-  eraserSize: number,
-): Stroke[] {
-  const eraserRadius = eraserSize / 2;
-  const eb = strokeBounds({ points: eraserPoints, size: eraserSize });
-  const out: Stroke[] = [];
-  for (const pen of pens) {
-    if (!rectsIntersect(strokeBounds(pen), eb)) {
-      out.push(pen);
-      continue;
-    }
-    const runs = eraseStrokeRuns(pen.points, eraserPoints, eraserRadius);
-    if (runs === null) {
-      out.push(pen); // untouched
-      continue;
-    }
-    runs.forEach((run, idx) =>
-      out.push({ ...pen, id: idx === 0 ? pen.id : newId(), points: run }),
-    );
-  }
-  return out;
-}
-
-/**
- * Migrate a stroke list to the geometric-eraser model: fold every stored
- * "eraser" overlay stroke into the pen strokes that precede it (the eraser only
- * carved pixels drawn before it), leaving a list of pen strokes only. Idempotent
- * once no eraser strokes remain.
- */
-export function bakeErasers(strokes: Stroke[]): Stroke[] {
-  if (!strokes.some((s) => s.mode === "eraser")) return strokes;
-  let pens: Stroke[] = [];
-  for (const s of strokes) {
-    if (s.mode === "eraser") pens = applyEraser(pens, s.points, s.size);
-    else pens.push(s);
-  }
-  return pens;
-}
 
 interface BoardState {
   // ---- DOCUMENT state (mirror of the live Yjs doc) ----
@@ -590,17 +544,10 @@ export const useBoardStore = create<BoardState>((set, get) => {
         return;
       }
 
-      // Migrate any legacy "eraser" overlay strokes into geometry so erased
-      // gaps move with their stroke (and fully-erased strokes vanish).
-      const bake = (doc: BoardDocument): BoardDocument => {
-        const strokes = bakeErasers(doc.strokes);
-        return strokes === doc.strokes ? doc : { ...doc, strokes };
-      };
-
       // Resume the working draft exactly if one exists.
       const draft = await localRepository.loadDraft();
       if (draft) {
-        const board = session.startSolo(bake(draft.doc));
+        const board = session.startSolo(migrateDocument(draft.doc));
         set({
           board,
           sourceId: draft.sourceId,
@@ -619,7 +566,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
       if (summaries.length > 0) {
         const src = await localRepository.load(summaries[0].id);
         if (src) {
-          doc = bake(src);
+          doc = migrateDocument(src);
           sourceId = src.id;
         }
       }
@@ -733,8 +680,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
     async openBoard(boardId) {
       const src = await localRepository.load(boardId);
       if (!src) return;
-      const strokes = bakeErasers(src.strokes);
-      const doc = strokes === src.strokes ? src : { ...src, strokes };
+      const doc = migrateDocument(src);
       // Opening a library board always lands in a private solo session.
       const board = session.startSolo(doc);
       session.clearBoardIdFromUrl();
@@ -790,7 +736,13 @@ export const useBoardStore = create<BoardState>((set, get) => {
 // here with the fresh mirror. Keep the selection valid (drop ids whose shape no
 // longer exists - remote deletes, undo, eraser splits) and autosave the draft.
 session.registerSessionCallbacks({
-  onBoardChange(board, origin) {
+  onBoardChange(rawBoard, origin) {
+    // Safety net for shapes that reach the store from any source — most
+    // importantly a REMOTE shared doc, whose first sync fires here with legacy
+    // content BEFORE session's post-sync migrateHandles can rewrite it. On a
+    // current document migrateDocument returns the SAME reference, so this is a
+    // cheap no-op that preserves the mirror's referential stability.
+    const board = migrateDocument(rawBoard);
     const state = useBoardStore.getState();
     const objIds = new Set(board.objects.map((o) => o.id));
     const strokeIds = new Set(board.strokes.map((s) => s.id));

@@ -2,6 +2,7 @@
 // No globals: callers pass the camera explicitly.
 
 import type { AnyBoardObject, Camera, Stroke } from "@/board/types";
+import { id as newId } from "@/board/types";
 
 export const MIN_SCALE = 0.2;
 export const MAX_SCALE = 4;
@@ -247,6 +248,38 @@ export const eraseStrokeRuns = (
   if (cur.length) runs.push(cur);
   return erasedAny ? runs : null;
 };
+
+/**
+ * Apply one eraser path geometrically to a list of pen strokes: trim covered
+ * points, splitting each stroke into its surviving fragments and dropping any
+ * stroke that is fully erased. The first fragment keeps the original id so a
+ * partially-erased selected stroke stays selected. Fragments inherit the
+ * parent's fields (including its z-`order`) via the spread.
+ */
+export function applyEraser(
+  pens: Stroke[],
+  eraserPoints: Pt[],
+  eraserSize: number,
+): Stroke[] {
+  const eraserRadius = eraserSize / 2;
+  const eb = strokeBounds({ points: eraserPoints, size: eraserSize });
+  const out: Stroke[] = [];
+  for (const pen of pens) {
+    if (!rectsIntersect(strokeBounds(pen), eb)) {
+      out.push(pen);
+      continue;
+    }
+    const runs = eraseStrokeRuns(pen.points, eraserPoints, eraserRadius);
+    if (runs === null) {
+      out.push(pen); // untouched
+      continue;
+    }
+    runs.forEach((run, idx) =>
+      out.push({ ...pen, id: idx === 0 ? pen.id : newId(), points: run }),
+    );
+  }
+  return out;
+}
 
 // --- rectangle (area / lasso) selection -----------------------------------
 

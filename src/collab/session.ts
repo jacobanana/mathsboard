@@ -31,6 +31,7 @@ import {
   INPUT_ORIGIN,
   LOCAL_ORIGIN,
   SEED_ORIGIN,
+  migrateHandles,
   openHandles,
   seedDoc,
   toYShape,
@@ -233,7 +234,17 @@ export function joinShared(
       status: status as ReturnType<typeof useCollabStore.getState>["status"],
     });
   };
-  const onSynced = () => useCollabStore.setState({ synced: true });
+  // Upgrade the shared doc's shapes to the current schema once the FIRST server
+  // sync has populated it (running earlier would see an empty doc and miss the
+  // legacy shapes). Idempotent, so later reconnects that re-fire "sync" skip it.
+  let didMigrate = false;
+  const onSynced = () => {
+    useCollabStore.setState({ synced: true });
+    if (!didMigrate) {
+      didMigrate = true;
+      migrateHandles(core.h);
+    }
+  };
   provider.on("connection-status", onStatus);
   provider.on("sync", onSynced);
 

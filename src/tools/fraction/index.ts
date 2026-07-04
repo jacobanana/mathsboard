@@ -1,13 +1,13 @@
 // CanvasTool (canvas + dialog): the Fractions tool.
 //
-// Three sub-modes share one object type:
+// Two sub-modes share one object type:
 //   - bars   : 1 or 2 comparison bars (second optional), each parts/shaded.
-//   - wall   : a fraction wall down to a chosen denominator (6/8/10/12).
 //   - circle : a pie split into parts with some shaded.
+// (The former "wall" mode is now its own tool: src/tools/fractionwall.)
 //
 // Ported verbatim from maths-whiteboard.html:
 //   size   : objSize 'fraction' case (line 202)
-//   draw   : drawFraction + drawFractionWall + drawFractionCircle (lines 233-235)
+//   draw   : drawFraction + drawFractionCircle (lines 233, 235)
 //   dialog : fractionDialog (lines 477-493)
 //
 // Mechanical transforms only: tctx -> kit.ctx; css('--line-ink') -> theme.lineInk
@@ -22,9 +22,8 @@ export interface FractionBar {
 }
 
 export interface FractionParams {
-  mode: "bars" | "wall" | "circle";
+  mode: "bars" | "circle";
   bars?: FractionBar[];
-  max?: number;
   parts?: number;
   shaded?: number;
 }
@@ -33,13 +32,12 @@ export const fractionTool = defineCanvasTool<FractionParams>({
   kind: "canvas",
   type: "fraction",
   name: "Fractions",
-  blurb: "bars · wall · circle",
+  blurb: "bars · circle",
   category: "fractions",
 
   defaults: () => ({ mode: "bars", bars: [{ parts: 4, shaded: 1 }] }),
 
   size: (p) => {
-    if (p.mode === "wall") return { w: 480, h: (p.max as number) * 34 };
     if (p.mode === "circle") {
       const r = 86;
       return { w: 2 * r, h: 2 * r + 40 };
@@ -53,7 +51,6 @@ export const fractionTool = defineCanvasTool<FractionParams>({
   },
 
   draw: ({ ctx, theme, font }, o) => {
-    if (o.mode === "wall") return drawFractionWall(ctx, theme, font, o);
     if (o.mode === "circle") return drawFractionCircle(ctx, theme, font, o);
     const labelW = 58,
       barX = o.x + labelW,
@@ -100,37 +97,6 @@ export const fractionTool = defineCanvasTool<FractionParams>({
 
   Dialog: FractionDialog,
 });
-
-function drawFractionWall(
-  ctx: CanvasRenderingContext2D,
-  theme: import("@/styles/theme").Theme,
-  font: string,
-  o: import("@/board/types").BoardObjectBase & FractionParams,
-): void {
-  const w = o.w,
-    rowH = 34;
-  const max = o.max as number;
-  ctx.save();
-  ctx.font = "600 14px " + font;
-  ctx.textBaseline = "middle";
-  ctx.textAlign = "center";
-  for (let d = 1; d <= max; d++) {
-    const y = o.y + (d - 1) * rowH,
-      cw = w / d;
-    for (let k = 0; k < d; k++) {
-      const cx = o.x + k * cw;
-      ctx.fillStyle = d % 2 === 0 ? "#F4EFE0" : "#FCFAF4";
-      ctx.fillRect(cx, y, cw, rowH);
-      ctx.strokeStyle = theme.lineInk;
-      ctx.lineWidth = 1.2;
-      ctx.strokeRect(cx, y, cw, rowH);
-      ctx.fillStyle = theme.lineInk;
-      const label = d === 1 ? "1" : "1/" + d;
-      if (cw > 26) ctx.fillText(label, cx + cw / 2, y + rowH / 2);
-    }
-  }
-  ctx.restore();
-}
 
 function drawFractionCircle(
   ctx: CanvasRenderingContext2D,

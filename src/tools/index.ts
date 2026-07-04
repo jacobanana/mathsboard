@@ -14,6 +14,7 @@ import { COLLAB_ENABLED } from "@/config";
 import { textTool } from "@/tools/text";
 import { numberLineTool } from "@/tools/numberline";
 import fractionTool from "@/tools/fraction";
+import fractionWallTool from "@/tools/fractionwall";
 import placeValueTool from "@/tools/placevalue";
 import timesTableTool from "@/tools/timestable";
 import gridMethodTool from "@/tools/gridmethod";
@@ -53,6 +54,7 @@ const ALL_TOOLS = [
   worksheetTool,
   // Fractions, decimals & %
   fractionTool,
+  fractionWallTool,
   fracAmountTool,
   percAmountTool,
   fdpTool,

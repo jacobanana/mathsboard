@@ -29,6 +29,7 @@
 import * as Y from "yjs";
 import type { AnyBoardObject, BoardDocument, Stroke } from "@/board/types";
 import { UNTITLED_NAME } from "@/board/types";
+import { migrateDocument } from "@/board/migrations";
 
 /**
  * Transaction origin for edits made by THIS user through the store actions.
@@ -173,4 +174,66 @@ export class DocMirror {
       updatedAt: Date.now(),
     };
   }
+}
+
+/**
+ * Reconcile one top-level shape map (objects or strokes) from its pre-migration
+ * `before` list to the post-migration `next` list: delete vanished ids, insert
+ * new shapes, and field-patch changed ones (setting changed fields, deleting
+ * removed ones). Shapes unchanged by the migration share a reference across the
+ * two lists and are skipped untouched.
+ */
+function reconcileShapeMap<T extends { id: string }>(
+  map: Y.Map<Y.Map<unknown>>,
+  before: T[],
+  next: T[],
+): void {
+  const prevById = new Map(
+    before.map((s) => [s.id, s as Record<string, unknown>]),
+  );
+  const keep = new Set(next.map((s) => s.id));
+  for (const id of [...map.keys()]) if (!keep.has(id)) map.delete(id);
+  for (const s of next) {
+    const rec = s as Record<string, unknown>;
+    const prev = prevById.get(s.id);
+    if (prev === rec) continue; // untouched by the migration (same reference)
+    const y = map.get(s.id);
+    if (!y) {
+      map.set(s.id, toYShape(rec)); // shape the migration added
+      continue;
+    }
+    for (const [k, v] of Object.entries(rec)) if (y.get(k) !== v) y.set(k, v);
+    if (prev) for (const k of Object.keys(prev)) if (!(k in rec)) y.delete(k);
+  }
+}
+
+/**
+ * Upgrade a live doc in place to the current shape schema, writing only the
+ * differences under SEED_ORIGIN (so it is neither undoable nor treated as a user
+ * edit). Used on the shared-join path: a board created before a migration
+ * existed carries legacy shapes (e.g. a "wall"-mode fraction) that must be
+ * upgraded once in the authoritative doc, rather than re-migrated on every read
+ * by every client forever.
+ *
+ * It runs the SAME migrateDocument() registry as the local load paths — it holds
+ * no per-migration knowledge, so a new migration needs no change here — then
+ * diffs the result back per shape map. Object/scalar field-writes merge per-field
+ * last-writer-wins, so two clients upgrading the same shape concurrently
+ * converge, and the pass is idempotent once no legacy shape remains. (A migration
+ * that adds/removes WHOLE shapes with fresh ids — e.g. eraser re-baking — is not
+ * convergent under truly concurrent application; such migrations should run only
+ * on local load, which shared docs already went through before being seeded.)
+ */
+export function migrateHandles(h: DocHandles): void {
+  const current = new DocMirror(h).read(h.doc.guid);
+  const migrated = migrateDocument(current);
+  if (migrated === current) return; // already current -> no transaction, no sync
+  h.doc.transact(() => {
+    if (migrated.objects !== current.objects) {
+      reconcileShapeMap(h.objects, current.objects, migrated.objects);
+    }
+    if (migrated.strokes !== current.strokes) {
+      reconcileShapeMap(h.strokes, current.strokes, migrated.strokes);
+    }
+  }, SEED_ORIGIN);
 }
