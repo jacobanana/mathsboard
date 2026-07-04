@@ -271,8 +271,8 @@ export const SHORTCUTS: ShortcutSpec[] = [
     run: (c) => nudgeSelection(c),
   },
 
-  // Tools — bare keys. Digits mirror the toolbar order (1..5); the letters are
-  // mnemonic alternates (Draw / Eraser / Text).
+  // Tools — bare keys. Digits mirror the toolbar order (1..6); the letters are
+  // mnemonic alternates (Draw / Eraser / Text / Maths).
   {
     id: "tool-select",
     group: "tools",
@@ -313,14 +313,23 @@ export const SHORTCUTS: ShortcutSpec[] = [
     test: (c) => bare(c) && (c.key === "5" || c.key === "t"),
     run: (c) => c.st.setTool("text"),
   },
+  {
+    id: "tool-math",
+    group: "tools",
+    keys: [["6"], ["M"]],
+    label: "Maths notation",
+    test: (c) => bare(c) && (c.key === "6" || c.key === "m"),
+    run: (c) => c.st.setTool("math"),
+  },
 
-  // Insert.
+  // Insert. ("6" moved to the maths tool when it became the sixth dock mode;
+  // "0" is the digit-row stand-in since 7 belongs to Picture.)
   {
     id: "insert",
     group: "insert",
-    keys: [["I"], ["6"]],
+    keys: [["I"], ["0"]],
     label: "Insert a maths widget",
-    test: (c) => bare(c) && (c.key === "i" || c.key === "6"),
+    test: (c) => bare(c) && (c.key === "i" || c.key === "0"),
     run: (c) => c.host.openInsert(),
   },
   // Pictures upload through the backend, so the shortcut only exists in the
@@ -413,7 +422,7 @@ export function handleShortcut(e: KeyboardEvent, host: ShortcutHost): boolean {
 // --- lookups for UI hints -------------------------------------------------
 
 /** A compact key hint for tooltips, derived from the catalog so button titles
- *  never restate a shortcut: e.g. "3 / D", "Ctrl+Shift+S", "I / 6". Empty
+ *  never restate a shortcut: e.g. "3 / D", "Ctrl+Shift+S", "6 / M". Empty
  *  string for an unknown / build-gated id, so callers can interpolate freely. */
 export function keyHint(id: string): string {
   const spec = SHORTCUTS.find((s) => s.id === id);

@@ -98,6 +98,7 @@ export function fakeInputCtx(over: Partial<InputCtx> = {}): InputCtx {
     render: () => {},
     canvas: document.createElement("canvas"),
     editor: { open: () => {}, commit: () => {}, isOpen: () => false },
+    mathEditor: { open: () => {}, commit: () => {}, isOpen: () => false },
     editObject: () => {},
     ...over,
   };

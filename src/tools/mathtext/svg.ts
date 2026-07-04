@@ -9,14 +9,15 @@
 // references, so drawing it NEVER taints the canvas (PNG export stays safe).
 //
 // This module is heavy (KaTeX engine + ~340 KB of base64 font data built on
-// first use) and is only ever loaded lazily: render.ts and the Dialog reach it
-// through dynamic import, keeping it out of the eager bundle.
+// first use) and is only ever loaded lazily: render.ts and the in-place maths
+// editor reach it through dynamic import, keeping it out of the eager bundle.
 
 import katexCss from "katex/dist/katex.min.css?raw";
 import { theme } from "@/styles/theme";
-
-/** Base font size the notation is laid out at (matches the free-text tool). */
-const BASE_PX = 26;
+// The shared layout font size (matches the free-text tool's default). Lives on
+// the eager tool module so the in-place editor can read it without pulling in
+// this heavy raster module.
+import { MATH_BASE_PX as BASE_PX } from "@/tools/mathtext";
 /** Padding around the layout box, absorbing italic/radical ink overhang. */
 const PAD = 4;
 /** Rasterize at 2x so notation stays crisp when resized or zoomed up. */
@@ -158,33 +159,13 @@ async function layoutMath(latex: string): Promise<Layout> {
 // --- public API ---------------------------------------------------------------
 
 /**
- * The natural size the notation will occupy on the board. The Dialog stores
- * this as natW/natH at submit so the tool's size() stays synchronous — the
- * same trick as the image tool's intrinsic dimensions.
+ * The natural size the notation will occupy on the board. The in-place maths
+ * editor stores this as natW/natH at commit so the tool's size() stays
+ * synchronous — the same trick as the image tool's intrinsic dimensions.
  */
 export async function measureMath(latex: string): Promise<{ w: number; h: number }> {
   const { w, h } = await layoutMath(latex);
   return { w, h };
-}
-
-/**
- * Parse-check only. Returns a human-readable problem, or null when the LaTeX
- * is drawable. (Rendering itself never throws — throwOnError:false — so this
- * is purely the dialog's submit gate.)
- */
-export async function validateLatex(latex: string): Promise<string | null> {
-  const katex = (await import("katex")).default;
-  try {
-    katex.renderToString("\\displaystyle " + latex, {
-      output: "html",
-      strict: "ignore",
-    });
-    return null;
-  } catch (e) {
-    return e instanceof Error
-      ? e.message.replace(/^KaTeX parse error:\s*/, "")
-      : "That maths couldn't be read.";
-  }
 }
 
 /** LaTeX -> decoded HTMLImageElement, ready for ctx.drawImage. */

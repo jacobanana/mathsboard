@@ -9,11 +9,12 @@
 //            Paper, Boards, Save image, Shortcuts.
 //
 //   #dock — a bottom-centre pill, thumb-reachable on touch devices, holding
-//     the five mode buttons (Select, Pan, Draw, Eraser, Text; keys 1-5 wired
-//     in App) plus Insert and Picture. Select/Pan lead, matching the
-//     Miro / Excalidraw convention (1 = select); Eraser sits next to Draw
-//     since the two alternate constantly. The startup tool is still the pen
-//     (order ≠ default).
+//     the six mode buttons (Select, Pan, Draw, Eraser, Text, Maths; keys 1-6
+//     wired in App) plus Picture (7) and, past the divider, Insert (I / 0).
+//     Select/Pan lead, matching the Miro / Excalidraw convention (1 = select);
+//     Eraser sits next to Draw since the two alternate constantly; Maths sits
+//     next to Text as its notation-aware sibling. The startup tool is still
+//     the pen (order ≠ default).
 //
 //   The contextual options pill (OptionsStrip, #options) floats ABOVE the
 //   dock when the active tool has options and disappears otherwise. It's a
@@ -36,6 +37,7 @@ import { keyHint } from "@/ui/shortcuts";
 import {
   DrawIcon,
   TextIcon,
+  MathIcon,
   EraserIcon,
   ImageIcon,
   SelectIcon,
@@ -226,6 +228,37 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
               <TextIcon />
             </span>
           </button>
+          <button
+            className={"btn small" + (isMode("math") ? " active" : "")}
+            id="mathBtn"
+            title={`Type maths — fractions, powers, roots (${keyHint("tool-math")})`}
+            aria-label="Maths notation"
+            onClick={() => setTool("math")}
+          >
+            <span className="ico" id="mathIco">
+              <MathIcon />
+            </span>
+          </button>
+
+          {/* Picture insert — a first-class button since adding a photo or
+              diagram is a common action (cf. Excalidraw/Miro). Sits with the
+              content tools (after Maths, shortcut 7) rather than with Insert.
+              Collab builds only: the image tool uploads through the backend,
+              so the static single-user build neither registers the tool nor
+              shows this. */}
+          {COLLAB_ENABLED && (
+            <button
+              className="btn small"
+              id="imageBtn"
+              title={`Add a picture (${keyHint("image")})`}
+              aria-label="Add a picture"
+              onClick={props.onAddImage}
+            >
+              <span className="ico">
+                <ImageIcon />
+              </span>
+            </button>
+          )}
 
           <div className="divider" />
 
@@ -240,24 +273,6 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
               <PlusIcon />
             </span>
           </button>
-
-          {/* Picture insert — a first-class button since adding a photo or
-              diagram is a common action (cf. Excalidraw/Miro). Collab builds
-              only: the image tool uploads through the backend, so the static
-              single-user build neither registers the tool nor shows this. */}
-          {COLLAB_ENABLED && (
-            <button
-              className="btn small"
-              id="imageBtn"
-              title={`Add a picture (${keyHint("image")})`}
-              aria-label="Add a picture"
-              onClick={props.onAddImage}
-            >
-              <span className="ico">
-                <ImageIcon />
-              </span>
-            </button>
-          )}
         </div>
       </nav>
     </>

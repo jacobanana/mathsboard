@@ -7,12 +7,14 @@ import { penController, eraserController } from "@/canvas/interactions/brush";
 import { selectController } from "@/canvas/interactions/select";
 import { panController } from "@/canvas/interactions/pan";
 import { textController } from "@/canvas/interactions/text";
+import { mathController } from "@/canvas/interactions/math";
 
 registerInteraction(penController);
 registerInteraction(eraserController);
 registerInteraction(selectController);
 registerInteraction(panController);
 registerInteraction(textController);
+registerInteraction(mathController);
 
 export {
   getInteraction,
@@ -24,5 +26,5 @@ export type {
   InteractionController,
   OverlayKit,
   Pt,
-  TextEditorHandle,
+  InPlaceEditorHandle,
 } from "@/canvas/interactions/types";

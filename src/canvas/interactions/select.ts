@@ -79,8 +79,8 @@ let lasso: Lasso | null = null;
 
 /**
  * Double-click edit, shared with the pan controller: select the hit object,
- * then edit free text in place or route everything else to the host's
- * settings-dialog flow.
+ * then edit free text / maths notation in place or route everything else to
+ * the host's settings-dialog flow.
  */
 export function editObjectAt(e: MouseEvent, c: InputCtx): void {
   const st = c.store.getState();
@@ -90,6 +90,7 @@ export function editObjectAt(e: MouseEvent, c: InputCtx): void {
   if (!hit) return;
   st.select(hit.id);
   if (hit.type === "text") c.editor.open(hit, false);
+  else if (hit.type === "mathtext") c.mathEditor.open(hit, false);
   else c.editObject(hit);
 }
 

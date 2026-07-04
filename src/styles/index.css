@@ -61,6 +61,25 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 #stage{flex:1 1 auto;position:relative;background:var(--paper);overflow:hidden;touch-action:none;}
 #template,#ink{position:absolute;inset:0;width:100%;height:100%;display:block;} #ink{touch-action:none;}
 #textEditor{position:absolute;z-index:7;display:none;border:1px dashed var(--accent);background:rgba(255,255,255,.72);padding:0 2px;margin:0;resize:none;overflow:hidden;white-space:pre;line-height:1.3;min-width:14px;min-height:1em;font-family:var(--font);font-weight:500;}
+
+/* --- In-place maths editor (canvas/mathEditor.ts). The host div is positioned
+   over the object and carries the zoom-scaled font-size; the MathLive field
+   and the raw-LaTeX textarea inherit it. data-mode picks which one shows. */
+#mathEditor{position:absolute;z-index:7;display:none;}
+#mathEditor.open{display:block;}
+#mathEditor math-field{display:none;font-size:inherit;min-width:2.2em;border:1px dashed var(--accent);border-radius:8px;background:rgba(255,255,255,.85);padding:2px 4px;margin:-3px 0 0 -5px;}
+#mathEditor[data-mode=visual] math-field{display:block;}
+#mathEditor math-field::part(menu-toggle){display:none;}
+#mathEditor #mathLatexInput{display:none;border:1px dashed var(--accent);border-radius:8px;background:rgba(255,255,255,.9);padding:6px 8px;margin:-3px 0 0 -5px;resize:none;overflow:hidden;font-family:ui-monospace,Consolas,monospace;font-size:15px;line-height:1.4;color:var(--ink);}
+#mathEditor[data-mode=latex] #mathLatexInput{display:block;}
+#mathEditor .math-loading{display:inline-block;background:var(--island);border:1px solid var(--island-border);border-radius:10px;padding:7px 11px;font-size:13px;color:var(--muted);white-space:nowrap;}
+/* The visual/LaTeX mode toggle floats just above the field (below when the
+   object hugs the top of the stage — .flip). */
+#mathModeToggle{position:absolute;bottom:100%;left:0;margin-bottom:8px;display:flex;gap:2px;background:var(--island);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--island-border);border-radius:12px;padding:3px;box-shadow:var(--island-shadow);font-size:13px;}
+#mathEditor.flip #mathModeToggle{bottom:auto;top:100%;margin-bottom:0;margin-top:8px;}
+#mathModeToggle button{min-height:30px;padding:0 11px;border-radius:9px;font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;}
+#mathModeToggle button:hover{background:var(--hover);}
+#mathModeToggle button.active{background:var(--accent);color:#3a2a05;}
 .floatbtn{position:absolute;z-index:6;display:none;width:34px;height:34px;border-radius:50%;color:#fff;font-size:16px;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.3);}
 .floatbtn.show{display:flex;} .floatbtn:active{transform:scale(.9);}
 #floatDel{background:var(--ink);} #floatEdit{background:var(--bar);} #floatEdit svg{width:17px;height:17px;}

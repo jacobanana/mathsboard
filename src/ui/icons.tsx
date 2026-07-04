@@ -45,6 +45,15 @@ export function EraserIcon(): JSX.Element {
   );
 }
 
+/** A square root — the maths-notation dock tool. */
+export function MathIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M3 13h3l2.5 6.5L13 4h8" />
+    </svg>
+  );
+}
+
 export function ImageIcon(): JSX.Element {
   return (
     <svg {...svgProps}>

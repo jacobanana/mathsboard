@@ -11,7 +11,7 @@ import { FONT } from "@/canvas/drawHelpers";
 import { scaleOf, sizedBox } from "@/board/sizing";
 import type { useBoardStore } from "@/board/store";
 import type { AnyBoardObject } from "@/board/types";
-import type { TextEditorHandle } from "@/canvas/interactions/types";
+import type { InPlaceEditorHandle } from "@/canvas/interactions/types";
 
 /** The active in-place text edit: which object, its pre-edit snapshot flag, and
  *  the uniform scale a resize applied to it (so the textarea matches the
@@ -22,7 +22,7 @@ interface Editor {
   scale: number;
 }
 
-export interface TextEditor extends TextEditorHandle {
+export interface TextEditor extends InPlaceEditorHandle {
   /** Re-fit the textarea to its content (wired to the textarea's onInput). */
   autoSize(): void;
 }

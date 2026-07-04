@@ -1,5 +1,6 @@
-// THE CANVAS HOST. Owns the two stacked <canvas> layers and the in-place text
-// editor <textarea>, and keeps only the SHARED input infrastructure:
+// THE CANVAS HOST. Owns the two stacked <canvas> layers and the two in-place
+// editors (the free-text <textarea> and the MathLive maths overlay), and keeps
+// only the SHARED input infrastructure:
 //
 //   - canvas/DOM lifecycle (dpr sizing, window resize)          .. C1
 //   - rAF-batched render scheduling + store subscription        .. C4
@@ -11,7 +12,8 @@
 // up getInteraction(tool) and forwards pointer events; controllers own their
 // live drag state and contribute preview overlays after the scene is drawn
 // (canvas/scene.ts). The text editor's open/commit logic is canvas/textEditor
-// (T6); PNG export layers register with canvas/export (no App DOM reach).
+// (T6), the maths editor's is canvas/mathEditor; PNG export layers register
+// with canvas/export (no App DOM reach).
 //
 // Rendered inside the host's #stage; the shell (App) renders the WidgetLayer /
 // PresenceLayer / ZoomCluster / FloatButtons as siblings.
@@ -21,6 +23,7 @@ import { useBoardStore } from "@/board/store";
 import { screenToWorld } from "@/board/geometry";
 import { renderScene } from "@/canvas/scene";
 import { createTextEditor } from "@/canvas/textEditor";
+import { createMathEditor, prewarmMathEditor } from "@/canvas/mathEditor";
 import { registerExportLayers } from "@/canvas/export";
 import { getInteraction } from "@/canvas/interactions";
 import * as viewport from "@/canvas/viewport";
@@ -47,6 +50,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
   const tCanvasRef = useRef<HTMLCanvasElement>(null);
   const iCanvasRef = useRef<HTMLCanvasElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const mathHostRef = useRef<HTMLDivElement>(null);
 
   // Viewport size (CSS px) + dpr, kept in a ref so render fns read live values.
   const viewRef = useRef({ W: 0, H: 0, dpr: 1 });
@@ -98,6 +102,17 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     [store],
   );
 
+  // --- the in-place maths editor service (canvas/mathEditor.ts) --------------
+  const mathEditor = useMemo(
+    () =>
+      createMathEditor({
+        host: () => mathHostRef.current,
+        store,
+        render: () => renderNowRef.current(),
+      }),
+    [store],
+  );
+
   // --- the controllers' window into the host --------------------------------
   const inputCtx = useMemo<InputCtx>(
     () => ({
@@ -114,9 +129,10 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
         return iCanvasRef.current!;
       },
       editor,
+      mathEditor,
       editObject: (obj) => onEditObjectRef.current?.(obj),
     }),
-    [store, requestRender, editor],
+    [store, requestRender, editor, mathEditor],
   );
 
   // --- draw: scene (grid + objects + committed ink), then the controller's
@@ -177,8 +193,9 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       activeRef.current ?? getInteraction(store.getState().tool);
 
     const onPointerDown = (e: PointerEvent) => {
-      if (editor.isOpen()) {
+      if (editor.isOpen() || mathEditor.isOpen()) {
         editor.commit();
+        mathEditor.commit();
         return; // the dismissing tap is swallowed
       }
       pointers.current.set(e.pointerId, inputCtx.evPos(e));
@@ -255,6 +272,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
 
     const onWheel = (e: WheelEvent) => {
       if (editor.isOpen()) editor.commit();
+      if (mathEditor.isOpen()) mathEditor.commit();
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
         const f = Math.exp(-e.deltaY * 0.0015);
@@ -285,7 +303,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       iCanvas.removeEventListener("dblclick", onDblClick);
       stage.removeEventListener("wheel", onWheel);
     };
-  }, [editor, inputCtx, store]);
+  }, [editor, mathEditor, inputCtx, store]);
 
   // ======================================================================
   // LIFECYCLE + STORE SUBSCRIPTIONS
@@ -332,6 +350,12 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     c.style.cursor = getInteraction(tool)?.cursor ?? "default";
   }, [tool]);
 
+  // Picking the maths tool starts the MathLive + KaTeX downloads immediately,
+  // so the first tap opens the editor without a cold-start stall.
+  useEffect(() => {
+    if (tool === "math") prewarmMathEditor();
+  }, [tool]);
+
   // The host (App) owns the #stage wrapper and renders WidgetLayer / ZoomCluster
   // / FloatButtons as siblings. This component contributes only the two stacked
   // canvases and the in-place text editor.
@@ -353,6 +377,29 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
             editor.commit();
           }
           e.stopPropagation();
+        }}
+      />
+
+      {/* In-place maths editor host (logic + inner DOM in canvas/mathEditor.ts:
+          a MathLive <math-field>, a raw-LaTeX textarea and the mode toggle).
+          Enter/Escape commit; capture phase so MathLive never sees them. Other
+          keys are stopped from reaching the window shortcut handler, exactly
+          like the text editor above. Focus leaving the overlay commits too
+          (the maths keyboard never takes focus, so it doesn't trigger this). */}
+      <div
+        id="mathEditor"
+        ref={mathHostRef}
+        onKeyDownCapture={(e) => {
+          if ((e.key === "Enter" && !e.shiftKey) || e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            mathEditor.commit();
+          }
+        }}
+        onKeyDown={(e) => e.stopPropagation()}
+        onBlur={(e) => {
+          const to = e.relatedTarget as Node | null;
+          if (to && !e.currentTarget.contains(to)) mathEditor.commit();
         }}
       />
     </>

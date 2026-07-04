@@ -1,6 +1,6 @@
 // THE INTERACTION-TOOL CONTRACT (T1 in docs/canvas-app-architecture.md).
 //
-// Interaction tools (ToolName: pen | text | eraser | select | pan) get the
+// Interaction tools (ToolName: pen | text | math | eraser | select | pan) get the
 // same treatment placeable tools already have in tools/registry.ts: each is a
 // small controller object registered by tool name. The BoardCanvas host keeps
 // only the SHARED input infrastructure — pointer bookkeeping, two-finger
@@ -10,8 +10,8 @@
 //
 // Controllers own their live drag state as module/closure locals (the old
 // strokeRef / movingRef / lassoRef / ... component refs). The host guarantees:
-//   - onPointerDown fires only for the first, non-ignored pointer, with the
-//     in-place text editor already committed;
+//   - onPointerDown fires only for the first, non-ignored pointer, with any
+//     in-place editor (text or maths) already committed;
 //   - onPointerMove / onPointerUp fire for tracked pointers only (onPointerUp
 //     also receives pointercancel — check e.type when it matters);
 //   - cancel() fires when a second finger lands (the tap becomes a pinch) —
@@ -31,9 +31,11 @@ export interface Pt {
   y: number;
 }
 
-/** The in-place text editor overlay, owned by the host (it holds the
- *  <textarea>); the text controller and host guards drive it through this. */
-export interface TextEditorHandle {
+/** An in-place editor overlay, owned by the host (it holds the DOM). Two
+ *  exist: the free-text <textarea> (canvas/textEditor.ts) and the MathLive
+ *  maths editor (canvas/mathEditor.ts). Controllers and host guards drive
+ *  them through this shared handle. */
+export interface InPlaceEditorHandle {
   open(obj: AnyBoardObject, isNew: boolean): void;
   commit(): void;
   isOpen(): boolean;
@@ -52,7 +54,10 @@ export interface InputCtx {
    *  call this only when controller-local preview state changed). */
   render(): void;
   canvas: HTMLCanvasElement;
-  editor: TextEditorHandle;
+  /** The in-place free-text editor (a positioned <textarea>). */
+  editor: InPlaceEditorHandle;
+  /** The in-place maths editor (a positioned MathLive <math-field>). */
+  mathEditor: InPlaceEditorHandle;
   /** Open an object's settings Dialog (the host-routed EDIT flow). */
   editObject(obj: AnyBoardObject): void;
 }

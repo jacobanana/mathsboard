@@ -39,9 +39,11 @@ import imageTool from "@/tools/image";
 // Gallery order (also the registration order listByCategory preserves).
 const ALL_TOOLS = [
   textTool,
-  // Number & calculating (prototype gallery order: place value comes LAST here).
-  // Maths notation (roadmap B1) is new, and general-purpose enough to lead.
+  // Maths notation is a DOCK tool like text (inGallery:false): created by
+  // clicking the board, edited in place via MathLive. Registered here so the
+  // canvas can draw/size saved objects.
   mathTextTool,
+  // Number & calculating (prototype gallery order: place value comes LAST here).
   numberLineTool,
   timesTableTool,
   gridMethodTool,
