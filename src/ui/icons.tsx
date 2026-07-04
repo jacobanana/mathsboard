@@ -74,4 +74,5 @@ export const GLYPH = {
   boards: "🗂",
   share: "🔗",
   join: "⇥",
+  keyboard: "⌨",
 } as const;

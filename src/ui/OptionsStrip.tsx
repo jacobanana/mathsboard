@@ -24,6 +24,7 @@
 import { useRef, useState } from "react";
 import { useBoardStore, activeTextObjectId } from "@/board/store";
 import { Popover } from "@/ui/Popover";
+import { keyHint } from "@/ui/shortcuts";
 import {
   PALETTE,
   PEN_SIZE_RANGE,
@@ -47,7 +48,7 @@ function ColorPicker({ onPick }: { onPick: (hex: string) => void }): JSX.Element
         ref={btnRef}
         className="btn small"
         id="colorBtn"
-        title={"Colour (C) — " + name}
+        title={`Colour (${keyHint("cycleColor")}) — ` + name}
         onClick={() => setOpen((o) => !o)}
       >
         <span className="color-cur" style={{ background: color }} />
@@ -124,7 +125,10 @@ export function OptionsStrip(): JSX.Element | null {
 
   return (
     <div className="group" id="options">
-      <label className="size-wrap" title={"Size (+/-) — " + value + "px"}>
+      <label
+        className="size-wrap"
+        title={`Size (${keyHint("sizeUp")}/${keyHint("sizeDown")}) — ${value}px`}
+      >
         <input
           type="range"
           className="size-slider"

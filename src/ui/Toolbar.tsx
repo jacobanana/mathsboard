@@ -27,6 +27,7 @@ import { COLLAB_ENABLED } from "@/config";
 import type { ToolName } from "@/board/types";
 import { OptionsStrip } from "@/ui/OptionsStrip";
 import { OverflowMenu } from "@/ui/OverflowMenu";
+import { keyHint } from "@/ui/shortcuts";
 import { DrawIcon, TextIcon, EraserIcon, ImageIcon, GLYPH } from "@/ui/icons";
 
 export interface ToolbarCallbacks {
@@ -40,6 +41,8 @@ export interface ToolbarCallbacks {
   onJoin: () => void;
   /** Insert a picture (opens the image tool's file-picker dialog directly). */
   onAddImage: () => void;
+  /** Open the keyboard-shortcuts help sheet. */
+  onHelp: () => void;
 }
 
 export function Toolbar(props: ToolbarCallbacks): JSX.Element {
@@ -65,7 +68,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
         <button
           className={"btn small" + (isMode("select") ? " active" : "")}
           id="selectBtn"
-          title="Select & move (1) — click a shape or drawing, drag empty space to lasso, Ctrl+A for all"
+          title={`Select & move (${keyHint("tool-select")}) — click a shape or drawing, drag empty space to lasso, ${keyHint("selectAll")} for all`}
           aria-label="Select"
           onClick={() => setTool("select")}
         >
@@ -74,7 +77,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
         <button
           className={"btn small" + (isMode("pan") ? " active" : "")}
           id="panBtn"
-          title="Move the view (2)"
+          title={`Move the view (${keyHint("tool-pan")})`}
           aria-label="Pan"
           onClick={() => setTool("pan")}
         >
@@ -83,7 +86,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
         <button
           className={"btn small" + (isMode("pen") ? " active" : "")}
           id="drawBtn"
-          title="Draw (3)"
+          title={`Draw (${keyHint("tool-draw")})`}
           aria-label="Draw"
           onClick={() => setTool("pen")}
         >
@@ -94,7 +97,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
         <button
           className={"btn small" + (isMode("eraser") ? " active" : "")}
           id="eraserBtn"
-          title="Eraser (4)"
+          title={`Eraser (${keyHint("tool-eraser")})`}
           aria-label="Eraser"
           onClick={() => setTool("eraser")}
         >
@@ -105,7 +108,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
         <button
           className={"btn small" + (isMode("text") ? " active" : "")}
           id="textBtn"
-          title="Type text (5)"
+          title={`Type text (${keyHint("tool-text")})`}
           aria-label="Text"
           onClick={() => setTool("text")}
         >
@@ -124,7 +127,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
       <button
         className="btn small insert"
         id="insertBtn"
-        title="Insert a maths widget (I)"
+        title={`Insert a maths widget (${keyHint("insert")})`}
         aria-label="Insert"
         onClick={props.onInsert}
       >
@@ -139,7 +142,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
         <button
           className="btn small"
           id="imageBtn"
-          title="Add a picture"
+          title={`Add a picture (${keyHint("image")})`}
           aria-label="Add a picture"
           onClick={props.onAddImage}
         >
@@ -154,7 +157,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
       <button
         className="btn small"
         id="undoBtn"
-        title="Undo (Ctrl+Z)"
+        title={`Undo (${keyHint("undo")})`}
         aria-label="Undo"
         disabled={!canUndo}
         onClick={undo}
@@ -164,7 +167,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
       <button
         className="btn small"
         id="redoBtn"
-        title="Redo (Ctrl+Shift+Z)"
+        title={`Redo (${keyHint("redo")})`}
         aria-label="Redo"
         disabled={!canRedo}
         onClick={redo}
@@ -205,6 +208,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
         onPaper={props.onPaper}
         onBoards={props.onBoards}
         onSaveImage={props.onSaveImage}
+        onHelp={props.onHelp}
       />
     </div>
   );

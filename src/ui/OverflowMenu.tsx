@@ -11,6 +11,7 @@ import { useRef, useState } from "react";
 import { useCollabStore } from "@/collab/collabStore";
 import { COLLAB_ENABLED } from "@/config";
 import { Popover } from "@/ui/Popover";
+import { keyHint } from "@/ui/shortcuts";
 import { GLYPH } from "@/ui/icons";
 
 export interface OverflowMenuProps {
@@ -19,6 +20,8 @@ export interface OverflowMenuProps {
   onPaper: (anchor: HTMLElement) => void;
   onBoards: () => void;
   onSaveImage: () => void;
+  /** Open the keyboard-shortcuts help sheet. */
+  onHelp: () => void;
 }
 
 export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
@@ -84,7 +87,9 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
           </button>
           <button
             id="boardsBtn"
-            title="Boards — save, open, rename & delete whiteboards (Ctrl+S save · Ctrl+Shift+S save as)"
+            title={`Boards — save, open, rename & delete whiteboards (${keyHint(
+              "save",
+            )} save · ${keyHint("saveAs")} save as)`}
             onClick={pick(props.onBoards)}
           >
             <span className="ico">{GLYPH.boards}</span>
@@ -93,6 +98,14 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
           <button id="saveBtn" onClick={pick(props.onSaveImage)}>
             <span className="ico">{GLYPH.save}</span>
             <span className="label">Save image</span>
+          </button>
+          <button
+            id="shortcutsBtn"
+            title={`Keyboard shortcuts (${keyHint("help")})`}
+            onClick={pick(props.onHelp)}
+          >
+            <span className="ico">{GLYPH.keyboard}</span>
+            <span className="label">Keyboard shortcuts</span>
           </button>
       </Popover>
     </>

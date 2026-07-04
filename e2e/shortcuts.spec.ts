@@ -8,6 +8,7 @@ import {
   boardState,
   drawStroke,
   openApp,
+  openToolbarMenu,
   waitForStrokeCount,
 } from "./helpers";
 
@@ -63,4 +64,41 @@ test("arrow keys nudge the selection", async ({ newClient }) => {
   await expect
     .poll(async () => minX(await boardState(page)))
     .toBeGreaterThan(before);
+});
+
+test("letter keys D / T / E switch the active tool", async ({ newClient }) => {
+  const page = await newClient();
+  await openApp(page);
+
+  // The app starts on the pen; prove each mnemonic moves the active tool. The
+  // selected tool button carries the `active` class.
+  await page.keyboard.press("t");
+  await expect(page.locator("#textBtn")).toHaveClass(/active/);
+
+  await page.keyboard.press("e");
+  await expect(page.locator("#eraserBtn")).toHaveClass(/active/);
+
+  await page.keyboard.press("d");
+  await expect(page.locator("#drawBtn")).toHaveClass(/active/);
+});
+
+test("the shortcuts help opens from the burger menu and the ? key", async ({
+  newClient,
+}) => {
+  const page = await newClient();
+  await openApp(page);
+
+  // Burger menu -> Keyboard shortcuts.
+  await openToolbarMenu(page);
+  await page.locator("#shortcutsBtn").click();
+  const heading = page.getByRole("heading", { name: "Keyboard shortcuts" });
+  await expect(heading).toBeVisible();
+  // The sheet is catalog-driven, so the picture row (collab build) is present.
+  await expect(page.locator("#scrim").getByText("Insert a picture")).toBeVisible();
+
+  // Escape closes it; "?" reopens it.
+  await page.keyboard.press("Escape");
+  await expect(heading).not.toBeVisible();
+  await page.keyboard.press("Shift+/");
+  await expect(heading).toBeVisible();
 });

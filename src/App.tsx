@@ -44,22 +44,16 @@ import { InsertGallery } from "@/ui/InsertGallery";
 import { PaperMenu } from "@/ui/PaperMenu";
 import { BoardsManager } from "@/ui/BoardsManager";
 import { NamePrompt } from "@/ui/NamePrompt";
+import { ShortcutsHelp } from "@/ui/ShortcutsHelp";
 import { useImageDrop } from "@/ui/useImageDrop";
-import { useBoardStore, activeTextObjectId } from "@/board/store";
-import { useUiStore } from "@/ui/uiStore";
+import { useBoardStore } from "@/board/store";
 import { screenToWorld } from "@/board/geometry";
 import { COLLAB_ENABLED } from "@/config";
 import { getTool } from "@/tools/registry";
 import { id as makeId } from "@/board/types";
 import { theme } from "@/styles/theme";
-import { textSizeOf } from "@/canvas/drawHelpers";
-import {
-  PALETTE,
-  PEN_SIZE_RANGE,
-  TEXT_SIZE_RANGE,
-  ERASER_SIZE_RANGE,
-} from "@/ui/constants";
-import type { AnyBoardObject, Stroke } from "@/board/types";
+import { handleShortcut, type ShortcutHost } from "@/ui/shortcuts";
+import type { AnyBoardObject } from "@/board/types";
 import type { CanvasTool, WidgetTool } from "@/tools/registry";
 
 // --- modal routing ---------------------------------------------------------
@@ -73,6 +67,7 @@ type ModalState =
   | { kind: "share" }
   | { kind: "join" }
   | { kind: "joinName" }
+  | { kind: "help" }
   | null;
 
 /** Pull the registered tool's size for given params (canvas: size(p); widget: fixed). */
@@ -99,130 +94,11 @@ function paramsOf(obj: AnyBoardObject): Record<string, unknown> {
   return params;
 }
 
-/** Cycle the draw colour to the next palette entry (C). Also recolours a live
- *  text object, matching a swatch click. */
-function cycleColor(): void {
-  const st = useBoardStore.getState();
-  const idx = PALETTE.findIndex(([, hex]) => hex === st.color);
-  const [, next] = PALETTE[(idx + 1) % PALETTE.length];
-  st.setColor(next);
-  const tid = activeTextObjectId(st);
-  if (tid != null) st.updateObject(tid, { color: next });
-}
-
-/** Nudge the active tool's size one step (+/-), clamped to that tool's range.
- *  No-op unless a size-bearing tool (pen / eraser / text) is active. */
-function adjustSize(dir: 1 | -1): void {
-  const st = useBoardStore.getState();
-  const conf =
-    st.tool === "pen"
-      ? { range: PEN_SIZE_RANGE, cur: st.penSize, set: st.setPenSize }
-      : st.tool === "eraser"
-        ? { range: ERASER_SIZE_RANGE, cur: st.eraserSize, set: st.setEraserSize }
-        : st.tool === "text"
-          ? { range: TEXT_SIZE_RANGE, cur: st.textSize, set: st.setTextSize }
-          : null;
-  if (!conf) return;
-  const next = Math.min(
-    conf.range.max,
-    Math.max(conf.range.min, conf.cur + dir * conf.range.step),
-  );
-  if (next === conf.cur) return;
-  conf.set(next);
-  // Text: re-measure the live object so its box tracks the new size.
-  if (st.tool === "text") {
-    const tid = activeTextObjectId(st);
-    if (tid != null) {
-      const obj = st.board.objects.find((o) => o.id === tid);
-      const text = (obj?.text as string) ?? "";
-      const { w, h } = textSizeOf(text, next);
-      st.updateObject(tid, { size: next, w, h });
-    }
-  }
-}
-
-// --- copy / cut / paste / duplicate --------------------------------------
-// An INTERNAL clipboard (not the OS clipboard): Ctrl+C/X snapshot the selected
-// shapes here, Ctrl+V / Ctrl+D re-insert clones with fresh ids and a cascading
-// offset. Matches how Excalidraw/Miro handle in-app copy.
-
-type ShapeBag = { objects: AnyBoardObject[]; strokes: Stroke[] };
-
-/** World-px offset applied to each paste/duplicate so a copy doesn't land
- *  exactly on top of its source. */
-const PASTE_OFFSET = 24;
-
-let clipboard: ShapeBag | null = null;
-// How many times the CURRENT clipboard has been pasted, so repeated pastes
-// cascade instead of stacking. Reset on every copy/cut.
-let pasteSeq = 0;
-
-/** The selected objects + strokes, resolved to their document shapes. */
-function selectedShapes(): ShapeBag {
-  const st = useBoardStore.getState();
-  const objects = st.selection.objectIds
-    .map((id) => st.board.objects.find((o) => o.id === id))
-    .filter((o): o is AnyBoardObject => o != null);
-  const strokes = st.selection.strokeIds
-    .map((id) => st.board.strokes.find((s) => s.id === id))
-    .filter((s): s is Stroke => s != null);
-  return { objects, strokes };
-}
-
-/** Deep-clone shapes with fresh ids and a world offset; strips `order` so the
- *  batch re-inserts on top (insertShapes assigns fresh order keys). */
-function cloneShapes(src: ShapeBag, dx: number, dy: number): ShapeBag {
-  const objects = src.objects.map((o) => {
-    const { order, ...rest } = structuredClone(o);
-    void order;
-    return { ...rest, id: makeId(), x: o.x + dx, y: o.y + dy };
-  });
-  const strokes = src.strokes.map((s) => {
-    const { order, ...rest } = structuredClone(s);
-    void order;
-    return {
-      ...rest,
-      id: makeId(),
-      points: rest.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
-    };
-  });
-  return { objects, strokes };
-}
-
-/** Insert a clone batch, then select it and switch to the select tool so the
- *  fresh copy can be moved immediately (mirrors placeNew). */
-function placeClones(batch: ShapeBag): void {
-  if (batch.objects.length === 0 && batch.strokes.length === 0) return;
-  const st = useBoardStore.getState();
-  st.addShapes(batch.objects, batch.strokes);
-  st.setSelection({
-    objectIds: batch.objects.map((o) => o.id),
-    strokeIds: batch.strokes.map((s) => s.id),
-  });
-  st.setTool("select");
-}
-
-function copySelection(): void {
-  const sel = selectedShapes();
-  if (sel.objects.length === 0 && sel.strokes.length === 0) return;
-  clipboard = {
-    objects: sel.objects.map((o) => structuredClone(o)),
-    strokes: sel.strokes.map((s) => structuredClone(s)),
-  };
-  pasteSeq = 0;
-}
-
-function pasteClipboard(): void {
-  if (!clipboard) return;
-  pasteSeq += 1;
-  const d = PASTE_OFFSET * pasteSeq;
-  placeClones(cloneShapes(clipboard, d, d));
-}
-
-function duplicateSelection(): void {
-  const sel = selectedShapes();
-  placeClones(cloneShapes(sel, PASTE_OFFSET, PASTE_OFFSET));
-}
+// The global keyboard shortcuts — tool keys, the internal clipboard
+// (copy/cut/paste/duplicate), colour/size, arrow-nudge and Save — live in
+// src/ui/shortcuts.ts as a single declarative catalog that also drives the
+// help sheet. App only supplies the ShortcutHost (the actions that open a
+// modal or save) and forwards keydown to handleShortcut.
 
 export default function App(): JSX.Element {
   const init = useBoardStore((s) => s.init);
@@ -235,9 +111,6 @@ export default function App(): JSX.Element {
   const [paperAnchor, setPaperAnchor] = useState<HTMLElement | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Timestamp of the last arrow-key nudge, so a held/rapid burst collapses into
-  // one undo step while a fresh press after a pause starts a new one.
-  const nudgeAtRef = useRef(0);
   // The #stage element (owned by App) FloatButtons portals into and ZoomCluster
   // measures. Captured via a callback ref so it's available on first commit.
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -456,112 +329,24 @@ export default function App(): JSX.Element {
     a.click();
   }, []);
 
-  // --- global keyboard shortcuts (port of prototype line 340) --------------
-  // Delete/Backspace removes the whole selection (objects + strokes); Ctrl/Cmd+A
-  // selects everything; Ctrl/Cmd+C / X / V copy / cut / paste the selection;
-  // Ctrl/Cmd+D duplicates it; arrow keys nudge it (Shift = bigger); Escape
-  // clears the selection; Ctrl/Cmd+Z undoes, +Shift redoes; 1-5 pick a tool
-  // (toolbar order); I / 6 open the Insert gallery; C cycles the draw colour;
-  // +/- resize the active tool. Suppressed while any modal is open or a text
-  // object is being edited in place (textarea/worksheet inputs stopPropagation
-  // on their own keys).
+  // --- global keyboard shortcuts ------------------------------------------
+  // The whole catalog (which key does what, its guards, and its help text)
+  // lives in src/ui/shortcuts.ts; handleShortcut runs it against each keydown.
+  // Here we only bind the listener and supply the host — the actions that open
+  // a modal or save, which the catalog can't perform on its own. Everything
+  // else (tools, clipboard, colour/size, nudge) is pure store work in there.
   useEffect(() => {
-    // 1-5 mirror the toolbar's button order.
-    const TOOL_KEYS = ["select", "pan", "pen", "eraser", "text"] as const;
-    const onKey = (e: KeyboardEvent) => {
-      const st = useBoardStore.getState();
-      // Save shortcuts work even while editing text, but defer to any open
-      // dialog (its own buttons own Enter/Escape).
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-        if (useUiStore.getState().modalOpen) return;
-        e.preventDefault();
-        if (e.shiftKey) doSaveAs();
-        else void doSave();
-        return;
-      }
-      if (useUiStore.getState().modalOpen || st.editingId != null) return;
-      const hasSelection =
-        st.selection.objectIds.length + st.selection.strokeIds.length > 0;
-      const mod = e.ctrlKey || e.metaKey;
-      const key = e.key.toLowerCase();
-      // Focus in a real field (widget answer boxes, join-code input, ...): let
-      // native editing + copy/paste through; only stopPropagation-less inputs
-      // reach here, but guard anyway.
-      const inField =
-        (e.target as HTMLElement | null)?.closest(
-          "input,textarea,select,[contenteditable]",
-        ) != null;
-
-      if ((e.key === "Delete" || e.key === "Backspace") && hasSelection) {
-        e.preventDefault();
-        st.deleteSelection();
-      } else if (mod && key === "a") {
-        e.preventDefault();
-        st.setTool("select");
-        st.selectAll();
-      } else if (mod && key === "c" && hasSelection && !inField) {
-        e.preventDefault();
-        copySelection();
-      } else if (mod && key === "x" && hasSelection && !inField) {
-        e.preventDefault();
-        copySelection();
-        st.deleteSelection();
-      } else if (mod && key === "v" && !inField) {
-        e.preventDefault();
-        pasteClipboard();
-      } else if (mod && key === "d" && hasSelection && !inField) {
-        e.preventDefault();
-        duplicateSelection();
-      } else if (e.key === "Escape" && hasSelection) {
-        e.preventDefault();
-        st.clearSelection();
-      } else if (mod && key === "z") {
-        e.preventDefault();
-        if (e.shiftKey) st.redo();
-        else st.undo();
-      } else if (
-        !mod &&
-        !e.altKey &&
-        e.key.startsWith("Arrow") &&
-        hasSelection &&
-        !inField
-      ) {
-        // Nudge the selection; Shift = a bigger step, held constant in screen px
-        // regardless of zoom. captureTimeout is Infinity, so a fresh press after
-        // a >500ms pause starts a new undo step; a burst merges into one.
-        e.preventDefault();
-        const px = (e.shiftKey ? 10 : 1) / st.camera.scale;
-        const dx = e.key === "ArrowLeft" ? -px : e.key === "ArrowRight" ? px : 0;
-        const dy = e.key === "ArrowUp" ? -px : e.key === "ArrowDown" ? px : 0;
-        const now = Date.now();
-        if (now - nudgeAtRef.current > 500) st.pushHistory();
-        nudgeAtRef.current = now;
-        st.nudgeSelection(dx, dy);
-      } else if (!mod && !e.altKey && !inField) {
-        // Bare-key shortcuts: 1-5 pick a tool, I / 6 open the Insert gallery
-        // (6 continues the toolbar's number row), C cycles colour, +/- resize.
-        if (e.key >= "1" && e.key <= String(TOOL_KEYS.length)) {
-          e.preventDefault();
-          st.setTool(TOOL_KEYS[Number(e.key) - 1]);
-        } else if (key === "i" || e.key === "6") {
-          e.preventDefault();
-          setModal({ kind: "insert" });
-        } else if (key === "c") {
-          e.preventDefault();
-          cycleColor();
-        } else if (e.key === "+" || e.key === "=") {
-          // Accept "=" so the +/= key works without Shift.
-          e.preventDefault();
-          adjustSize(1);
-        } else if (e.key === "-" || e.key === "_") {
-          e.preventDefault();
-          adjustSize(-1);
-        }
-      }
+    const host: ShortcutHost = {
+      save: () => void doSave(),
+      saveAs: doSaveAs,
+      openInsert: () => setModal({ kind: "insert" }),
+      openImage: () => handlePick("image"),
+      openHelp: () => setModal({ kind: "help" }),
     };
+    const onKey = (e: KeyboardEvent) => handleShortcut(e, host);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [doSave, doSaveAs]);
+  }, [doSave, doSaveAs, handlePick]);
 
   // --- the open tool Dialog (create or edit), resolved from the registry ---
   let dialogNode: JSX.Element | null = null;
@@ -595,6 +380,7 @@ export default function App(): JSX.Element {
         onShare={() => setModal({ kind: "share" })}
         onJoin={() => setModal({ kind: "join" })}
         onAddImage={() => handlePick("image")}
+        onHelp={() => setModal({ kind: "help" })}
       />
 
       {/* #stage is the positioned board viewport. It holds the two stacked
@@ -654,6 +440,10 @@ export default function App(): JSX.Element {
 
       <Modal open={modal?.kind === "insert"} onClose={closeModal}>
         <InsertGallery onPick={handlePick} />
+      </Modal>
+
+      <Modal open={modal?.kind === "help"} onClose={closeModal}>
+        <ShortcutsHelp />
       </Modal>
 
       <Modal open={modal?.kind === "dialog"} onClose={closeModal}>
