@@ -96,9 +96,12 @@ test("the shortcuts help opens from the burger menu and the ? key", async ({
   // The sheet is catalog-driven, so the picture row (collab build) is present.
   await expect(page.locator("#scrim").getByText("Insert a picture")).toBeVisible();
 
-  // Escape closes it; "?" reopens it.
+  // Escape closes it; "?" reopens it. Press the physical Shift+Slash chord, not
+  // "Shift+/": Playwright treats "/" as a literal named key (reporting e.key
+  // "/"), whereas "Shift+Slash" applies the shift mapping and dispatches e.key
+  // "?", exactly as a real browser does — which is what the catalog matches on.
   await page.keyboard.press("Escape");
   await expect(heading).not.toBeVisible();
-  await page.keyboard.press("Shift+/");
+  await page.keyboard.press("Shift+Slash");
   await expect(heading).toBeVisible();
 });
