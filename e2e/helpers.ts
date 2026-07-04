@@ -148,8 +148,9 @@ export async function drawStroke(
 // --- toolbar -----------------------------------------------------------------
 
 /**
- * Open the toolbar burger menu. Join / Share (while solo) / Paper / Boards /
- * Save image live in here; while shared, Share is the status chip on the bar.
+ * Open the toolbar burger menu. Join / Paper / Boards / Save image / Shortcuts
+ * live in here. Share is NOT in the menu — it's an always-visible toolbar
+ * button (#shareBtn) just left of the burger.
  */
 export async function openToolbarMenu(page: Page): Promise<void> {
   await page.locator("#menuBtn").click();
@@ -159,11 +160,10 @@ export async function openToolbarMenu(page: Page): Promise<void> {
 // --- collaboration flows ----------------------------------------------------------
 
 /**
- * Start sharing under `name` (via the burger menu's Share) and return the
- * share link. Leaves the Share modal CLOSED.
+ * Start sharing under `name` (via the always-visible toolbar Share button) and
+ * return the share link. Leaves the Share modal CLOSED.
  */
 export async function startSharing(page: Page, name: string): Promise<string> {
-  await openToolbarMenu(page);
   await page.locator("#shareBtn").click();
   await page.getByPlaceholder("Your name").fill(name);
   await page.getByRole("button", { name: "Start sharing", exact: true }).click();

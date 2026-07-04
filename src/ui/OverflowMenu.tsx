@@ -1,10 +1,11 @@
 // The toolbar burger ("☰") and its popover: the lesser-used actions that used
-// to crowd the toolbar — Join / Share, Paper, Boards, Save image. Owns its own
-// open state; closes on pick or any outside click (same pattern as PaperMenu).
+// to crowd the toolbar — Join, Paper, Boards, Save image, Shortcuts. Owns its
+// own open state; closes on pick or any outside click (same pattern as
+// PaperMenu).
 //
-// While the board is SHARED, Join and Share are NOT in here: Join is hidden
-// entirely and Share lives on the toolbar as the live status chip (see
-// Toolbar). The Paper item re-anchors the existing PaperMenu popover to the
+// Share is NOT in here — it lives on the toolbar as an always-visible button
+// just left of the burger (see Toolbar). Join is hidden while the board is
+// SHARED. The Paper item re-anchors the existing PaperMenu popover to the
 // burger button, which stays mounted while the menu closes.
 
 import { useRef, useState } from "react";
@@ -15,7 +16,6 @@ import { keyHint } from "@/ui/shortcuts";
 import {
   MenuIcon,
   JoinIcon,
-  ShareIcon,
   PaperIcon,
   BoardsIcon,
   SaveIcon,
@@ -24,7 +24,6 @@ import {
 
 export interface OverflowMenuProps {
   onJoin: () => void;
-  onShare: () => void;
   onPaper: (anchor: HTMLElement) => void;
   onBoards: () => void;
   onSaveImage: () => void;
@@ -51,7 +50,7 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
         ref={btnRef}
         className={"btn small" + (open ? " active" : "")}
         id="menuBtn"
-        title="Menu — share, paper, boards, save image"
+        title="Menu — paper, boards, save image, shortcuts"
         aria-label="Menu"
         onClick={() => setOpen((o) => !o)}
       >
@@ -75,18 +74,6 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
               <JoinIcon />
             </span>
               <span className="label">Join a board</span>
-            </button>
-          )}
-          {COLLAB_ENABLED && collabMode !== "shared" && (
-            <button
-              id="shareBtn"
-              title="Share this board with a link"
-              onClick={pick(props.onShare)}
-            >
-              <span className="ico">
-              <ShareIcon />
-            </span>
-              <span className="label">Share this board</span>
             </button>
           )}
           <button

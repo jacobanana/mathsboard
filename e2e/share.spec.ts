@@ -9,7 +9,6 @@ import {
   collabState,
   drawStroke,
   openApp,
-  openToolbarMenu,
   startSharing,
   waitForConnected,
   waitForStrokeCount,
@@ -76,8 +75,7 @@ test("leaving keeps the content as a private local draft", async ({
   expect(page.url()).not.toContain("board=");
   // The drawing survives the disconnect as the local draft.
   await waitForStrokeCount(page, 1);
-  // The live chip is gone; Share is back to a plain burger-menu item.
-  await expect(page.locator("#shareBtn")).toHaveCount(0);
-  await openToolbarMenu(page);
-  await expect(page.locator("#shareBtn .label")).toHaveText("Share this board");
+  // The live "N here" chip flips back to the plain toolbar Share button, which
+  // stays put just left of the burger.
+  await expect(page.locator("#shareBtn .label")).toHaveText("Share");
 });

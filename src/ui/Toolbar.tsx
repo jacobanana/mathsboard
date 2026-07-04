@@ -3,9 +3,10 @@
 //
 //   #toolbar — a slim top strip of floating "islands":
 //     left:  the board-title chip (tap -> boards manager);
-//     right: the live share chip (only while shared), Undo / Redo, and the
+//     right: Undo / Redo, the always-visible Share button (a plain "Share"
+//            when solo, the live "N here" status chip while shared), then the
 //            burger menu (OverflowMenu) with the lesser-used actions — Join,
-//            Share, Paper, Boards, Save image, Shortcuts.
+//            Paper, Boards, Save image, Shortcuts.
 //
 //   #dock — a bottom-centre pill, thumb-reachable on touch devices, holding
 //     the five mode buttons (Select, Pan, Draw, Eraser, Text; keys 1-5 wired
@@ -42,6 +43,7 @@ import {
   UndoIcon,
   RedoIcon,
   PlusIcon,
+  ShareIcon,
 } from "@/ui/icons";
 
 export interface ToolbarCallbacks {
@@ -98,21 +100,6 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
         </div>
 
         <div className="island">
-          {/* Live share status chip — only while in a shared session
-              (otherwise Share lives in the burger menu). The dot mirrors the
-              connection state and the label shows how many people are here.
-              Collab builds only. */}
-          {COLLAB_ENABLED && collabMode === "shared" && (
-            <button
-              className="btn keep-label sharing"
-              id="shareBtn"
-              title="Shared board — link, who's here, leave"
-              onClick={props.onShare}
-            >
-              <span className={"status-dot status-" + collabStatus} />
-              <span className="label">{peerCount + 1 + " here"}</span>
-            </button>
-          )}
           <button
             className="btn small"
             id="undoBtn"
@@ -137,9 +124,38 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
               <RedoIcon />
             </span>
           </button>
+          {/* Share — always visible, sitting just left of the burger. While
+              shared it's the live status chip: the dot mirrors the connection
+              state and the label shows how many people are here. Solo, it's a
+              plain Share button that opens the share dialog. Collab builds
+              only. */}
+          {COLLAB_ENABLED &&
+            (collabMode === "shared" ? (
+              <button
+                className="btn keep-label sharing"
+                id="shareBtn"
+                title="Shared board — link, who's here, leave"
+                onClick={props.onShare}
+              >
+                <span className={"status-dot status-" + collabStatus} />
+                <span className="label">{peerCount + 1 + " here"}</span>
+              </button>
+            ) : (
+              <button
+                className="btn"
+                id="shareBtn"
+                title="Share this board with a link"
+                aria-label="Share"
+                onClick={props.onShare}
+              >
+                <span className="ico">
+                  <ShareIcon />
+                </span>
+                <span className="label">Share</span>
+              </button>
+            ))}
           <OverflowMenu
             onJoin={props.onJoin}
-            onShare={props.onShare}
             onPaper={props.onPaper}
             onBoards={props.onBoards}
             onSaveImage={props.onSaveImage}

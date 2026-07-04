@@ -11,6 +11,11 @@ os_cloud = ""
 # resolves.
 site_address = "board.example.com"
 
+# Subdomain for the self-hosted Umami analytics dashboard (analytics is enabled
+# on Terraform deploys). Add its OWN A record -> the same `floating_ip`; Caddy
+# provisions its cert automatically once that DNS resolves.
+analytics_address = "analytics.board.example.com"
+
 # Public SSH key to install on the box. Store the matching PRIVATE key as the
 # DEPLOY_SSH_KEY GitHub secret.
 ssh_public_key = "ssh-ed25519 AAAA... you@host"
