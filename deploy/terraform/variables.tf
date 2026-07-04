@@ -95,13 +95,13 @@ variable "s3_bucket" {
 }
 
 variable "s3_endpoint" {
-  description = "Infomaniak S3 endpoint. Confirm the host in your Object Storage dashboard."
+  description = "Infomaniak S3 endpoint - MUST match your project's region (clouds.yaml region_name): dc3-a -> https://s3.pub1.infomaniak.cloud, dc4-a -> https://s3.pub2.infomaniak.cloud."
   type        = string
   default     = "https://s3.pub1.infomaniak.cloud"
 }
 
 variable "aws_region" {
-  description = "Region label sent to the S3 API. Path-style makes it cosmetic."
+  description = "Region label for the S3 SigV4 signature. us-east-1 works (Infomaniak treats it as a cosmetic compatibility value); dc3-a / dc4-a are also accepted."
   type        = string
   default     = "us-east-1"
 }

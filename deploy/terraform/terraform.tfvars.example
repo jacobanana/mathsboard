@@ -26,5 +26,9 @@ y_sweet_server_token = "REPLACE_WITH_server_token"
 # image_name            = "Ubuntu 24.04 LTS"
 # flavor_name           = "a1-ram2-disk20-perf1"
 # external_network_name = "ext-floating1"
-# s3_endpoint           = "https://s3.pub1.infomaniak.cloud"
 # s3_bucket             = "mathboard"
+#
+# The S3 endpoint MUST match your project's region (clouds.yaml region_name):
+#   dc3-a -> https://s3.pub1.infomaniak.cloud   (the default)
+#   dc4-a -> https://s3.pub2.infomaniak.cloud
+# s3_endpoint = "https://s3.pub2.infomaniak.cloud"
