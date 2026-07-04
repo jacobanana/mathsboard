@@ -72,13 +72,13 @@ certificate automatically on the first HTTPS request once DNS resolves — there
 is nothing to provision by hand.
 
 ### 7. GitHub secrets
-The deploy job SSHes into the box, so it needs three secrets. Set them with the
-`gh` CLI from inside the repo (it auto-detects the repo from the git remote — or
-add `-R jacobanana/mathboard`):
+The deploy job SSHes into the box, so it needs three secrets. Run these from
+this `deploy/terraform/` directory (where you just applied — `gh` still finds
+the repo from the git remote, or add `-R jacobanana/mathboard`):
 
 ```powershell
 gh secret set DEPLOY_USER --body "ubuntu"
-gh secret set DEPLOY_HOST --body (terraform -chdir=deploy/terraform output -raw floating_ip)
+gh secret set DEPLOY_HOST --body (terraform output -raw floating_ip)
 Get-Content ~/.ssh/mathboard_deploy -Raw | gh secret set DEPLOY_SSH_KEY
 ```
 
