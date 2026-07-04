@@ -461,6 +461,16 @@ export function newBoardCode(): string {
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** True for a short hex join code (as opposed to a legacy long board id). */
+export function isShortCode(id: string): boolean {
+  return /^[0-9a-f]{6,12}$/.test(id);
+}
+
+/** "4f2a9c1b" -> "4F2A-9C1B" for display (join input accepts either form). */
+export function formatBoardCode(code: string): string {
+  return code.toUpperCase().replace(/(.{4})(?=.)/g, "$1-");
+}
+
 /**
  * Parse "join a board" input: a bare code in any case, with or without
  * dashes/spaces ("4F2A-9C1B"), a full share link, or a legacy long board id.

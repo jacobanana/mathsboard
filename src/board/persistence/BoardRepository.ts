@@ -7,10 +7,12 @@ import type {
   BoardDocument,
   BoardSummary,
   DraftEnvelope,
+  RemoteBoardRef,
 } from "@/board/types";
 
 export interface BoardRepository {
-  /** Summaries of all stored (named/library) boards, for a gallery / picker. */
+  /** Summaries of all stored (named/library) LOCAL boards, for a gallery /
+   *  picker. Remote (shared) boards are listed separately via listRemotes(). */
   list(): Promise<BoardSummary[]>;
   /** Full document by id, or null if it does not exist. */
   load(id: string): Promise<BoardDocument | null>;
@@ -22,6 +24,17 @@ export interface BoardRepository {
   rename(id: string, name: string): Promise<void>;
   /** Delete a library board by id. */
   remove(id: string): Promise<void>;
+
+  // --- remembered remote (shared) boards ---
+  // Boards that live in the online store. We keep only a pointer (id + name +
+  // last-seen time), never a content copy, so a shared board is never
+  // duplicated between the online and the local store.
+  /** All remembered remote boards (shared boards visited or started here). */
+  listRemotes(): Promise<RemoteBoardRef[]>;
+  /** Remember (create or update) a remote board pointer. */
+  saveRemote(ref: RemoteBoardRef): Promise<void>;
+  /** Forget a remote board pointer (the online board itself is untouched). */
+  removeRemote(id: string): Promise<void>;
 
   // --- the working draft (single, continuously-autosaved current board) ---
   /** The persisted working draft, or null if none has been saved yet. */

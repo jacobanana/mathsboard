@@ -279,6 +279,27 @@ async function flushDraft(
   await localRepository.saveDraft({ doc, sourceId, dirty });
 }
 
+// --- Debounced remote-ref refresh ---------------------------------------
+// While a board is SHARED, its content is persisted online by Y-Sweet, not in a
+// local draft. We only keep a lightweight pointer (name + last-seen time) so the
+// board shows up in "previously visited shared boards". The name tracks the live
+// shared name, so a rename by ANY collaborator updates every peer's listing.
+let remoteRefTimer: ReturnType<typeof setTimeout> | undefined;
+function scheduleRemoteRefSave(): void {
+  if (remoteRefTimer) clearTimeout(remoteRefTimer);
+  remoteRefTimer = setTimeout(() => {
+    remoteRefTimer = undefined;
+    const { mode, boardId } = useCollabStore.getState();
+    if (mode !== "shared" || !boardId) return;
+    const { board } = useBoardStore.getState();
+    void localRepository.saveRemote({
+      id: boardId,
+      name: board.name,
+      updatedAt: Date.now(),
+    });
+  }, 400);
+}
+
 /** Reset transient per-document state when the document is swapped wholesale. */
 const FRESH_DOC_STATE = {
   canUndo: false,
@@ -305,6 +326,21 @@ export function activeTextObjectId(
   if (id == null) return null;
   const o = s.board.objects.find((obj) => obj.id === id);
   return o && o.type === "text" ? o.id : null;
+}
+
+/**
+ * Whether the current board is a PERSISTED board (so its name should be shown)
+ * rather than a never-saved local draft. A shared board always counts — it lives
+ * in the online store under a name every collaborator sees; a solo board counts
+ * once it has a linked library entry (`sourceId`). Single source of truth for the
+ * toolbar title and the boards manager so "what name do we show" lives in one
+ * place.
+ */
+export function isSavedBoard(
+  sourceId: string | null,
+  shared: boolean,
+): boolean {
+  return shared || sourceId != null;
 }
 
 /** Fallback display name when the user dismissed / never saw the prompt. */
@@ -479,37 +515,60 @@ export const useBoardStore = create<BoardState>((set, get) => {
     async joinBoard(boardId) {
       const board = session.joinShared(boardId, displayName());
       session.putBoardIdInUrl(boardId);
+      // A joined board is remote content: unlink it from the local library and
+      // keep the user's own private draft untouched (don't overwrite it with
+      // someone else's board). The FRESH state clears undo/selection.
+      cancelDraftSave();
       set({
         board,
-        // A joined board is remote content: unlink it from the local library.
         sourceId: null,
         dirty: false,
         camera: { x: 0, y: 0, scale: 1 },
         ...FRESH_DOC_STATE,
       });
+      // Remember it as a visited shared board. The name may still be the default
+      // until the first server sync lands; onBoardChange refreshes it then.
+      await localRepository.saveRemote({
+        id: boardId,
+        name: board.name,
+        updatedAt: Date.now(),
+      });
     },
 
     async shareBoard() {
       const current = session.currentBoard();
+      const prevSourceId = get().sourceId;
       // Short hex code, not a UUID: it doubles as the join code people can
       // type in by hand (Share dialog -> "Join with a code").
       const boardId = session.newBoardCode();
       const board = session.joinShared(boardId, displayName(), current);
       session.putBoardIdInUrl(boardId);
-      // Same content, same ids: keep selection/camera/source link; only the
-      // undo history resets (fresh doc), which FRESH state below would also
-      // clear -- do it narrowly to avoid dropping the user's selection.
-      set({ board, canUndo: false, canRedo: false });
+      // The board now lives in the ONLINE store. Move it there fully: register a
+      // remote pointer, drop any LOCAL copy it had (so it isn't in both stores),
+      // and discard the now-stale local draft — reopening the app plainly should
+      // not resurrect the pre-share solo copy. Unlink the local source.
+      cancelDraftSave();
+      set({ board, sourceId: null, dirty: false, canUndo: false, canRedo: false });
+      await localRepository.saveRemote({
+        id: boardId,
+        name: current.name,
+        updatedAt: Date.now(),
+      });
+      if (prevSourceId) await localRepository.remove(prevSourceId);
+      await localRepository.clearDraft();
       return session.shareLink();
     },
 
     leaveBoard() {
       // Keep what's on screen as the working draft ("leave with a local copy").
+      // It becomes an unlinked (Untitled) draft: the board itself stays in the
+      // online store and the remembered remote list, ready to rejoin. Saving
+      // this local copy later is a deliberate fork, not an accidental duplicate.
       const current = session.currentBoard();
       const board = session.startSolo(current);
       session.clearBoardIdFromUrl();
-      set({ board, dirty: true, ...FRESH_DOC_STATE });
-      void flushDraft(board, get().sourceId, true);
+      set({ board, sourceId: null, dirty: true, ...FRESH_DOC_STATE });
+      void flushDraft(board, null, true);
     },
 
     // ---- LOAD / SAVE ----
@@ -560,11 +619,37 @@ export const useBoardStore = create<BoardState>((set, get) => {
       set({ board, sourceId, dirty: false, ...FRESH_DOC_STATE });
     },
 
-    listBoards() {
-      return localRepository.list();
+    async listBoards() {
+      // The library is the union of LOCAL boards and remembered REMOTE (shared)
+      // boards, newest first. A board is only ever in one of the two — sharing
+      // moves it online (see shareBoard) — so there are no duplicates to merge.
+      const [local, remotes] = await Promise.all([
+        localRepository.list(),
+        localRepository.listRemotes(),
+      ]);
+      const remoteSummaries: BoardSummary[] = remotes.map((r) => ({
+        ...r,
+        remote: true,
+      }));
+      return [...local, ...remoteSummaries].sort(
+        (a, b) => b.updatedAt - a.updatedAt,
+      );
     },
 
     async saveCurrent() {
+      const collab = useCollabStore.getState();
+      if (collab.mode === "shared" && collab.boardId) {
+        // A shared board is persisted online continuously; "Save" just refreshes
+        // the remembered pointer (name + time). No local copy is ever written,
+        // so the board is never duplicated across the online and local stores.
+        await localRepository.saveRemote({
+          id: collab.boardId,
+          name: session.currentBoard().name,
+          updatedAt: Date.now(),
+        });
+        set({ dirty: false });
+        return { needsName: false };
+      }
       const { sourceId } = get();
       if (sourceId == null) return { needsName: true };
       const doc: BoardDocument = {
@@ -573,14 +658,26 @@ export const useBoardStore = create<BoardState>((set, get) => {
         updatedAt: Date.now(),
       };
       await localRepository.save(doc);
-      if (useCollabStore.getState().mode === "solo") {
-        await flushDraft(doc, sourceId, false);
-      }
+      await flushDraft(doc, sourceId, false);
       set({ dirty: false });
       return { needsName: false };
     },
 
     async saveAs(name) {
+      const collab = useCollabStore.getState();
+      if (collab.mode === "shared" && collab.boardId) {
+        // Naming a SHARED board renames the online doc for EVERY collaborator
+        // (setBoardName syncs it) and refreshes the remembered pointer. It writes
+        // NO local copy — the board stays online-only, no local/online duplicate.
+        session.setBoardName(name);
+        await localRepository.saveRemote({
+          id: collab.boardId,
+          name,
+          updatedAt: Date.now(),
+        });
+        set({ dirty: false });
+        return;
+      }
       const now = Date.now();
       const docId = newId();
       const doc: BoardDocument = {
@@ -593,13 +690,23 @@ export const useBoardStore = create<BoardState>((set, get) => {
       await localRepository.save(doc);
       // Rename the live document too (syncs to peers; not undoable).
       session.setBoardName(name);
-      if (useCollabStore.getState().mode === "solo") {
-        await flushDraft(doc, docId, false);
-      }
+      await flushDraft(doc, docId, false);
       set({ sourceId: docId, dirty: false });
     },
 
     async renameBoard(boardId, name) {
+      // Remote (shared) board: rename its online doc so every collaborator's
+      // title updates (when we're the one connected to it), and refresh the
+      // remembered pointer. No local document is involved.
+      const remotes = await localRepository.listRemotes();
+      const remote = remotes.find((r) => r.id === boardId);
+      if (remote) {
+        await localRepository.saveRemote({ ...remote, name, updatedAt: Date.now() });
+        if (useCollabStore.getState().boardId === boardId) {
+          session.setBoardName(name);
+        }
+        return;
+      }
       await localRepository.rename(boardId, name);
       if (get().sourceId === boardId) {
         session.setBoardName(name); // mirror + peers pick the name up
@@ -646,6 +753,15 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
 
     async deleteBoard(boardId) {
+      // Remote (shared) board: "Delete" just forgets it from THIS user's list —
+      // the online board itself stays for anyone else with the code. If we're
+      // currently connected to it, leave first (keeping a local copy on screen).
+      const remotes = await localRepository.listRemotes();
+      if (remotes.some((r) => r.id === boardId)) {
+        if (useCollabStore.getState().boardId === boardId) get().leaveBoard();
+        await localRepository.removeRemote(boardId);
+        return;
+      }
       await localRepository.remove(boardId);
       if (get().sourceId === boardId) {
         // The open board's library entry is gone; keep the work but unlink it so
@@ -677,13 +793,19 @@ session.registerSessionCallbacks({
       keptStrokes.length === state.selection.strokeIds.length
         ? state.selection
         : { objectIds: keptObjs, strokeIds: keptStrokes };
+    const shared = useCollabStore.getState().mode === "shared";
     useBoardStore.setState({
       board,
       selection,
-      // Seeding just reloads existing content; it never dirties the draft.
-      ...(origin === SEED_ORIGIN ? {} : { dirty: true }),
+      // A shared board is saved online continuously, so it's never "dirty";
+      // seeding just reloads existing content, so that never dirties either.
+      ...(shared || origin === SEED_ORIGIN ? {} : { dirty: true }),
     });
-    scheduleDraftSave();
+    // Shared: keep the remembered remote pointer's name/time in sync (so a
+    // rename by any collaborator updates every peer's boards list). Solo:
+    // autosave the working draft.
+    if (shared) scheduleRemoteRefSave();
+    else scheduleDraftSave();
   },
   onUndoState(canUndo, canRedo) {
     useBoardStore.setState({ canUndo, canRedo });

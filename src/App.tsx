@@ -47,6 +47,7 @@ import { NamePrompt } from "@/ui/NamePrompt";
 import { ShortcutsHelp } from "@/ui/ShortcutsHelp";
 import { useImageDrop } from "@/ui/useImageDrop";
 import { useBoardStore } from "@/board/store";
+import { useCollabStore } from "@/collab/collabStore";
 import { screenToWorld } from "@/board/geometry";
 import { COLLAB_ENABLED } from "@/config";
 import { getTool } from "@/tools/registry";
@@ -176,10 +177,12 @@ export default function App(): JSX.Element {
     }
   }, [flashSaved]);
 
-  // Ctrl/Cmd+Shift+S: always save as a new named board.
+  // Ctrl/Cmd+Shift+S: save as a new named board (solo) or name the shared board
+  // (shared) — either way prefill the current name when there is one.
   const doSaveAs = useCallback(() => {
     const { board, sourceId } = useBoardStore.getState();
-    setModal({ kind: "saveAs", initial: sourceId ? board.name : "" });
+    const shared = useCollabStore.getState().mode === "shared";
+    setModal({ kind: "saveAs", initial: shared || sourceId ? board.name : "" });
   }, []);
 
   const handleSaveAsSubmit = useCallback(

@@ -14,7 +14,7 @@ import { useState } from "react";
 import { useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
 import { getStoredName, setStoredName } from "@/collab/profile";
-import { shareLink } from "@/collab/session";
+import { formatBoardCode, isShortCode, shareLink } from "@/collab/session";
 import type { CollabStatus } from "@/collab/collabStore";
 
 const STATUS_LABEL: Record<CollabStatus, string> = {
@@ -24,11 +24,6 @@ const STATUS_LABEL: Record<CollabStatus, string> = {
   error: "Connection lost — retrying. Your edits are kept and will sync.",
   offline: "Offline",
 };
-
-/** "4f2a9c1b" -> "4F2A-9C1B" (join input accepts either form). */
-function formatCode(code: string): string {
-  return code.toUpperCase().replace(/(.{4})(?=.)/g, "$1-");
-}
 
 export function ShareModal({ onClose }: { onClose: () => void }): JSX.Element {
   const mode = useCollabStore((s) => s.mode);
@@ -113,8 +108,7 @@ export function ShareModal({ onClose }: { onClose: () => void }): JSX.Element {
   const link = shareLink();
   // Legacy shared boards carry a long id; only true short codes get the big
   // read-out-loud treatment.
-  const joinCode =
-    boardId && /^[0-9a-f]{6,12}$/.test(boardId) ? formatCode(boardId) : null;
+  const joinCode = boardId && isShortCode(boardId) ? formatBoardCode(boardId) : null;
   return (
     <>
       <h2>Board is shared</h2>

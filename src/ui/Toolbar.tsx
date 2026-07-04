@@ -25,7 +25,7 @@
 // edit. Everything that isn't pure store state is delegated to callbacks the
 // host (App) wires.
 
-import { useBoardStore } from "@/board/store";
+import { isSavedBoard, useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
 import { COLLAB_ENABLED } from "@/config";
 import type { ToolName } from "@/board/types";
@@ -74,6 +74,10 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
   const peerCount = useCollabStore((s) => s.peers.length);
 
   const isMode = (t: ToolName) => tool === t;
+  // Show the board name whenever it's a saved board — a SHARED board is named
+  // in the online store and every collaborator sees that name (even though they
+  // have no local `sourceId` for it).
+  const saved = isSavedBoard(sourceId, collabMode === "shared");
 
   return (
     <>
@@ -87,7 +91,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
             onClick={props.onBoards}
           >
             <span className="bt-name">
-              {sourceId ? boardName : "Untitled draft"}
+              {saved ? boardName : "Untitled draft"}
             </span>
             {dirty && <span className="bt-dot" title="Unsaved changes" />}
           </button>

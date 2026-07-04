@@ -63,6 +63,24 @@ export interface BoardSummary {
   id: string;
   name: string;
   updatedAt: number;
+  /**
+   * True for a board that lives in the ONLINE store (a shared Y-Sweet doc):
+   * opening it re-joins the shared session instead of loading local content.
+   * Absent/false for an ordinary local library board.
+   */
+  remote?: boolean;
+}
+
+/**
+ * A pointer to a shared board that lives online (Y-Sweet). It is deliberately
+ * NOT a BoardDocument: the content lives in the online store, so we persist only
+ * enough to list it and re-join it (`id` is the board's join code). This keeps a
+ * shared board in exactly ONE place — no local copy shadowing the online one.
+ */
+export interface RemoteBoardRef {
+  id: string;
+  name: string;
+  updatedAt: number;
 }
 
 /**

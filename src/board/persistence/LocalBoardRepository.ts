@@ -7,22 +7,28 @@ import type {
   BoardDocument,
   BoardSummary,
   DraftEnvelope,
+  RemoteBoardRef,
 } from "@/board/types";
 import { newBoardDocument } from "@/board/types";
 
 const PREFIX = "mathsboard:";
 const keyFor = (boardId: string): string => PREFIX + boardId;
 
-// The working draft lives at a single reserved key. It is NOT a library entry,
-// so list() must skip it (its id never collides because library ids are UUIDs).
+// Reserved keys that share the PREFIX but are NOT library boards, so list()
+// must skip them (their ids never collide because library ids are UUIDs).
+// The working draft (single continuously-autosaved current board):
 const DRAFT_KEY = "mathsboard:draft";
+// The remembered remote (shared) boards, as one { id -> { name, updatedAt } }
+// map. Only pointers — the shared content itself lives online in Y-Sweet.
+const REMOTES_KEY = "mathsboard:remotes";
 
 export class LocalBoardRepository implements BoardRepository {
   async list(): Promise<BoardSummary[]> {
     const out: BoardSummary[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (!k || !k.startsWith(PREFIX) || k === DRAFT_KEY) continue;
+      if (!k || !k.startsWith(PREFIX) || k === DRAFT_KEY || k === REMOTES_KEY)
+        continue;
       const raw = localStorage.getItem(k);
       if (!raw) continue;
       try {
@@ -64,6 +70,42 @@ export class LocalBoardRepository implements BoardRepository {
 
   async remove(boardId: string): Promise<void> {
     localStorage.removeItem(keyFor(boardId));
+  }
+
+  // --- remembered remote (shared) boards ---
+  private readRemotes(): Record<string, { name: string; updatedAt: number }> {
+    const raw = localStorage.getItem(REMOTES_KEY);
+    if (!raw) return {};
+    try {
+      return JSON.parse(raw) as Record<
+        string,
+        { name: string; updatedAt: number }
+      >;
+    } catch {
+      return {};
+    }
+  }
+
+  async listRemotes(): Promise<RemoteBoardRef[]> {
+    const map = this.readRemotes();
+    return Object.entries(map).map(([id, v]) => ({
+      id,
+      name: v.name,
+      updatedAt: v.updatedAt,
+    }));
+  }
+
+  async saveRemote(ref: RemoteBoardRef): Promise<void> {
+    const map = this.readRemotes();
+    map[ref.id] = { name: ref.name, updatedAt: ref.updatedAt };
+    localStorage.setItem(REMOTES_KEY, JSON.stringify(map));
+  }
+
+  async removeRemote(id: string): Promise<void> {
+    const map = this.readRemotes();
+    if (!(id in map)) return;
+    delete map[id];
+    localStorage.setItem(REMOTES_KEY, JSON.stringify(map));
   }
 
   // --- working draft ---
