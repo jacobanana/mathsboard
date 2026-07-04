@@ -105,3 +105,11 @@ variable "aws_region" {
   type        = string
   default     = "us-east-1"
 }
+
+# ---- Analytics -------------------------------------------------------------
+
+variable "backup_keep_days" {
+  description = "Retention (days) for the nightly Umami DB dumps under the bucket's backups/ prefix; older dumps are pruned by the pg_backup container."
+  type        = number
+  default     = 14
+}

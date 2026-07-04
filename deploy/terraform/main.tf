@@ -5,6 +5,10 @@ terraform {
       source  = "terraform-provider-openstack/openstack"
       version = "~> 2.1"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 }
 
@@ -111,6 +115,24 @@ resource "openstack_objectstorage_container_v1" "bucket" {
 resource "openstack_identity_ec2_credential_v3" "s3" {}
 
 # ---------------------------------------------------------------------------
+# Analytics secrets
+# Generated here so a fresh apply comes up analytics-ready (self-hosted Umami +
+# Postgres + nightly S3 backup, behind the compose `analytics` profile).
+# special=false keeps the Postgres password URL-safe for Umami's DATABASE_URL.
+# Both land in the instance .env via cloud-init and in Terraform state (already
+# sensitive - keep the state private, as the README notes).
+# ---------------------------------------------------------------------------
+resource "random_password" "postgres" {
+  length  = 32
+  special = false
+}
+
+resource "random_password" "umami_secret" {
+  length  = 48
+  special = false
+}
+
+# ---------------------------------------------------------------------------
 # Instance
 # cloud-init installs Docker, clones the public repo, writes .env, and runs
 # `docker compose up -d`. The box only ever pulls images from GHCR.
@@ -132,6 +154,9 @@ locals {
     aws_region            = var.aws_region
     aws_access_key_id     = openstack_identity_ec2_credential_v3.s3.access
     aws_secret_access_key = openstack_identity_ec2_credential_v3.s3.secret
+    postgres_password     = random_password.postgres.result
+    umami_app_secret      = random_password.umami_secret.result
+    backup_keep_days      = var.backup_keep_days
   })
 }
 

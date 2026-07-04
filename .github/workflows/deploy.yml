@@ -52,6 +52,12 @@ jobs:
         env:
           VITE_COLLAB: "0"
           VITE_APP_VERSION: ${{ steps.version.outputs.version }}
+          # Optional Umami analytics for the public Pages build. It's a different
+          # origin from the self-hosted app, so the tracker URL is absolute
+          # (points at the self-hosted Umami) and uses a SEPARATE website id.
+          # Unset repo variables -> empty -> tracker disabled (src/analytics.ts).
+          VITE_UMAMI_SRC: ${{ vars.UMAMI_PAGES_SRC }}
+          VITE_UMAMI_WEBSITE_ID: ${{ vars.UMAMI_PAGES_WEBSITE_ID }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v6

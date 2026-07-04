@@ -59,6 +59,80 @@ services:
       Y_SWEET_HOST: 0.0.0.0
       PORT: "8080"
 
+  # --- Analytics: self-hosted Umami + its Postgres -----------------------------
+  # Privacy-first, cookieless product analytics kept entirely on this box - no
+  # third-party SaaS in the data path (Swiss-hosted, like everything else).
+  # Umami stores events in a local Postgres; that Postgres is the ONLY stateful
+  # piece added here, and the nightly pg_backup job below protects it by dumping
+  # to the same S3 bucket under backups/.
+  #
+  # All three live behind the `analytics` compose profile, so the local e2e
+  # overlay (docker-compose.local.yml, which sets no profile) never starts them.
+  # Production opts in with COMPOSE_PROFILES=analytics in .env (see .env.example).
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["analytics"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: umami
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    profiles: ["analytics"]
+    restart: unless-stopped
+    # Served same-origin at /umami by Caddy (see deploy/Caddyfile); BASE_PATH
+    # tells the app it's mounted under that prefix. Register two websites in the
+    # dashboard - one for this collab domain, one for the static GitHub Pages
+    # build - to see them separately or combined. Change the default admin
+    # password (admin / umami) on first login.
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/umami
+      DATABASE_TYPE: postgresql
+      APP_SECRET: ${UMAMI_APP_SECRET}
+      BASE_PATH: /umami
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Nightly pg_dump of the umami database -> s3://<bucket>/backups/, pruning
+  # dumps older than BACKUP_KEEP_DAYS (the retention policy). Reuses the same S3
+  # credentials/endpoint as the rest of the stack, mapped from the AWS_* names
+  # the api/ysweet containers already use.
+  #
+  # Scope: backs up the `umami` database only. When Phase 2 adds the board-
+  # metadata database, add a second pg_backup service (another POSTGRES_DATABASE)
+  # or switch this to a pg_dumpall sidecar so the whole instance is captured.
+  pg_backup:
+    image: eeshugerman/postgres-backup-s3:16
+    profiles: ["analytics"]
+    restart: unless-stopped
+    environment:
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      POSTGRES_HOST: postgres
+      POSTGRES_DATABASE: umami
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      S3_REGION: ${AWS_REGION}
+      S3_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_PREFIX: backups
+      S3_ENDPOINT: ${AWS_ENDPOINT_URL_S3}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   caddy_data:
   caddy_config:
+  pg_data:

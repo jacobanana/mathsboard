@@ -78,6 +78,10 @@ jobs:
           WEB: ${{ steps.filter.outputs.web }}
           API: ${{ steps.filter.outputs.api }}
           DEPLOYCFG: ${{ steps.filter.outputs.deploycfg }}
+          # Optional Umami website id, baked into the web bundle at build time.
+          # Empty unless set as a repo variable (Settings -> Secrets and
+          # variables -> Actions -> Variables). See the README "Analytics" section.
+          UMAMI_WEBSITE_ID: ${{ vars.UMAMI_WEBSITE_ID }}
         run: |
           web=$WEB
           api=$API
@@ -87,12 +91,12 @@ jobs:
           fi
           include='[]'
           if [ "$web" = "true" ]; then
-            include=$(jq -cn --argjson a "$include" \
-              '$a + [{"image":"web","context":".","dockerfile":"deploy/Dockerfile.web"}]')
+            include=$(jq -cn --argjson a "$include" --arg id "$UMAMI_WEBSITE_ID" \
+              '$a + [{"image":"web","context":".","dockerfile":"deploy/Dockerfile.web","buildArgs":"UMAMI_WEBSITE_ID=\($id)"}]')
           fi
           if [ "$api" = "true" ]; then
             include=$(jq -cn --argjson a "$include" \
-              '$a + [{"image":"api","context":"server","dockerfile":"server/Dockerfile"}]')
+              '$a + [{"image":"api","context":"server","dockerfile":"server/Dockerfile","buildArgs":""}]')
           fi
           echo "matrix={\"include\":$include}" >> "$GITHUB_OUTPUT"
           if [ "$include" = "[]" ]; then
@@ -153,9 +157,12 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # Both Dockerfiles declare ARG APP_VERSION; web maps it to
-          # VITE_APP_VERSION, api reads it at runtime.
+          # VITE_APP_VERSION, api reads it at runtime. matrix.buildArgs carries
+          # per-image extras (the web image's optional UMAMI_WEBSITE_ID); it's an
+          # empty line for the api image, which build-push-action ignores.
           build-args: |
             APP_VERSION=${{ steps.version.outputs.version }}
+            ${{ matrix.buildArgs }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

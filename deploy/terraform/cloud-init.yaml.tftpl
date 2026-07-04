@@ -25,6 +25,10 @@ write_files:
       AWS_REGION=${aws_region}
       AWS_ENDPOINT_URL_S3=${s3_endpoint}
       AWS_S3_USE_PATH_STYLE=true
+      COMPOSE_PROFILES=analytics
+      POSTGRES_PASSWORD=${postgres_password}
+      UMAMI_APP_SECRET=${umami_app_secret}
+      BACKUP_KEEP_DAYS=${backup_keep_days}
 
 runcmd:
   - curl -fsSL https://get.docker.com | sh

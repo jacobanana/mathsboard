@@ -210,7 +210,8 @@ request, gated behind the unit tests (`.github/workflows/e2e.yml`).
 ## Deploy (single VPS, one domain)
 
 Everything runs same-origin behind Caddy: `/api/*` → the token/upload service,
-`/ys/*` → the Y-Sweet websocket, everything else → the static frontend. So
+`/ys/*` → the Y-Sweet websocket, `/umami/*` → the optional Umami analytics
+dashboard (see **Analytics** below), everything else → the static frontend. So
 there is no CORS anywhere and `wss://` rides the one TLS certificate. TLS is
 automatic — Caddy provisions a Let's Encrypt certificate on the first HTTPS
 request and renews it thereafter (certs live in the `caddy_data` volume; keep
@@ -269,3 +270,54 @@ Upgrades: automatic via the push-to-`main` pipeline above, or by hand with
 `git pull && docker compose pull && docker compose up -d`. Board documents and
 images all live in the bucket; the containers are stateless apart from Caddy's
 certificates.
+
+### Analytics (optional, self-hosted Umami)
+
+Privacy-first, cookieless usage analytics that stay on your own box — no
+third-party service in the data path, no consent banner. Three extra containers
+(`postgres`, `umami`, `pg_backup`) sit behind a Docker Compose **`analytics`
+profile**, so they are **off unless you opt in**, and the local test overlay
+never starts them.
+
+**1. Turn the stack on** — add to `.env` (all four are in `.env.example`):
+
+- `COMPOSE_PROFILES=analytics` — activates the three services.
+- `POSTGRES_PASSWORD` — password for the Umami database.
+- `UMAMI_APP_SECRET` — session-signing secret (`openssl rand -hex 32`).
+- `BACKUP_KEEP_DAYS` — nightly-dump retention in days (default `14`).
+
+Then `docker compose pull && docker compose up -d`. Umami is served
+same-origin at `https://<domain>/umami`. Log in with `admin` / `umami`,
+**change that password immediately**, then add a website (one per build you
+want to track — the collab domain and/or the static Pages URL) and copy its
+**website id**.
+
+**2. Wire the frontend** — the dashboard stays empty until the app loads the
+tracker. `src/analytics.ts` injects it only when both build-time vars are set
+(unset in dev/CI = no-op), and exposes `track(event, data)` for custom
+feature-usage events:
+
+- `VITE_UMAMI_SRC` — `/umami/script.js` for the self-hosted build (same-origin),
+  or the absolute `https://<domain>/umami/script.js` for the cross-origin
+  GitHub Pages build.
+- `VITE_UMAMI_WEBSITE_ID` — the website id from step 1.
+
+These are baked in at build time, so they must be passed into the frontend
+build: a build-arg for the self-hosted `web` image (`publish.yml` /
+`deploy/Dockerfile.web`) and build env for the Pages workflow (`deploy.yml`,
+alongside `VITE_COLLAB`). Because the id doesn't exist until Umami is first
+deployed, the order is: deploy the stack → register the website → set the vars
+→ rebuild.
+
+**3. Backups** — `pg_backup` runs `pg_dump` of the Umami database `@daily` to
+`s3://<bucket>/backups/`, pruning dumps older than `BACKUP_KEEP_DAYS`. Restore
+the latest dump onto a fresh Postgres:
+
+```bash
+# fetch the newest object under the bucket's backups/ prefix, then:
+gunzip -c <dump>.sql.gz | docker compose exec -T postgres psql -U postgres
+```
+
+Verify the first nightly dump actually lands in the bucket — if the S3 client
+trips on the endpoint's addressing style, that's the one knob to adjust. Do a
+dry-run restore once so you know it works.
