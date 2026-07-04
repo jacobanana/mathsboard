@@ -1,25 +1,29 @@
-// The top toolbar. Deliberately STATIC: nothing appears, disappears or shifts
-// when the tool or selection changes, so users always find buttons where they
-// left them.
+// The floating chrome over the full-bleed canvas. Two fixed layers instead of
+// the old single top bar, so phones no longer wrap the toolbar into three rows:
 //
-// Layout (left to right):
-//   1. The five mode buttons — Select, Pan, Draw, Eraser, Text — icon-only,
-//      selectable with keys 1-5 (wired in App). Select/Pan lead, matching the
-//      Miro / Excalidraw convention (1 = select); Eraser sits next to Draw
-//      since the two alternate constantly while working. The startup tool is
-//      still the pen (order ≠ default).
-//   2. The contextual options zone (OptionsStrip): a FIXED-WIDTH slot that
-//      holds the size slider + colour dropdown for the active tool and simply
-//      sits empty for Select/Pan — neighbouring buttons never move into it.
-//   3. Insert, then Undo / Redo. Selection actions (edit / delete) are NOT on
-//      the bar: they float next to the selection itself (FloatButtons), plus
-//      the Delete key and double-click-to-edit.
-//   4. Right side: the board-title chip, the live share status chip (only
-//      while shared), and the burger menu (OverflowMenu) holding the
-//      lesser-used actions — Join, Share, Paper, Boards, Save image.
+//   #toolbar — a slim top strip of floating "islands":
+//     left:  the board-title chip (tap -> boards manager);
+//     right: the live share chip (only while shared), Undo / Redo, and the
+//            burger menu (OverflowMenu) with the lesser-used actions — Join,
+//            Share, Paper, Boards, Save image, Shortcuts.
 //
-// Everything that isn't pure store state is delegated to callbacks the host
-// (App) wires.
+//   #dock — a bottom-centre pill, thumb-reachable on touch devices, holding
+//     the five mode buttons (Select, Pan, Draw, Eraser, Text; keys 1-5 wired
+//     in App) plus Insert and Picture. Select/Pan lead, matching the
+//     Miro / Excalidraw convention (1 = select); Eraser sits next to Draw
+//     since the two alternate constantly. The startup tool is still the pen
+//     (order ≠ default).
+//
+//   The contextual options pill (OptionsStrip, #options) floats ABOVE the
+//   dock when the active tool has options and disappears otherwise. It's a
+//   separate layer, so the dock itself stays STATIC: buttons never move or
+//   reflow when the tool changes — users always find them where they left
+//   them.
+//
+// Selection actions (edit / delete) are NOT here: they float next to the
+// selection itself (FloatButtons), plus the Delete key and double-click-to-
+// edit. Everything that isn't pure store state is delegated to callbacks the
+// host (App) wires.
 
 import { useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
@@ -28,7 +32,17 @@ import type { ToolName } from "@/board/types";
 import { OptionsStrip } from "@/ui/OptionsStrip";
 import { OverflowMenu } from "@/ui/OverflowMenu";
 import { keyHint } from "@/ui/shortcuts";
-import { DrawIcon, TextIcon, EraserIcon, ImageIcon, GLYPH } from "@/ui/icons";
+import {
+  DrawIcon,
+  TextIcon,
+  EraserIcon,
+  ImageIcon,
+  SelectIcon,
+  HandIcon,
+  UndoIcon,
+  RedoIcon,
+  PlusIcon,
+} from "@/ui/icons";
 
 export interface ToolbarCallbacks {
   onInsert: () => void;
@@ -62,154 +76,170 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
   const isMode = (t: ToolName) => tool === t;
 
   return (
-    <div id="toolbar">
-      {/* Icon-only: the title tooltips + aria-labels carry the names. */}
-      <div className="group" id="modes">
-        <button
-          className={"btn small" + (isMode("select") ? " active" : "")}
-          id="selectBtn"
-          title={`Select & move (${keyHint("tool-select")}) — click a shape or drawing, drag empty space to lasso, ${keyHint("selectAll")} for all`}
-          aria-label="Select"
-          onClick={() => setTool("select")}
-        >
-          <span className="ico">{GLYPH.select}</span>
-        </button>
-        <button
-          className={"btn small" + (isMode("pan") ? " active" : "")}
-          id="panBtn"
-          title={`Move the view (${keyHint("tool-pan")})`}
-          aria-label="Pan"
-          onClick={() => setTool("pan")}
-        >
-          <span className="ico">{GLYPH.pan}</span>
-        </button>
-        <button
-          className={"btn small" + (isMode("pen") ? " active" : "")}
-          id="drawBtn"
-          title={`Draw (${keyHint("tool-draw")})`}
-          aria-label="Draw"
-          onClick={() => setTool("pen")}
-        >
-          <span className="ico" id="drawIco">
-            <DrawIcon />
-          </span>
-        </button>
-        <button
-          className={"btn small" + (isMode("eraser") ? " active" : "")}
-          id="eraserBtn"
-          title={`Eraser (${keyHint("tool-eraser")})`}
-          aria-label="Eraser"
-          onClick={() => setTool("eraser")}
-        >
-          <span className="ico" id="eraserIco">
-            <EraserIcon />
-          </span>
-        </button>
-        <button
-          className={"btn small" + (isMode("text") ? " active" : "")}
-          id="textBtn"
-          title={`Type text (${keyHint("tool-text")})`}
-          aria-label="Text"
-          onClick={() => setTool("text")}
-        >
-          <span className="ico" id="textIco">
-            <TextIcon />
-          </span>
-        </button>
+    <>
+      {/* --- top strip: board meta + history + menu --------------------- */}
+      <div id="toolbar">
+        <div className="island">
+          <button
+            className="board-title"
+            id="boardTitle"
+            title="Open the boards manager"
+            onClick={props.onBoards}
+          >
+            <span className="bt-name">
+              {sourceId ? boardName : "Untitled draft"}
+            </span>
+            {dirty && <span className="bt-dot" title="Unsaved changes" />}
+          </button>
+        </div>
+
+        <div className="island">
+          {/* Live share status chip — only while in a shared session
+              (otherwise Share lives in the burger menu). The dot mirrors the
+              connection state and the label shows how many people are here.
+              Collab builds only. */}
+          {COLLAB_ENABLED && collabMode === "shared" && (
+            <button
+              className="btn keep-label sharing"
+              id="shareBtn"
+              title="Shared board — link, who's here, leave"
+              onClick={props.onShare}
+            >
+              <span className={"status-dot status-" + collabStatus} />
+              <span className="label">{peerCount + 1 + " here"}</span>
+            </button>
+          )}
+          <button
+            className="btn small"
+            id="undoBtn"
+            title={`Undo (${keyHint("undo")})`}
+            aria-label="Undo"
+            disabled={!canUndo}
+            onClick={undo}
+          >
+            <span className="ico">
+              <UndoIcon />
+            </span>
+          </button>
+          <button
+            className="btn small"
+            id="redoBtn"
+            title={`Redo (${keyHint("redo")})`}
+            aria-label="Redo"
+            disabled={!canRedo}
+            onClick={redo}
+          >
+            <span className="ico">
+              <RedoIcon />
+            </span>
+          </button>
+          <OverflowMenu
+            onJoin={props.onJoin}
+            onShare={props.onShare}
+            onPaper={props.onPaper}
+            onBoards={props.onBoards}
+            onSaveImage={props.onSaveImage}
+            onHelp={props.onHelp}
+          />
+        </div>
       </div>
 
-      <div className="divider" />
-
+      {/* --- contextual options pill (floats above the dock) ------------ */}
       <OptionsStrip />
 
-      <div className="divider" />
+      {/* --- bottom dock: the tools --------------------------------------
+          Icon-only: the title tooltips + aria-labels carry the names. */}
+      <nav id="dock" aria-label="Tools">
+        <div className="island dock-inner">
+          <button
+            className={"btn small" + (isMode("select") ? " active" : "")}
+            id="selectBtn"
+            title={`Select & move (${keyHint("tool-select")}) — click a shape or drawing, drag empty space to lasso, ${keyHint("selectAll")} for all`}
+            aria-label="Select"
+            onClick={() => setTool("select")}
+          >
+            <span className="ico">
+              <SelectIcon />
+            </span>
+          </button>
+          <button
+            className={"btn small" + (isMode("pan") ? " active" : "")}
+            id="panBtn"
+            title={`Move the view (${keyHint("tool-pan")})`}
+            aria-label="Pan"
+            onClick={() => setTool("pan")}
+          >
+            <span className="ico">
+              <HandIcon />
+            </span>
+          </button>
+          <button
+            className={"btn small" + (isMode("pen") ? " active" : "")}
+            id="drawBtn"
+            title={`Draw (${keyHint("tool-draw")})`}
+            aria-label="Draw"
+            onClick={() => setTool("pen")}
+          >
+            <span className="ico" id="drawIco">
+              <DrawIcon />
+            </span>
+          </button>
+          <button
+            className={"btn small" + (isMode("eraser") ? " active" : "")}
+            id="eraserBtn"
+            title={`Eraser (${keyHint("tool-eraser")})`}
+            aria-label="Eraser"
+            onClick={() => setTool("eraser")}
+          >
+            <span className="ico" id="eraserIco">
+              <EraserIcon />
+            </span>
+          </button>
+          <button
+            className={"btn small" + (isMode("text") ? " active" : "")}
+            id="textBtn"
+            title={`Type text (${keyHint("tool-text")})`}
+            aria-label="Text"
+            onClick={() => setTool("text")}
+          >
+            <span className="ico" id="textIco">
+              <TextIcon />
+            </span>
+          </button>
 
-      <button
-        className="btn small insert"
-        id="insertBtn"
-        title={`Insert a maths widget (${keyHint("insert")})`}
-        aria-label="Insert"
-        onClick={props.onInsert}
-      >
-        <span className="ico">{GLYPH.insert}</span>
-      </button>
+          <div className="divider" />
 
-      {/* Picture insert — a first-class button since adding a photo/diagram is
-          a common action (cf. Excalidraw/Miro). Collab builds only: the image
-          tool uploads through the backend, so the static single-user build
-          neither registers the tool nor shows this button. */}
-      {COLLAB_ENABLED && (
-        <button
-          className="btn small"
-          id="imageBtn"
-          title={`Add a picture (${keyHint("image")})`}
-          aria-label="Add a picture"
-          onClick={props.onAddImage}
-        >
-          <span className="ico">
-            <ImageIcon />
-          </span>
-        </button>
-      )}
+          <button
+            className="btn small insert"
+            id="insertBtn"
+            title={`Insert a maths widget (${keyHint("insert")})`}
+            aria-label="Insert"
+            onClick={props.onInsert}
+          >
+            <span className="ico">
+              <PlusIcon />
+            </span>
+          </button>
 
-      <div className="divider" />
-
-      <button
-        className="btn small"
-        id="undoBtn"
-        title={`Undo (${keyHint("undo")})`}
-        aria-label="Undo"
-        disabled={!canUndo}
-        onClick={undo}
-      >
-        <span className="ico">{GLYPH.undo}</span>
-      </button>
-      <button
-        className="btn small"
-        id="redoBtn"
-        title={`Redo (${keyHint("redo")})`}
-        aria-label="Redo"
-        disabled={!canRedo}
-        onClick={redo}
-      >
-        <span className="ico">{GLYPH.redo}</span>
-      </button>
-
-      <div className="spacer" />
-
-      <button
-        className="board-title"
-        id="boardTitle"
-        title="Open the boards manager"
-        onClick={props.onBoards}
-      >
-        <span className="bt-name">{sourceId ? boardName : "Untitled draft"}</span>
-        {dirty && <span className="bt-dot" title="Unsaved changes" />}
-      </button>
-
-      {/* Live share status chip — only while in a shared session (otherwise
-          Share lives in the burger menu). The dot mirrors the connection state
-          and the label shows how many people are here. Collab builds only. */}
-      {COLLAB_ENABLED && collabMode === "shared" && (
-        <button
-          className="btn keep-label sharing"
-          id="shareBtn"
-          title="Shared board — link, who's here, leave"
-          onClick={props.onShare}
-        >
-          <span className={"status-dot status-" + collabStatus} />
-          <span className="label">{peerCount + 1 + " here"}</span>
-        </button>
-      )}
-
-      <OverflowMenu
-        onJoin={props.onJoin}
-        onShare={props.onShare}
-        onPaper={props.onPaper}
-        onBoards={props.onBoards}
-        onSaveImage={props.onSaveImage}
-        onHelp={props.onHelp}
-      />
-    </div>
+          {/* Picture insert — a first-class button since adding a photo or
+              diagram is a common action (cf. Excalidraw/Miro). Collab builds
+              only: the image tool uploads through the backend, so the static
+              single-user build neither registers the tool nor shows this. */}
+          {COLLAB_ENABLED && (
+            <button
+              className="btn small"
+              id="imageBtn"
+              title={`Add a picture (${keyHint("image")})`}
+              aria-label="Add a picture"
+              onClick={props.onAddImage}
+            >
+              <span className="ico">
+                <ImageIcon />
+              </span>
+            </button>
+          )}
+        </div>
+      </nav>
+    </>
   );
 }

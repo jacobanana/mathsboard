@@ -25,7 +25,10 @@ interface PopoverProps {
   onClose: () => void;
   /** Which of the panel's edges lines up with the same edge of the anchor. */
   align?: "left" | "right";
-  /** Gap between the anchor's bottom and the panel's top (px). */
+  /** Which side of the anchor the panel opens on. Triggers that live in the
+   *  bottom dock open "top" so the panel isn't pushed off screen. */
+  side?: "bottom" | "top";
+  /** Gap between the anchor and the panel (px). */
   gap?: number;
   id?: string;
   className?: string;
@@ -36,6 +39,7 @@ export function Popover({
   anchor,
   onClose,
   align = "left",
+  side = "bottom",
   gap = 6,
   id,
   className,
@@ -79,13 +83,17 @@ export function Popover({
     align === "right"
       ? { right: Math.max(6, window.innerWidth - r.right) }
       : { left: Math.max(6, r.left) };
+  const vert: CSSProperties =
+    side === "top"
+      ? { bottom: window.innerHeight - r.top + gap }
+      : { top: r.bottom + gap };
 
   return (
     <div
       id={id}
       className={className}
       ref={ref}
-      style={{ position: "fixed", top: r.bottom + gap, ...horiz }}
+      style={{ position: "fixed", ...vert, ...horiz }}
     >
       {children}
     </div>

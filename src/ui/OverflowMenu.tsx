@@ -12,7 +12,15 @@ import { useCollabStore } from "@/collab/collabStore";
 import { COLLAB_ENABLED } from "@/config";
 import { Popover } from "@/ui/Popover";
 import { keyHint } from "@/ui/shortcuts";
-import { GLYPH } from "@/ui/icons";
+import {
+  MenuIcon,
+  JoinIcon,
+  ShareIcon,
+  PaperIcon,
+  BoardsIcon,
+  SaveIcon,
+  KeyboardIcon,
+} from "@/ui/icons";
 
 export interface OverflowMenuProps {
   onJoin: () => void;
@@ -41,12 +49,15 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
     <>
       <button
         ref={btnRef}
-        className={"btn" + (open ? " active" : "")}
+        className={"btn small" + (open ? " active" : "")}
         id="menuBtn"
         title="Menu — share, paper, boards, save image"
+        aria-label="Menu"
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="ico">☰</span>
+        <span className="ico">
+          <MenuIcon />
+        </span>
       </button>
       <Popover
         anchor={open ? btnRef.current : null}
@@ -60,7 +71,9 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
               title="Join a board someone shared — enter their code"
               onClick={pick(props.onJoin)}
             >
-              <span className="ico">{GLYPH.join}</span>
+              <span className="ico">
+              <JoinIcon />
+            </span>
               <span className="label">Join a board</span>
             </button>
           )}
@@ -70,7 +83,9 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
               title="Share this board with a link"
               onClick={pick(props.onShare)}
             >
-              <span className="ico">{GLYPH.share}</span>
+              <span className="ico">
+              <ShareIcon />
+            </span>
               <span className="label">Share this board</span>
             </button>
           )}
@@ -82,7 +97,9 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
               if (btnRef.current) props.onPaper(btnRef.current);
             }}
           >
-            <span className="ico">{GLYPH.paper}</span>
+            <span className="ico">
+              <PaperIcon />
+            </span>
             <span className="label">Paper</span>
           </button>
           <button
@@ -92,11 +109,15 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
             )} save · ${keyHint("saveAs")} save as)`}
             onClick={pick(props.onBoards)}
           >
-            <span className="ico">{GLYPH.boards}</span>
+            <span className="ico">
+              <BoardsIcon />
+            </span>
             <span className="label">Boards</span>
           </button>
           <button id="saveBtn" onClick={pick(props.onSaveImage)}>
-            <span className="ico">{GLYPH.save}</span>
+            <span className="ico">
+              <SaveIcon />
+            </span>
             <span className="label">Save image</span>
           </button>
           <button
@@ -104,7 +125,9 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
             title={`Keyboard shortcuts (${keyHint("help")})`}
             onClick={pick(props.onHelp)}
           >
-            <span className="ico">{GLYPH.keyboard}</span>
+            <span className="ico">
+              <KeyboardIcon />
+            </span>
             <span className="label">Keyboard shortcuts</span>
           </button>
       </Popover>

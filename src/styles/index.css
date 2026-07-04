@@ -2,43 +2,60 @@
   --paper:#FBFAF7; --grid:#CBD8DA; --bar:#1E3A3A; --ink:#1C2826;
   --accent:#F2B33D; --accent-soft:#FBE6B5; --text-on-bar:#EAF2F1; --muted:#7E9897;
   --shade:#F2B33D; --line-ink:#28403F; --panel:#FFFFFF;
+  /* Floating-chrome tokens: the UI is white "islands" hovering over the paper. */
+  --island:rgba(255,255,255,.9);
+  --island-border:rgba(28,40,38,.09);
+  --island-shadow:0 6px 24px rgba(28,40,38,.14),0 1px 3px rgba(28,40,38,.08);
+  --hover:rgba(30,58,58,.08);
   --font:'Segoe UI Rounded', ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;margin:0;}
-body{font-family:var(--font);background:var(--bar);overflow:hidden;display:flex;flex-direction:column;height:100dvh;color:var(--ink);}
+body{font-family:var(--font);background:var(--paper);overflow:hidden;display:flex;flex-direction:column;height:100dvh;color:var(--ink);}
 #root{display:flex;flex-direction:column;height:100dvh;}
-#toolbar{flex:0 0 auto;background:var(--bar);color:var(--text-on-bar);display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;box-shadow:0 2px 10px rgba(0,0,0,.18);z-index:20;}
+
+/* --- Floating chrome: the canvas is full-bleed; all UI hovers above it. ---
+   #toolbar is the slim top strip (title island left, actions island right);
+   #dock is the bottom-centre tool pill; #options floats just above the dock.
+   The strip itself is click-through (pointer-events:none) — only the islands
+   catch input, so the board stays usable right up to the edges. */
+#toolbar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 10px 0;pointer-events:none;}
+.island{pointer-events:auto;display:flex;align-items:center;gap:3px;background:var(--island);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--island-border);border-radius:18px;padding:5px;box-shadow:var(--island-shadow);}
+#dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));z-index:20;}
+.dock-inner{gap:2px;}
 .group{display:flex;align-items:center;gap:6px;}
-/* The contextual options zone is a FIXED-WIDTH slot: it stays reserved (and
-   simply sits empty for Select/Pan) so the toolbar never reflows on tool
-   change. Width fits its widest content: slider + preview + colour button. */
-#options{min-height:44px;width:218px;flex:0 0 auto;}
-.divider{width:1px;align-self:stretch;background:rgba(255,255,255,.16);margin:2px 4px;}
-.opt-sep{width:1px;height:30px;background:rgba(255,255,255,.16);margin:0 3px;}
+.divider{width:1px;align-self:stretch;background:rgba(28,40,38,.12);margin:7px 5px;}
+.opt-sep{width:1px;height:30px;background:rgba(28,40,38,.12);margin:0 3px;}
 .spacer{flex:1 1 auto;}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
-.btn{min-height:44px;padding:0 13px;border-radius:12px;background:rgba(255,255,255,.08);color:var(--text-on-bar);font-size:15px;font-weight:600;display:inline-flex;align-items:center;gap:7px;transition:background .12s,transform .06s;white-space:nowrap;}
-.btn:hover{background:rgba(255,255,255,.16);} .btn:active{transform:translateY(1px);}
+.btn{min-height:44px;padding:0 13px;border-radius:13px;background:transparent;color:var(--ink);font-size:15px;font-weight:600;display:inline-flex;align-items:center;gap:7px;transition:background .12s,color .12s,transform .12s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;}
+.btn:hover{background:var(--hover);} .btn:active{transform:scale(.92);}
 .btn.active{background:var(--accent);color:#3a2a05;}
-.btn[disabled]{opacity:.4;pointer-events:none;}
-.btn .ico{font-size:18px;line-height:1;display:inline-flex;} .btn .ico svg{display:block;}
-.btn.small{padding:0 11px;min-width:44px;justify-content:center;}
-.btn.insert{background:var(--accent);color:#3a2a05;} .btn.insert:hover{background:#f0c061;}
-.swatch{width:38px;height:38px;border-radius:50%;border:3px solid rgba(255,255,255,.25);transition:transform .08s,border-color .1s,box-shadow .1s;}
+.btn[disabled]{opacity:.35;pointer-events:none;}
+.btn .ico{font-size:18px;line-height:1;display:inline-flex;} .btn .ico svg{display:block;width:20px;height:20px;}
+.btn.small{padding:0;min-width:44px;justify-content:center;}
+/* Insert is the primary "add maths" action: brand-dark so it stands apart
+   from the amber active-tool highlight. */
+.btn.insert{background:var(--bar);color:#fff;} .btn.insert:hover{background:#2b4d4c;}
+.swatch{width:38px;height:38px;border-radius:50%;border:3px solid rgba(28,40,38,.12);transition:transform .08s,border-color .1s,box-shadow .1s;}
 .swatch:active{transform:scale(.92);} .swatch.active{border-color:#fff;box-shadow:0 0 0 3px var(--accent);}
 .size-dot{display:inline-block;border-radius:50%;}
 
-/* --- Options strip: size slider + colour dropdown --- */
+/* --- Options pill: size slider + colour dropdown, floating above the dock.
+   A separate fixed layer, so it appears/disappears without moving the dock. */
+#options{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:19;gap:4px;padding:4px 10px;animation:rise .18s cubic-bezier(.34,1.4,.64,1);}
+@keyframes rise{from{opacity:0;transform:translate(-50%,10px);}to{opacity:1;transform:translate(-50%,0);}}
 .size-wrap{display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:0 4px;cursor:pointer;}
-.size-slider{width:110px;height:26px;margin:0;accent-color:var(--accent);cursor:pointer;}
-/* Reserve the max preview size so the toolbar doesn't jiggle as the dot grows. */
+.size-slider{-webkit-appearance:none;appearance:none;width:110px;height:7px;border-radius:4px;background:#E2E9E6;margin:0;cursor:pointer;}
+.size-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 1px 5px rgba(28,40,38,.35);cursor:pointer;}
+.size-slider::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 1px 5px rgba(28,40,38,.35);cursor:pointer;}
+/* Reserve the max preview size so the pill doesn't jiggle as the dot grows. */
 .size-wrap .size-dot,.size-glyph{flex:0 0 auto;}
 .size-glyph{font-weight:800;line-height:1;width:22px;text-align:center;}
 #colorBtn{gap:5px;}
-.color-cur{width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.55);flex:0 0 auto;}
+.color-cur{width:24px;height:24px;border-radius:50%;border:2px solid rgba(28,40,38,.18);flex:0 0 auto;}
 .color-caret{font-size:11px;opacity:.75;}
-#colorMenu{position:fixed;display:flex;gap:8px;background:#fff;border-radius:14px;padding:9px;z-index:45;box-shadow:0 12px 34px rgba(0,0,0,.26);}
+#colorMenu{position:fixed;display:flex;gap:8px;background:#fff;border-radius:16px;padding:9px;z-index:45;border:1px solid var(--island-border);box-shadow:0 12px 34px rgba(0,0,0,.22);}
 #colorMenu .swatch{border-color:rgba(0,0,0,.12);}
 #colorMenu .swatch.active{border-color:#fff;box-shadow:0 0 0 3px var(--accent);}
 #stage{flex:1 1 auto;position:relative;background:var(--paper);overflow:hidden;touch-action:none;}
@@ -47,9 +64,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .floatbtn{position:absolute;z-index:6;display:none;width:34px;height:34px;border-radius:50%;color:#fff;font-size:16px;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.3);}
 .floatbtn.show{display:flex;} .floatbtn:active{transform:scale(.9);}
 #floatDel{background:var(--ink);} #floatEdit{background:var(--bar);} #floatEdit svg{width:17px;height:17px;}
-#zoomCluster{position:absolute;right:14px;bottom:14px;z-index:6;display:flex;align-items:center;gap:2px;background:#fff;border-radius:14px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.2);}
-#zoomCluster button{min-width:40px;height:40px;border-radius:10px;color:var(--ink);font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;} #zoomCluster button:hover{background:#EEF1F0;}
-#zoomReset{font-size:14px;min-width:52px;}
+#zoomCluster{position:absolute;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:6;display:flex;align-items:center;gap:2px;background:var(--island);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--island-border);border-radius:16px;padding:4px;box-shadow:var(--island-shadow);}
+#zoomCluster button{min-width:38px;height:38px;border-radius:11px;color:var(--ink);font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;} #zoomCluster button:hover{background:var(--hover);}
+#zoomReset{font-size:13.5px;min-width:50px;}
 #scrim{position:fixed;inset:0;background:rgba(20,30,30,.45);display:none;align-items:flex-start;justify-content:center;padding-top:64px;z-index:40;}
 #scrim.open{display:flex;}
 .card{background:#fff;color:var(--ink);border-radius:18px;padding:20px 22px 18px;width:min(440px,92vw);box-shadow:0 18px 50px rgba(0,0,0,.3);animation:pop .14s ease;max-height:86vh;overflow:auto;}
@@ -88,7 +105,32 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 #overflowMenu button{display:flex;align-items:center;gap:10px;text-align:left;color:var(--ink);font-size:15px;font-weight:600;padding:11px 13px;border-radius:10px;}
 #overflowMenu button:hover{background:#EEF1F0;}
 #overflowMenu .ico{font-size:16px;width:20px;display:inline-flex;justify-content:center;}
-@media (max-width:760px){.btn{padding:0 10px;font-size:14px;}.btn .label{display:none;}.btn.keep-label .label{display:inline;}.swatch{width:34px;height:34px;}.size-slider{width:74px;}#options{width:178px;}}
+/* --- Phones: tighten the islands, dock the options pill bottom-left and lift
+   the zoom cluster above the dock so nothing overlaps. --- */
+@keyframes rise-left{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+@media (max-width:760px){
+  .btn{font-size:14px;}
+  .btn .label{display:none;}
+  .btn.keep-label .label{display:inline;}
+  .btn,.btn.small{min-height:42px;}
+  .btn.small{min-width:42px;}
+  .swatch{width:34px;height:34px;}
+  .size-slider{width:88px;}
+  #toolbar{padding:calc(6px + env(safe-area-inset-top)) 8px 0;}
+  #dock{bottom:calc(10px + env(safe-area-inset-bottom));max-width:calc(100vw - 12px);}
+  .dock-inner{gap:1px;}
+  #options{left:8px;right:auto;transform:none;bottom:calc(68px + env(safe-area-inset-bottom));animation-name:rise-left;}
+  #zoomCluster{right:8px;bottom:calc(68px + env(safe-area-inset-bottom));padding:3px;}
+  #zoomCluster button{min-width:32px;height:32px;font-size:15px;border-radius:9px;}
+  #zoomReset{min-width:42px;font-size:12px;}
+}
+/* Very narrow phones: shave the dock further so all eight buttons still fit. */
+@media (max-width:380px){
+  .btn,.btn.small{min-height:40px;}
+  .btn.small{min-width:38px;}
+  .btn .ico svg{width:18px;height:18px;}
+  .divider{margin:6px 3px;}
+}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 .ilayer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
 .iworksheet{position:absolute;transform-origin:0 0;pointer-events:auto;width:300px;background:#fff;border:1px solid #E4D9B8;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
@@ -111,11 +153,11 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .iw-score{margin-top:8px;font-weight:800;font-size:14px;color:var(--bar);min-height:18px;}
 
 /* --- Boards: toolbar title chip --- */
-.board-title{display:inline-flex;align-items:center;gap:7px;max-width:220px;min-height:44px;padding:0 11px;border-radius:12px;background:transparent;color:var(--text-on-bar);font-weight:700;font-size:14px;}
-.board-title:hover{background:rgba(255,255,255,.10);}
-.bt-name{max-width:185px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.92;}
+.board-title{display:inline-flex;align-items:center;gap:7px;max-width:240px;min-height:44px;padding:0 12px;border-radius:13px;background:transparent;color:var(--ink);font-weight:700;font-size:14px;}
+.board-title:hover{background:var(--hover);}
+.bt-name{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .bt-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:0 0 auto;}
-@media (max-width:760px){.board-title{display:none;}}
+@media (max-width:760px){.board-title{max-width:38vw;min-height:42px;padding:0 10px;font-size:13px;}}
 
 /* --- Boards manager (card body) --- */
 .namefield{margin:12px 0 2px;}
@@ -148,13 +190,13 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .card-actions .btn.primary.danger:hover{background:#C23B3B;}
 
 /* --- Saved confirmation toast --- */
-#savedToast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--bar);color:#fff;font-weight:700;font-size:14px;padding:10px 18px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.28);z-index:60;animation:pop .14s ease;}
+#savedToast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--bar);color:#fff;font-weight:700;font-size:14px;padding:10px 18px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.28);z-index:60;animation:pop .14s ease;}
 
 /* --- Image drag-and-drop: dropzone hint + error toast --- */
 #stage.stage-dropping{outline:3px dashed var(--accent);outline-offset:-8px;}
 .drop-overlay{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.35);pointer-events:none;}
 .drop-hint{background:var(--bar);color:#fff;font-weight:700;font-size:15px;padding:12px 22px;border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.28);}
-#dropError{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#C23B3B;color:#fff;font-weight:700;font-size:14px;padding:10px 18px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.28);z-index:60;animation:pop .14s ease;}
+#dropError{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#C23B3B;color:#fff;font-weight:700;font-size:14px;padding:10px 18px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.28);z-index:60;animation:pop .14s ease;}
 
 /* --- Collaboration: presence overlay (remote cursors) --- */
 .presence-layer{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden;}
@@ -163,7 +205,8 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .rc-name{margin:12px 0 0 -4px;color:#fff;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:9px;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;}
 
 /* --- Collaboration: toolbar share button + status dot --- */
-.btn.sharing{background:rgba(255,255,255,.16);}
+.btn.sharing{background:#E9F5EE;padding:0 12px;}
+.btn.sharing:hover{background:#DDEFE4;}
 .status-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;background:#9aa8a7;}
 .status-connected{background:#3DC97E;}
 .status-connecting,.status-handshaking{background:var(--accent);}
