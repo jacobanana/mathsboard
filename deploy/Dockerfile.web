@@ -7,6 +7,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json tsconfig.node.json vite.config.ts index.html ./
+# The About page (burger menu) imports this repo-root doc verbatim via Vite's
+# `?raw` (src/ui/About.tsx), so it must be in the build context. Copied before
+# src so edits to src/ don't bust this layer.
+COPY ABOUT.md ./
 COPY src ./src
 # Passed by publish.yml (see .github/actions/app-version); Vite bakes any VITE_*
 # env var into the bundle. Placed just before the build so the npm ci layer

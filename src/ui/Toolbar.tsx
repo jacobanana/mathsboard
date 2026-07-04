@@ -61,6 +61,8 @@ export interface ToolbarCallbacks {
   onAddImage: () => void;
   /** Open the keyboard-shortcuts help sheet. */
   onHelp: () => void;
+  /** Open the About & credits sheet (open source, privacy, licence). */
+  onAbout: () => void;
 }
 
 export function Toolbar(props: ToolbarCallbacks): JSX.Element {
@@ -162,6 +164,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
             onBoards={props.onBoards}
             onSaveImage={props.onSaveImage}
             onHelp={props.onHelp}
+            onAbout={props.onAbout}
           />
         </div>
       </div>

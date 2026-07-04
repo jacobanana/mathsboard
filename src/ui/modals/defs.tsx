@@ -13,6 +13,7 @@ import { setStoredName } from "@/collab/profile";
 import { WelcomeModal } from "@/ui/WelcomeModal";
 import { InsertGallery } from "@/ui/InsertGallery";
 import { ShortcutsHelp } from "@/ui/ShortcutsHelp";
+import { About } from "@/ui/About";
 import { BoardsManager } from "@/ui/BoardsManager";
 import { NamePrompt } from "@/ui/NamePrompt";
 import { ShareModal } from "@/ui/ShareModal";
@@ -82,6 +83,11 @@ const insertModal = defineModal("insert", {
 
 const helpModal = defineModal("help", {
   render: () => <ShortcutsHelp />,
+});
+
+// About & credits: open-source acknowledgements, privacy policy, licence.
+const aboutModal = defineModal("about", {
+  render: () => <About />,
 });
 
 // A tool's settings Dialog, resolved from the tool registry (CREATE or EDIT).
@@ -166,6 +172,7 @@ export const MODALS: ModalDef[] = [
   saveAsModal,
   shareModal,
   joinNameModal,
+  aboutModal,
 ];
 
 export function getModalDef(kind: ModalState["kind"]): ModalDef | undefined {

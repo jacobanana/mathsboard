@@ -23,7 +23,8 @@ export type ModalState =
   | { kind: "share" }
   | { kind: "join" }
   | { kind: "joinName" }
-  | { kind: "help" };
+  | { kind: "help" }
+  | { kind: "about" };
 
 /** What a modal body can do to the router. */
 export interface ModalApi {

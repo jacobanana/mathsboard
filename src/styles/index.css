@@ -123,6 +123,21 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .sc-combo{display:inline-flex;align-items:center;gap:3px;}
 .sc-or,.sc-plus{color:var(--muted);font-size:12px;font-weight:700;}
 kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(--ink);background:#F4F6F5;border:1px solid #E0E4E2;border-bottom-width:2px;border-radius:6px;padding:4px 7px;min-width:12px;text-align:center;display:inline-block;}
+/* --- About & credits sheet (About.tsx, rendered from ABOUT.md) --- */
+.card:has(.about){width:min(560px,94vw);}
+.about{font-size:14px;line-height:1.55;color:var(--ink);}
+.about h1{margin:0 0 6px;font-size:21px;}
+.about h2{margin:22px 0 8px;font-size:16px;}
+.about h3{margin:16px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);}
+.about p{margin:0 0 10px;}
+.about ul{margin:0 0 12px;padding-left:20px;}
+.about li{margin:4px 0;}
+.about a{color:var(--accent);font-weight:600;text-decoration:none;}
+.about a:hover{text-decoration:underline;}
+.about code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:#EEF1F0;padding:1px 5px;border-radius:5px;}
+.about hr{border:none;border-top:1px solid #E3E8E6;margin:18px 0;}
+.about blockquote{margin:0 0 12px;padding:9px 13px;background:#F4F6F5;border-left:3px solid var(--accent);border-radius:0 8px 8px 0;color:var(--muted);font-size:13px;}
+.about blockquote p:last-child{margin:0;}
 #paperMenu{position:fixed;display:none;flex-direction:column;gap:4px;background:#fff;border-radius:14px;padding:7px;z-index:45;box-shadow:0 12px 34px rgba(0,0,0,.26);min-width:150px;}
 #paperMenu.open{display:flex;} #paperMenu button{text-align:left;color:var(--ink);font-size:15px;font-weight:600;padding:11px 13px;border-radius:10px;} #paperMenu button:hover{background:#EEF1F0;} #paperMenu button.active{background:var(--accent-soft);}
 

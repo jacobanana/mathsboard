@@ -20,6 +20,7 @@ import {
   BoardsIcon,
   SaveIcon,
   KeyboardIcon,
+  AboutIcon,
 } from "@/ui/icons";
 
 export interface OverflowMenuProps {
@@ -29,6 +30,8 @@ export interface OverflowMenuProps {
   onSaveImage: () => void;
   /** Open the keyboard-shortcuts help sheet. */
   onHelp: () => void;
+  /** Open the About & credits sheet (open source, privacy, licence). */
+  onAbout: () => void;
 }
 
 export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
@@ -116,6 +119,16 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
               <KeyboardIcon />
             </span>
             <span className="label">Keyboard shortcuts</span>
+          </button>
+          <button
+            id="aboutBtn"
+            title="About Maths Board — open source, privacy & licence"
+            onClick={pick(props.onAbout)}
+          >
+            <span className="ico">
+              <AboutIcon />
+            </span>
+            <span className="label">About &amp; credits</span>
           </button>
       </Popover>
     </>
