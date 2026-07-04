@@ -7,14 +7,18 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
-    "preview": "vite"
+    "preview": "vite",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@y-sweet/client": "^0.9.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "yjs": "^13.6.31",
     "zustand": "4.5.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/react": "18.3.27",
     "@types/react-dom": "18.3.7",
     "@vitejs/plugin-react": "4.7.0",

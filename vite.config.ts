@@ -13,6 +13,16 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  server: {
+    // Dev-time collaboration: proxy the backend routes to the local compose
+    // stack (docker compose -f docker-compose.yml -f docker-compose.local.yml
+    // up), which serves them on :8080. Without that stack running the app
+    // works exactly as before - these only matter once you press Share.
+    proxy: {
+      "/api": "http://localhost:8080",
+      "/ys": { target: "http://localhost:8080", ws: true },
+    },
+  },
 });
 
 /** Minimal local shim for node:url's fileURLToPath (no @types/node needed). */

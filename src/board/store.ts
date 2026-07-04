@@ -1,17 +1,26 @@
 // The single Zustand store. It holds BOTH halves of the model but keeps them
 // conceptually separate:
 //
-//   DOCUMENT state  -> board: BoardDocument   (syncable; mutated only via the
-//                                               named document actions below --
-//                                               those actions are the future
-//                                               sync seam)
+//   DOCUMENT state  -> board: BoardDocument   (a read-only MIRROR of the live
+//                                               Yjs document owned by
+//                                               src/collab/session.ts; mutated
+//                                               only via the named document
+//                                               actions below, which write to
+//                                               the CRDT - the mirror flows
+//                                               back through onBoardChange)
 //   EPHEMERAL state -> camera, tool, color, penSize, textSize, selection
 //                                               (local-only; never persisted to
 //                                               the document, never synced)
 //
 // RULE: never mutate board.objects / board.strokes / board.background outside an
-// action. UI and tools call addObject / updateObject / addStroke / etc. This is
-// the seam where backend writes / CRDT ops will be emitted later.
+// action. UI and tools call addObject / updateObject / addStroke / etc. Those
+// actions are the sync seam: each becomes one Yjs transaction, which both
+// applies locally (synchronously, via the session's observer -> onBoardChange)
+// and syncs to collaborators when a shared session is connected.
+//
+// UNDO/REDO is the session's Y.UndoManager scoped to THIS user's transactions:
+// undo reverts your own edits only, never a collaborator's. pushHistory() marks
+// step boundaries (drag handlers call it once at drag start, exactly as before).
 
 import { create } from "zustand";
 import type {
@@ -27,15 +36,10 @@ import { id as newId, newBoardDocument } from "@/board/types";
 import { eraseStrokeRuns, rectsIntersect, strokeBounds } from "@/board/geometry";
 import { localRepository } from "@/board/persistence/LocalBoardRepository";
 import { theme } from "@/styles/theme";
-
-const HISTORY_CAP = 60;
-
-/** What undo/redo snapshots capture: the document's mutable fields. */
-interface DocSnapshot {
-  objects: AnyBoardObject[];
-  strokes: Stroke[];
-  background: Background;
-}
+import * as session from "@/collab/session";
+import { SEED_ORIGIN } from "@/collab/docModel";
+import { useCollabStore } from "@/collab/collabStore";
+import { getStoredName } from "@/collab/profile";
 
 /**
  * The current selection. Holds object ids AND stroke ids so freehand "arcs" can
@@ -56,7 +60,8 @@ export const selectionCount = (s: Selection): number =>
  * Apply one eraser path geometrically to a list of pen strokes: trim covered
  * points, splitting each stroke into its surviving fragments and dropping any
  * stroke that is fully erased. The first fragment keeps the original id so a
- * partially-erased selected stroke stays selected.
+ * partially-erased selected stroke stays selected. Fragments inherit the
+ * parent's fields (including its z-`order`) via the spread.
  */
 function applyEraser(
   pens: Stroke[],
@@ -100,7 +105,7 @@ export function bakeErasers(strokes: Stroke[]): Stroke[] {
 }
 
 interface BoardState {
-  // ---- DOCUMENT state (syncable) ----
+  // ---- DOCUMENT state (mirror of the live Yjs doc) ----
   board: BoardDocument;
 
   // ---- DRAFT / LIBRARY linkage (local-only) ----
@@ -119,6 +124,8 @@ interface BoardState {
   color: string;
   penSize: number;
   textSize: number;
+  /** Eraser footprint diameter (screen px, like penSize). */
+  eraserSize: number;
   /** Object + stroke ids currently selected (multi-select). */
   selection: Selection;
   /**
@@ -128,16 +135,27 @@ interface BoardState {
    */
   editingId: string | null;
 
-  // ---- HISTORY (document-scoped) ----
-  undoStack: string[];
-  redoStack: string[];
+  // ---- HISTORY (Y.UndoManager state, local edits only) ----
   canUndo: boolean;
   canRedo: boolean;
 
   // ---- DOCUMENT actions (the sync seam) ----
   addObject(obj: AnyBoardObject): void;
+  /**
+   * Add several objects + strokes at once as a SINGLE undoable step (duplicate
+   * / paste). They land on top, keeping the given array order as their relative
+   * z-order. No-op when both lists are empty.
+   */
+  addShapes(objects: AnyBoardObject[], strokes: Stroke[]): void;
   /** Patch an object's fields. Pushes a history entry. */
   updateObject(id: string, patch: Partial<AnyBoardObject>): void;
+  /**
+   * Patch LIVE WIDGET STATE on an object (typed quiz answers, marks). Syncs to
+   * peers and persists in the document like updateObject, but never enters the
+   * undo history and never starts a new undo step. `undefined` values delete
+   * their field.
+   */
+  updateWidgetState(id: string, patch: Record<string, unknown>): void;
   /**
    * Move an object. Does NOT push history -- the drag handler pushes once at
    * drag start so the whole drag is a single undo step.
@@ -172,7 +190,7 @@ interface BoardState {
   setBackground(bg: Background): void;
 
   // ---- HISTORY actions ----
-  /** Snapshot current document state onto the undo stack (clears redo). */
+  /** Mark an undo-step boundary: the next local edit starts a fresh step. */
   pushHistory(): void;
   undo(): void;
   redo(): void;
@@ -182,6 +200,7 @@ interface BoardState {
   setColor(c: string): void;
   setPenSize(n: number): void;
   setTextSize(n: number): void;
+  setEraserSize(n: number): void;
   setCamera(patch: Partial<Camera>): void;
   /** Select exactly one object (or clear the selection when id is null). */
   select(id: string | null): void;
@@ -193,8 +212,21 @@ interface BoardState {
   selectAll(): void;
   setEditingId(id: string | null): void;
 
+  // ---- COLLAB lifecycle ----
+  /** Join the shared board `boardId` (from a share link). */
+  joinBoard(boardId: string): Promise<void>;
+  /**
+   * Start sharing the CURRENT board under a fresh id: seeds a shared session
+   * with the current content, puts ?board=<id> in the URL and returns the
+   * copyable share link.
+   */
+  shareBoard(): Promise<string>;
+  /** Leave the shared session, keeping the current content as the local draft. */
+  leaveBoard(): void;
+
   // ---- LOAD / SAVE lifecycle ----
-  /** Load the working draft (or seed one) via localRepository. */
+  /** Load the working draft (or seed one) via localRepository; joins a shared
+   *  board instead when the URL carries ?board=<id>. */
   init(): Promise<void>;
   /** Summaries of every named library board (newest first). */
   listBoards(): Promise<BoardSummary[]>;
@@ -216,102 +248,69 @@ interface BoardState {
   deleteBoard(id: string): Promise<void>;
 }
 
-function snapshot(board: BoardDocument): string {
-  return JSON.stringify({
-    objects: board.objects,
-    strokes: board.strokes,
-    background: board.background,
-  });
+// --- Debounced draft autosave -------------------------------------------
+// Every document change flushes the WORKING DRAFT (not the named library
+// board) here. Shared sessions skip it: Y-Sweet persists the shared board,
+// and the private local draft must not be overwritten by someone else's
+// content just because you opened their link.
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
+function cancelDraftSave(): void {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = undefined;
+  }
+}
+function scheduleDraftSave(): void {
+  cancelDraftSave();
+  saveTimer = setTimeout(() => {
+    saveTimer = undefined;
+    if (useCollabStore.getState().mode === "shared") return;
+    const { board, sourceId, dirty } = useBoardStore.getState();
+    void localRepository.saveDraft({ doc: board, sourceId, dirty });
+  }, 400);
+}
+/** Write the draft immediately (used by explicit lifecycle actions). */
+async function flushDraft(
+  doc: BoardDocument,
+  sourceId: string | null,
+  dirty: boolean,
+): Promise<void> {
+  cancelDraftSave();
+  await localRepository.saveDraft({ doc, sourceId, dirty });
 }
 
+/** Reset transient per-document state when the document is swapped wholesale. */
+const FRESH_DOC_STATE = {
+  canUndo: false,
+  canRedo: false,
+  selection: EMPTY_SELECTION,
+  editingId: null as string | null,
+};
+
+/**
+ * The lone TEXT object currently being styled, or null. Editing (the overlay)
+ * wins over selection; for selection only a single selected object qualifies
+ * (never a multi-select or a stroke). Shared by the options strip and the
+ * colour / size keyboard shortcuts so "which text updates live" stays in one
+ * place.
+ */
+export function activeTextObjectId(
+  s: Pick<BoardState, "editingId" | "selection" | "board">,
+): string | null {
+  const id =
+    s.editingId ??
+    (s.selection.objectIds.length === 1 && s.selection.strokeIds.length === 0
+      ? s.selection.objectIds[0]
+      : null);
+  if (id == null) return null;
+  const o = s.board.objects.find((obj) => obj.id === id);
+  return o && o.type === "text" ? o.id : null;
+}
+
+/** Fallback display name when the user dismissed / never saw the prompt. */
+const displayName = (): string => getStoredName() ?? "Guest";
+
 export const useBoardStore = create<BoardState>((set, get) => {
-  // --- Debounced draft autosave ------------------------------------------
-  // Every document change flushes the WORKING DRAFT (not the named library
-  // board) here -- this is the single autosave seam. An explicit Save / Save-as
-  // is what writes the document back into the library (saveCurrent / saveAs).
-  // When a backend arrives, hook sync here too (push a patch / CRDT op).
-  let saveTimer: ReturnType<typeof setTimeout> | undefined;
-  function cancelDraftSave(): void {
-    if (saveTimer) {
-      clearTimeout(saveTimer);
-      saveTimer = undefined;
-    }
-  }
-  function scheduleDraftSave(): void {
-    cancelDraftSave();
-    saveTimer = setTimeout(() => {
-      saveTimer = undefined;
-      const { board, sourceId, dirty } = get();
-      void localRepository.saveDraft({ doc: board, sourceId, dirty });
-      // <-- BACKEND SYNC HOOK: emit board change to the server here.
-    }, 400);
-  }
-  /** Write the draft immediately (used by explicit lifecycle actions). */
-  async function flushDraft(
-    doc: BoardDocument,
-    sourceId: string | null,
-    dirty: boolean,
-  ): Promise<void> {
-    cancelDraftSave();
-    await localRepository.saveDraft({ doc, sourceId, dirty });
-  }
-  /** Reset transient per-document state when the document is swapped wholesale. */
-  const FRESH_DOC_STATE = {
-    undoStack: [] as string[],
-    redoStack: [] as string[],
-    canUndo: false,
-    canRedo: false,
-    selection: EMPTY_SELECTION,
-    editingId: null as string | null,
-  };
-
-  /**
-   * Apply a mutation to the document arrays, bump updatedAt, and trigger a
-   * debounced save. `mutate` receives a fresh DocSnapshot (shallow-cloned
-   * arrays) to mutate; it must return the next {objects, strokes}.
-   */
-  function commit(mutate: (doc: DocSnapshot) => DocSnapshot): void {
-    set((state) => {
-      const next = mutate({
-        objects: state.board.objects,
-        strokes: state.board.strokes,
-        background: state.board.background,
-      });
-      const board: BoardDocument = {
-        ...state.board,
-        objects: next.objects,
-        strokes: next.strokes,
-        background: next.background,
-        updatedAt: Date.now(),
-      };
-      return { board, dirty: true };
-    });
-    scheduleDraftSave();
-  }
-
-  function restore(snap: string): void {
-    set((state) => {
-      const parsed = JSON.parse(snap) as DocSnapshot;
-      const board: BoardDocument = {
-        ...state.board,
-        objects: parsed.objects,
-        strokes: parsed.strokes,
-        background: parsed.background ?? state.board.background,
-        updatedAt: Date.now(),
-      };
-      // Keep selection valid after undo/restore: drop ids whose object/stroke
-      // no longer exists.
-      const objIds = new Set(parsed.objects.map((o) => o.id));
-      const strkIds = new Set(parsed.strokes.map((s) => s.id));
-      const selection: Selection = {
-        objectIds: state.selection.objectIds.filter((id) => objIds.has(id)),
-        strokeIds: state.selection.strokeIds.filter((id) => strkIds.has(id)),
-      };
-      return { board, selection, dirty: true };
-    });
-    scheduleDraftSave();
-  }
-
   return {
     board: {
       // Replaced by init(); a synchronous placeholder keeps types honest and
@@ -332,97 +331,70 @@ export const useBoardStore = create<BoardState>((set, get) => {
     color: theme.ink,
     penSize: 6,
     textSize: 26,
+    eraserSize: 45,
     selection: EMPTY_SELECTION,
     editingId: null,
 
-    undoStack: [],
-    redoStack: [],
     canUndo: false,
     canRedo: false,
 
-    // ---- DOCUMENT actions ----
+    // ---- DOCUMENT actions (each one = one CRDT transaction) ----
     addObject(obj) {
-      get().pushHistory();
-      commit((d) => ({ ...d, objects: [...d.objects, obj] }));
+      session.stopCapture();
+      session.insertObject(obj);
+    },
+
+    addShapes(objects, strokes) {
+      if (objects.length === 0 && strokes.length === 0) return;
+      session.stopCapture();
+      session.insertShapes(objects, strokes);
     },
 
     updateObject(id, patch) {
-      get().pushHistory();
-      commit((d) => ({
-        ...d,
-        objects: d.objects.map((o) => (o.id === id ? { ...o, ...patch } : o)),
-      }));
+      session.stopCapture();
+      session.patchObject(id, patch);
+    },
+
+    updateWidgetState(id, patch) {
+      // No stopCapture: this must not cut an undo step boundary, and the
+      // INPUT_ORIGIN transaction is invisible to the UndoManager anyway.
+      session.patchObjectInput(id, patch);
     },
 
     moveObject(id, x, y) {
-      // No history here -- caller pushed once at drag start.
-      commit((d) => ({
-        ...d,
-        objects: d.objects.map((o) => (o.id === id ? { ...o, x, y } : o)),
-      }));
+      // No history boundary here -- caller pushed once at drag start.
+      session.patchObject(id, { x, y });
     },
 
     resizeObject(id, rect) {
-      // No history here -- caller pushed once at drag start (mirrors moveObject).
-      commit((d) => ({
-        ...d,
-        objects: d.objects.map((o) => (o.id === id ? { ...o, ...rect } : o)),
-      }));
+      // No history boundary here -- caller pushed once at drag start.
+      session.patchObject(id, { ...rect });
     },
 
     nudgeSelection(dx, dy) {
-      // No history here -- caller pushed once at drag start.
+      // No history boundary here -- caller pushed once at drag start.
       const sel = get().selection;
       if (selectionCount(sel) === 0 || (dx === 0 && dy === 0)) return;
-      const oset = new Set(sel.objectIds);
-      const sset = new Set(sel.strokeIds);
-      commit((d) => ({
-        ...d,
-        objects: d.objects.map((o) =>
-          oset.has(o.id) ? { ...o, x: o.x + dx, y: o.y + dy } : o,
-        ),
-        strokes: d.strokes.map((s) =>
-          sset.has(s.id)
-            ? { ...s, points: s.points.map((p) => ({ x: p.x + dx, y: p.y + dy })) }
-            : s,
-        ),
-      }));
+      session.translateShapes(sel.objectIds, sel.strokeIds, dx, dy);
     },
 
     removeObject(id) {
-      get().pushHistory();
-      commit((d) => ({
-        ...d,
-        objects: d.objects.filter((o) => o.id !== id),
-      }));
-      const sel = get().selection;
-      if (sel.objectIds.includes(id)) {
-        set({
-          selection: {
-            ...sel,
-            objectIds: sel.objectIds.filter((x) => x !== id),
-          },
-        });
-      }
+      session.stopCapture();
+      session.removeShapes([id], []);
+      // Selection pruning happens in onBoardChange (ids no longer on the board).
     },
 
     deleteSelection() {
       const sel = get().selection;
       if (selectionCount(sel) === 0) return;
-      get().pushHistory();
-      const oset = new Set(sel.objectIds);
-      const sset = new Set(sel.strokeIds);
-      commit((d) => ({
-        ...d,
-        objects: d.objects.filter((o) => !oset.has(o.id)),
-        strokes: d.strokes.filter((s) => !sset.has(s.id)),
-      }));
+      session.stopCapture();
+      session.removeShapes(sel.objectIds, sel.strokeIds);
       set({ selection: EMPTY_SELECTION });
     },
 
     addStroke(stroke) {
-      get().pushHistory();
-      commit((d) => ({ ...d, strokes: [...d.strokes, stroke] }));
+      session.stopCapture();
+      session.insertStroke(stroke);
     },
 
     eraseStrokes(eraser) {
@@ -436,61 +408,25 @@ export const useBoardStore = create<BoardState>((set, get) => {
         next.length !== current.length ||
         next.some((s, i) => s !== current[i]);
       if (!changed) return;
-      get().pushHistory();
-      commit((d) => ({ ...d, strokes: next }));
-      // Drop any selected stroke ids that no longer exist after the split.
-      const present = new Set(next.map((s) => s.id));
-      const sel = get().selection;
-      const strokeIds = sel.strokeIds.filter((id) => present.has(id));
-      if (strokeIds.length !== sel.strokeIds.length) {
-        set({ selection: { ...sel, strokeIds } });
-      }
+      session.stopCapture();
+      session.reconcileStrokes(next);
+      // Split-away stroke ids are pruned from the selection in onBoardChange.
     },
 
     setBackground(bg) {
-      // Route through the single commit() seam (and make it undoable) rather
-      // than hand-rolling a second save path.
-      get().pushHistory();
-      commit((d) => ({ ...d, background: bg }));
+      session.stopCapture();
+      session.setBackground(bg);
     },
 
     // ---- HISTORY ----
     pushHistory() {
-      set((state) => {
-        const undoStack = [...state.undoStack, snapshot(state.board)];
-        if (undoStack.length > HISTORY_CAP) undoStack.shift();
-        return { undoStack, redoStack: [], canUndo: true, canRedo: false };
-      });
+      session.stopCapture();
     },
-
     undo() {
-      const { undoStack, board } = get();
-      if (!undoStack.length) return;
-      const redoStack = [...get().redoStack, snapshot(board)];
-      const nextUndo = undoStack.slice(0, -1);
-      const snap = undoStack[undoStack.length - 1];
-      set({
-        undoStack: nextUndo,
-        redoStack,
-        canUndo: nextUndo.length > 0,
-        canRedo: true,
-      });
-      restore(snap);
+      session.undo();
     },
-
     redo() {
-      const { redoStack, board } = get();
-      if (!redoStack.length) return;
-      const undoStack = [...get().undoStack, snapshot(board)];
-      const nextRedo = redoStack.slice(0, -1);
-      const snap = redoStack[redoStack.length - 1];
-      set({
-        undoStack,
-        redoStack: nextRedo,
-        canUndo: true,
-        canRedo: nextRedo.length > 0,
-      });
-      restore(snap);
+      session.redo();
     },
 
     // ---- EPHEMERAL actions ----
@@ -505,6 +441,9 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
     setTextSize(n) {
       set({ textSize: n });
+    },
+    setEraserSize(n) {
+      set({ eraserSize: n });
     },
     setCamera(patch) {
       set((state) => ({ camera: { ...state.camera, ...patch } }));
@@ -536,8 +475,52 @@ export const useBoardStore = create<BoardState>((set, get) => {
       set({ editingId: id });
     },
 
+    // ---- COLLAB lifecycle ----
+    async joinBoard(boardId) {
+      const board = session.joinShared(boardId, displayName());
+      session.putBoardIdInUrl(boardId);
+      set({
+        board,
+        // A joined board is remote content: unlink it from the local library.
+        sourceId: null,
+        dirty: false,
+        camera: { x: 0, y: 0, scale: 1 },
+        ...FRESH_DOC_STATE,
+      });
+    },
+
+    async shareBoard() {
+      const current = session.currentBoard();
+      // Short hex code, not a UUID: it doubles as the join code people can
+      // type in by hand (Share dialog -> "Join with a code").
+      const boardId = session.newBoardCode();
+      const board = session.joinShared(boardId, displayName(), current);
+      session.putBoardIdInUrl(boardId);
+      // Same content, same ids: keep selection/camera/source link; only the
+      // undo history resets (fresh doc), which FRESH state below would also
+      // clear -- do it narrowly to avoid dropping the user's selection.
+      set({ board, canUndo: false, canRedo: false });
+      return session.shareLink();
+    },
+
+    leaveBoard() {
+      // Keep what's on screen as the working draft ("leave with a local copy").
+      const current = session.currentBoard();
+      const board = session.startSolo(current);
+      session.clearBoardIdFromUrl();
+      set({ board, dirty: true, ...FRESH_DOC_STATE });
+      void flushDraft(board, get().sourceId, true);
+    },
+
     // ---- LOAD / SAVE ----
     async init() {
+      // A share link takes precedence over the local draft: join that board.
+      const sharedId = session.boardIdFromUrl();
+      if (sharedId) {
+        await get().joinBoard(sharedId);
+        return;
+      }
+
       // Migrate any legacy "eraser" overlay strokes into geometry so erased
       // gaps move with their stroke (and fully-erased strokes vanish).
       const bake = (doc: BoardDocument): BoardDocument => {
@@ -548,8 +531,9 @@ export const useBoardStore = create<BoardState>((set, get) => {
       // Resume the working draft exactly if one exists.
       const draft = await localRepository.loadDraft();
       if (draft) {
+        const board = session.startSolo(bake(draft.doc));
         set({
-          board: bake(draft.doc),
+          board,
           sourceId: draft.sourceId,
           dirty: draft.dirty,
           ...FRESH_DOC_STATE,
@@ -572,7 +556,8 @@ export const useBoardStore = create<BoardState>((set, get) => {
       }
       if (!doc) doc = newBoardDocument();
       await flushDraft(doc, sourceId, false);
-      set({ board: doc, sourceId, dirty: false, ...FRESH_DOC_STATE });
+      const board = session.startSolo(doc);
+      set({ board, sourceId, dirty: false, ...FRESH_DOC_STATE });
     },
 
     listBoards() {
@@ -580,37 +565,51 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
 
     async saveCurrent() {
-      const { board, sourceId } = get();
+      const { sourceId } = get();
       if (sourceId == null) return { needsName: true };
-      const doc: BoardDocument = { ...board, id: sourceId, updatedAt: Date.now() };
+      const doc: BoardDocument = {
+        ...session.currentBoard(),
+        id: sourceId,
+        updatedAt: Date.now(),
+      };
       await localRepository.save(doc);
-      await flushDraft(doc, sourceId, false);
-      set({ board: doc, dirty: false });
+      if (useCollabStore.getState().mode === "solo") {
+        await flushDraft(doc, sourceId, false);
+      }
+      set({ dirty: false });
       return { needsName: false };
     },
 
     async saveAs(name) {
-      const { board } = get();
       const now = Date.now();
       const docId = newId();
       const doc: BoardDocument = {
-        ...board,
+        ...session.currentBoard(),
         id: docId,
         name,
         createdAt: now,
         updatedAt: now,
       };
       await localRepository.save(doc);
-      await flushDraft(doc, docId, false);
-      set({ board: doc, sourceId: docId, dirty: false });
+      // Rename the live document too (syncs to peers; not undoable).
+      session.setBoardName(name);
+      if (useCollabStore.getState().mode === "solo") {
+        await flushDraft(doc, docId, false);
+      }
+      set({ sourceId: docId, dirty: false });
     },
 
     async renameBoard(boardId, name) {
       await localRepository.rename(boardId, name);
       if (get().sourceId === boardId) {
-        const board: BoardDocument = { ...get().board, name };
-        set({ board });
-        await flushDraft(board, boardId, get().dirty);
+        session.setBoardName(name); // mirror + peers pick the name up
+        if (useCollabStore.getState().mode === "solo") {
+          await flushDraft(
+            { ...session.currentBoard(), name },
+            boardId,
+            get().dirty,
+          );
+        }
       }
     },
 
@@ -619,9 +618,12 @@ export const useBoardStore = create<BoardState>((set, get) => {
       if (!src) return;
       const strokes = bakeErasers(src.strokes);
       const doc = strokes === src.strokes ? src : { ...src, strokes };
+      // Opening a library board always lands in a private solo session.
+      const board = session.startSolo(doc);
+      session.clearBoardIdFromUrl();
       await flushDraft(doc, boardId, false);
       set({
-        board: doc,
+        board,
         sourceId: boardId,
         dirty: false,
         camera: { x: 0, y: 0, scale: 1 },
@@ -631,9 +633,11 @@ export const useBoardStore = create<BoardState>((set, get) => {
 
     async newBoard() {
       const doc = newBoardDocument();
+      const board = session.startSolo(doc);
+      session.clearBoardIdFromUrl();
       await flushDraft(doc, null, false);
       set({
-        board: doc,
+        board,
         sourceId: null,
         dirty: false,
         camera: { x: 0, y: 0, scale: 1 },
@@ -646,10 +650,42 @@ export const useBoardStore = create<BoardState>((set, get) => {
       if (get().sourceId === boardId) {
         // The open board's library entry is gone; keep the work but unlink it so
         // it reads as an unsaved draft again.
-        const board = get().board;
-        await flushDraft(board, null, true);
+        if (useCollabStore.getState().mode === "solo") {
+          await flushDraft(session.currentBoard(), null, true);
+        }
         set({ sourceId: null, dirty: true });
       }
     },
   };
+});
+
+// --- Yjs session -> store wiring --------------------------------------------
+// Every committed transaction (local edit, remote edit, undo/redo, seed) lands
+// here with the fresh mirror. Keep the selection valid (drop ids whose shape no
+// longer exists - remote deletes, undo, eraser splits) and autosave the draft.
+session.registerSessionCallbacks({
+  onBoardChange(board, origin) {
+    const state = useBoardStore.getState();
+    const objIds = new Set(board.objects.map((o) => o.id));
+    const strokeIds = new Set(board.strokes.map((s) => s.id));
+    const keptObjs = state.selection.objectIds.filter((id) => objIds.has(id));
+    const keptStrokes = state.selection.strokeIds.filter((id) =>
+      strokeIds.has(id),
+    );
+    const selection =
+      keptObjs.length === state.selection.objectIds.length &&
+      keptStrokes.length === state.selection.strokeIds.length
+        ? state.selection
+        : { objectIds: keptObjs, strokeIds: keptStrokes };
+    useBoardStore.setState({
+      board,
+      selection,
+      // Seeding just reloads existing content; it never dirties the draft.
+      ...(origin === SEED_ORIGIN ? {} : { dirty: true }),
+    });
+    scheduleDraftSave();
+  },
+  onUndoState(canUndo, canRedo) {
+    useBoardStore.setState({ canUndo, canRedo });
+  },
 });

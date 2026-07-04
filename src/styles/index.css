@@ -10,7 +10,10 @@ body{font-family:var(--font);background:var(--bar);overflow:hidden;display:flex;
 #root{display:flex;flex-direction:column;height:100dvh;}
 #toolbar{flex:0 0 auto;background:var(--bar);color:var(--text-on-bar);display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;box-shadow:0 2px 10px rgba(0,0,0,.18);z-index:20;}
 .group{display:flex;align-items:center;gap:6px;}
-#options{min-height:44px;} #options:empty{display:none;}
+/* The contextual options zone is a FIXED-WIDTH slot: it stays reserved (and
+   simply sits empty for Select/Pan) so the toolbar never reflows on tool
+   change. Width fits its widest content: slider + preview + colour button. */
+#options{min-height:44px;width:218px;flex:0 0 auto;}
 .divider{width:1px;align-self:stretch;background:rgba(255,255,255,.16);margin:2px 4px;}
 .opt-sep{width:1px;height:30px;background:rgba(255,255,255,.16);margin:0 3px;}
 .spacer{flex:1 1 auto;}
@@ -25,6 +28,19 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .swatch{width:38px;height:38px;border-radius:50%;border:3px solid rgba(255,255,255,.25);transition:transform .08s,border-color .1s,box-shadow .1s;}
 .swatch:active{transform:scale(.92);} .swatch.active{border-color:#fff;box-shadow:0 0 0 3px var(--accent);}
 .size-dot{display:inline-block;border-radius:50%;}
+
+/* --- Options strip: size slider + colour dropdown --- */
+.size-wrap{display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:0 4px;cursor:pointer;}
+.size-slider{width:110px;height:26px;margin:0;accent-color:var(--accent);cursor:pointer;}
+/* Reserve the max preview size so the toolbar doesn't jiggle as the dot grows. */
+.size-wrap .size-dot,.size-glyph{flex:0 0 auto;}
+.size-glyph{font-weight:800;line-height:1;width:22px;text-align:center;}
+#colorBtn{gap:5px;}
+.color-cur{width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.55);flex:0 0 auto;}
+.color-caret{font-size:11px;opacity:.75;}
+#colorMenu{position:fixed;display:flex;gap:8px;background:#fff;border-radius:14px;padding:9px;z-index:45;box-shadow:0 12px 34px rgba(0,0,0,.26);}
+#colorMenu .swatch{border-color:rgba(0,0,0,.12);}
+#colorMenu .swatch.active{border-color:#fff;box-shadow:0 0 0 3px var(--accent);}
 #stage{flex:1 1 auto;position:relative;background:var(--paper);overflow:hidden;touch-action:none;}
 #template,#ink{position:absolute;inset:0;width:100%;height:100%;display:block;} #ink{touch-action:none;}
 #textEditor{position:absolute;z-index:7;display:none;border:1px dashed var(--accent);background:rgba(255,255,255,.72);padding:0 2px;margin:0;resize:none;overflow:hidden;white-space:pre;line-height:1.3;min-width:14px;min-height:1em;font-family:var(--font);font-weight:500;}
@@ -53,10 +69,26 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .gsub{grid-column:1/-1;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:8px 2px 0;}
 .tile{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;background:#F4F6F5;border-radius:12px;padding:12px 13px;color:var(--ink);}
 .tile:hover{background:#E8EDEB;} .tile b{font-size:15px;} .tile span{font-size:12px;color:var(--muted);}
+/* --- Keyboard shortcuts sheet (ShortcutsHelp) --- */
+.shortcuts{display:flex;flex-direction:column;}
+.shortcuts .gsub{margin:12px 2px 3px;}
+.shortcuts .sc-group:first-child .gsub{margin-top:2px;}
+.shortcuts dl{margin:0;}
+.sc-row{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:5px 2px;}
+.sc-row dd{margin:0;font-size:14px;color:var(--ink);}
+.sc-keys{display:inline-flex;align-items:center;flex-wrap:wrap;gap:3px;flex:0 0 auto;white-space:nowrap;}
+.sc-combo{display:inline-flex;align-items:center;gap:3px;}
+.sc-or,.sc-plus{color:var(--muted);font-size:12px;font-weight:700;}
+kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(--ink);background:#F4F6F5;border:1px solid #E0E4E2;border-bottom-width:2px;border-radius:6px;padding:4px 7px;min-width:12px;text-align:center;display:inline-block;}
 #paperMenu{position:fixed;display:none;flex-direction:column;gap:4px;background:#fff;border-radius:14px;padding:7px;z-index:45;box-shadow:0 12px 34px rgba(0,0,0,.26);min-width:150px;}
 #paperMenu.open{display:flex;} #paperMenu button{text-align:left;color:var(--ink);font-size:15px;font-weight:600;padding:11px 13px;border-radius:10px;} #paperMenu button:hover{background:#EEF1F0;} #paperMenu button.active{background:var(--accent-soft);}
-#help .row{display:flex;gap:11px;margin:13px 0;align-items:flex-start;} #help .row .n{flex:0 0 26px;height:26px;border-radius:50%;background:var(--accent-soft);color:#7a5a10;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;} #help .row p{margin:1px 0;font-size:14.5px;line-height:1.4;}
-@media (max-width:760px){.btn{padding:0 10px;font-size:14px;}.btn .label{display:none;}.btn.keep-label .label{display:inline;}.swatch{width:34px;height:34px;}}
+
+/* --- Toolbar burger menu (lesser-used actions) --- */
+#overflowMenu{position:fixed;display:flex;flex-direction:column;gap:4px;background:#fff;border-radius:14px;padding:7px;z-index:45;box-shadow:0 12px 34px rgba(0,0,0,.26);min-width:190px;}
+#overflowMenu button{display:flex;align-items:center;gap:10px;text-align:left;color:var(--ink);font-size:15px;font-weight:600;padding:11px 13px;border-radius:10px;}
+#overflowMenu button:hover{background:#EEF1F0;}
+#overflowMenu .ico{font-size:16px;width:20px;display:inline-flex;justify-content:center;}
+@media (max-width:760px){.btn{padding:0 10px;font-size:14px;}.btn .label{display:none;}.btn.keep-label .label{display:inline;}.swatch{width:34px;height:34px;}.size-slider{width:74px;}#options{width:178px;}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 .ilayer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
 .iworksheet{position:absolute;transform-origin:0 0;pointer-events:auto;width:300px;background:#fff;border:1px solid #E4D9B8;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
@@ -117,3 +149,63 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 /* --- Saved confirmation toast --- */
 #savedToast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--bar);color:#fff;font-weight:700;font-size:14px;padding:10px 18px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.28);z-index:60;animation:pop .14s ease;}
+
+/* --- Image drag-and-drop: dropzone hint + error toast --- */
+#stage.stage-dropping{outline:3px dashed var(--accent);outline-offset:-8px;}
+.drop-overlay{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.35);pointer-events:none;}
+.drop-hint{background:var(--bar);color:#fff;font-weight:700;font-size:15px;padding:12px 22px;border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.28);}
+#dropError{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#C23B3B;color:#fff;font-weight:700;font-size:14px;padding:10px 18px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.28);z-index:60;animation:pop .14s ease;}
+
+/* --- Collaboration: presence overlay (remote cursors) --- */
+.presence-layer{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden;}
+.remote-cursor{position:absolute;transform:translate(-2px,-2px);display:flex;align-items:flex-start;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25));}
+.remote-cursor svg{flex:0 0 auto;}
+.rc-name{margin:12px 0 0 -4px;color:#fff;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:9px;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;}
+
+/* --- Collaboration: toolbar share button + status dot --- */
+.btn.sharing{background:rgba(255,255,255,.16);}
+.status-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;background:#9aa8a7;}
+.status-connected{background:#3DC97E;}
+.status-connecting,.status-handshaking{background:var(--accent);}
+.status-error{background:#E4572E;}
+.status-offline{background:#9aa8a7;}
+
+/* --- Collaboration: share dialog --- */
+.share-coderow{display:flex;align-items:center;gap:8px;margin:12px 0 4px;}
+.share-code{flex:1;text-align:center;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:26px;font-weight:700;letter-spacing:.12em;color:var(--ink);background:#F7F9F8;border:2px solid #E0E4E2;border-radius:10px;padding:8px 12px;user-select:all;}
+.share-coderow .btn{color:#fff;background:var(--bar);min-height:42px;}
+.share-coderow .btn:hover{background:#15302f;}
+.joinrow{display:flex;gap:8px;margin:8px 0 2px;}
+.joinrow input{flex:1;min-width:0;font-family:inherit;font-size:15px;font-weight:600;border:2px solid #E0E4E2;border-radius:10px;padding:9px 11px;color:var(--ink);background:#fff;}
+.joinrow input:focus{outline:none;border-color:var(--accent);}
+.joinrow .btn{color:var(--ink);background:#EEF1F0;min-height:42px;}
+.joinrow .btn:hover{background:#E3E8E6;}
+.joinrow .btn[disabled]{opacity:.4;}
+
+/* --- Welcome screen (fronts plain page loads) --- */
+.welcome-continue{width:100%;justify-content:center;min-height:52px;font-size:16px;color:#fff;background:var(--bar);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.welcome-continue:hover{background:#15302f;}
+.welcome-continue[disabled]{opacity:.5;}
+.welcome-row{display:flex;gap:10px;margin-top:10px;}
+.welcome-row .btn{flex:1;justify-content:center;min-height:44px;color:var(--ink);background:#EEF1F0;}
+.welcome-row .btn:hover{background:#E3E8E6;}
+.share-linkrow{display:flex;gap:8px;margin:12px 0 4px;}
+.share-linkrow input{flex:1;min-width:0;font-family:inherit;font-size:13.5px;font-weight:600;border:2px solid #E0E4E2;border-radius:10px;padding:9px 11px;color:var(--ink);background:#F7F9F8;}
+.share-linkrow input:focus{outline:none;border-color:var(--accent);}
+.share-linkrow .btn{color:#fff;background:var(--bar);min-height:42px;}
+.share-linkrow .btn:hover{background:#15302f;}
+.share-status{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--muted);margin:10px 0 2px;}
+.share-status .share-dot{width:10px;height:10px;border-radius:50%;background:#9aa8a7;flex:0 0 auto;}
+.share-status-connected .share-dot{background:#3DC97E;}
+.share-status-connecting .share-dot,.share-status-handshaking .share-dot{background:var(--accent);}
+.share-status-error .share-dot{background:#E4572E;}
+.share-people{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px;}
+.share-person{color:#fff;font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:11px;}
+
+/* --- Image tool dialog --- */
+.img-pick{display:block;text-align:center;font-weight:600;font-size:15px;color:var(--ink);background:#F4F6F5;border:2px dashed #CBD5D2;border-radius:12px;padding:16px 12px;margin:12px 0 4px;cursor:pointer;}
+.img-pick:hover{background:#E8EDEB;}
+.img-pick input[type=file]{display:none;}
+/* Highlight the picker while an image file is dragged over the dialog. */
+.img-drop.dragover .img-pick{background:#E8EDEB;border-color:var(--accent);}
+.img-preview{display:block;max-width:100%;max-height:220px;margin:10px auto 0;border-radius:10px;border:1px solid #E0E4E2;}

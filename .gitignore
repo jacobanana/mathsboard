@@ -1,3 +1,8 @@
 node_modules
 dist
 *.tsbuildinfo
+# Playwright output
+test-results
+playwright-report
+# Deployment secrets (copy .env.example -> .env and fill in)
+.env

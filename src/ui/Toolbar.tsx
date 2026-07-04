@@ -1,26 +1,48 @@
-// The top toolbar. Ported from the prototype markup (lines 89-111) and its
-// wiring (setTool line 192-194, undo/redo/delete/edit line 338-339).
+// The top toolbar. Deliberately STATIC: nothing appears, disappears or shifts
+// when the tool or selection changes, so users always find buttons where they
+// left them.
 //
-// Mode buttons (Draw / Text / Select / Pan / Eraser) reflect store.tool via the
-// .active class and call setTool. The #options group is rendered as a separate
-// component (OptionsStrip) and slotted between the dividers, matching the
-// prototype's <div class="group" id="options"></div>.
+// Layout (left to right):
+//   1. The five mode buttons — Select, Pan, Draw, Eraser, Text — icon-only,
+//      selectable with keys 1-5 (wired in App). Select/Pan lead, matching the
+//      Miro / Excalidraw convention (1 = select); Eraser sits next to Draw
+//      since the two alternate constantly while working. The startup tool is
+//      still the pen (order ≠ default).
+//   2. The contextual options zone (OptionsStrip): a FIXED-WIDTH slot that
+//      holds the size slider + colour dropdown for the active tool and simply
+//      sits empty for Select/Pan — neighbouring buttons never move into it.
+//   3. Insert, then Undo / Redo. Selection actions (edit / delete) are NOT on
+//      the bar: they float next to the selection itself (FloatButtons), plus
+//      the Delete key and double-click-to-edit.
+//   4. Right side: the board-title chip, the live share status chip (only
+//      while shared), and the burger menu (OverflowMenu) holding the
+//      lesser-used actions — Join, Share, Paper, Boards, Save image.
 //
-// Everything that isn't pure store state (Insert, Paper, Save image, Help, Edit
-// selected) is delegated to callbacks the host (App) wires.
+// Everything that isn't pure store state is delegated to callbacks the host
+// (App) wires.
 
 import { useBoardStore } from "@/board/store";
+import { useCollabStore } from "@/collab/collabStore";
+import { COLLAB_ENABLED } from "@/config";
 import type { ToolName } from "@/board/types";
 import { OptionsStrip } from "@/ui/OptionsStrip";
-import { DrawIcon, TextIcon, EraserIcon, GLYPH } from "@/ui/icons";
+import { OverflowMenu } from "@/ui/OverflowMenu";
+import { keyHint } from "@/ui/shortcuts";
+import { DrawIcon, TextIcon, EraserIcon, ImageIcon, GLYPH } from "@/ui/icons";
 
 export interface ToolbarCallbacks {
   onInsert: () => void;
   onBoards: () => void;
   onPaper: (anchor: HTMLElement) => void;
   onSaveImage: () => void;
+  /** Open the Share dialog (start sharing / code + link + who's here). */
+  onShare: () => void;
+  /** Open the Join dialog (enter a code someone shared). */
+  onJoin: () => void;
+  /** Insert a picture (opens the image tool's file-picker dialog directly). */
+  onAddImage: () => void;
+  /** Open the keyboard-shortcuts help sheet. */
   onHelp: () => void;
-  onEditSelected: () => void;
 }
 
 export function Toolbar(props: ToolbarCallbacks): JSX.Element {
@@ -30,42 +52,69 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
   const redo = useBoardStore((s) => s.redo);
   const canUndo = useBoardStore((s) => s.canUndo);
   const canRedo = useBoardStore((s) => s.canRedo);
-  const selection = useBoardStore((s) => s.selection);
-  const deleteSelection = useBoardStore((s) => s.deleteSelection);
   const boardName = useBoardStore((s) => s.board.name);
   const sourceId = useBoardStore((s) => s.sourceId);
   const dirty = useBoardStore((s) => s.dirty);
+  const collabMode = useCollabStore((s) => s.mode);
+  const collabStatus = useCollabStore((s) => s.status);
+  const peerCount = useCollabStore((s) => s.peers.length);
 
   const isMode = (t: ToolName) => tool === t;
-  const selCount = selection.objectIds.length + selection.strokeIds.length;
-  const hasSelection = selCount > 0;
-  // Editing settings only makes sense for a single placed object (not a stroke).
-  const canEdit = selection.objectIds.length === 1 && selection.strokeIds.length === 0;
 
   return (
     <div id="toolbar">
+      {/* Icon-only: the title tooltips + aria-labels carry the names. */}
       <div className="group" id="modes">
         <button
-          className={"btn" + (isMode("pen") ? " active" : "")}
+          className={"btn small" + (isMode("select") ? " active" : "")}
+          id="selectBtn"
+          title={`Select & move (${keyHint("tool-select")}) — click a shape or drawing, drag empty space to lasso, ${keyHint("selectAll")} for all`}
+          aria-label="Select"
+          onClick={() => setTool("select")}
+        >
+          <span className="ico">{GLYPH.select}</span>
+        </button>
+        <button
+          className={"btn small" + (isMode("pan") ? " active" : "")}
+          id="panBtn"
+          title={`Move the view (${keyHint("tool-pan")})`}
+          aria-label="Pan"
+          onClick={() => setTool("pan")}
+        >
+          <span className="ico">{GLYPH.pan}</span>
+        </button>
+        <button
+          className={"btn small" + (isMode("pen") ? " active" : "")}
           id="drawBtn"
-          title="Draw"
+          title={`Draw (${keyHint("tool-draw")})`}
+          aria-label="Draw"
           onClick={() => setTool("pen")}
         >
           <span className="ico" id="drawIco">
             <DrawIcon />
           </span>
-          <span className="label">Draw</span>
         </button>
         <button
-          className={"btn" + (isMode("text") ? " active" : "")}
+          className={"btn small" + (isMode("eraser") ? " active" : "")}
+          id="eraserBtn"
+          title={`Eraser (${keyHint("tool-eraser")})`}
+          aria-label="Eraser"
+          onClick={() => setTool("eraser")}
+        >
+          <span className="ico" id="eraserIco">
+            <EraserIcon />
+          </span>
+        </button>
+        <button
+          className={"btn small" + (isMode("text") ? " active" : "")}
           id="textBtn"
-          title="Type text"
+          title={`Type text (${keyHint("tool-text")})`}
+          aria-label="Text"
           onClick={() => setTool("text")}
         >
           <span className="ico" id="textIco">
             <TextIcon />
           </span>
-          <span className="label">Text</span>
         </button>
       </div>
 
@@ -76,57 +125,58 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
       <div className="divider" />
 
       <button
-        className={"btn" + (isMode("select") ? " active" : "")}
-        id="selectBtn"
-        title="Select & move — click a shape or drawing, drag empty space to lasso, Ctrl+A for all"
-        onClick={() => setTool("select")}
-      >
-        <span className="ico">{GLYPH.select}</span>
-        <span className="label">Select</span>
-      </button>
-      <button
-        className={"btn" + (isMode("pan") ? " active" : "")}
-        id="panBtn"
-        title="Move the view"
-        onClick={() => setTool("pan")}
-      >
-        <span className="ico">{GLYPH.pan}</span>
-        <span className="label">Pan</span>
-      </button>
-      <button
-        className={"btn" + (isMode("eraser") ? " active" : "")}
-        id="eraserBtn"
-        title="Eraser"
-        onClick={() => setTool("eraser")}
-      >
-        <span className="ico" id="eraserIco">
-          <EraserIcon />
-        </span>
-        <span className="label">Eraser</span>
-      </button>
-
-      <div className="divider" />
-
-      <button
-        className="btn insert keep-label"
+        className="btn small insert"
         id="insertBtn"
+        title={`Insert a maths widget (${keyHint("insert")})`}
+        aria-label="Insert"
         onClick={props.onInsert}
       >
         <span className="ico">{GLYPH.insert}</span>
-        <span className="label">Insert</span>
       </button>
+
+      {/* Picture insert — a first-class button since adding a photo/diagram is
+          a common action (cf. Excalidraw/Miro). Collab builds only: the image
+          tool uploads through the backend, so the static single-user build
+          neither registers the tool nor shows this button. */}
+      {COLLAB_ENABLED && (
+        <button
+          className="btn small"
+          id="imageBtn"
+          title={`Add a picture (${keyHint("image")})`}
+          aria-label="Add a picture"
+          onClick={props.onAddImage}
+        >
+          <span className="ico">
+            <ImageIcon />
+          </span>
+        </button>
+      )}
 
       <div className="divider" />
 
       <button
-        className="btn keep-label"
-        id="boardsBtn"
-        title="Boards — save, open, rename & delete whiteboards (Ctrl+S save · Ctrl+Shift+S save as)"
-        onClick={props.onBoards}
+        className="btn small"
+        id="undoBtn"
+        title={`Undo (${keyHint("undo")})`}
+        aria-label="Undo"
+        disabled={!canUndo}
+        onClick={undo}
       >
-        <span className="ico">{GLYPH.boards}</span>
-        <span className="label">Boards</span>
+        <span className="ico">{GLYPH.undo}</span>
       </button>
+      <button
+        className="btn small"
+        id="redoBtn"
+        title={`Redo (${keyHint("redo")})`}
+        aria-label="Redo"
+        disabled={!canRedo}
+        onClick={redo}
+      >
+        <span className="ico">{GLYPH.redo}</span>
+      </button>
+
+      <div className="spacer" />
+
       <button
         className="board-title"
         id="boardTitle"
@@ -137,71 +187,29 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
         {dirty && <span className="bt-dot" title="Unsaved changes" />}
       </button>
 
-      <div className="divider" />
+      {/* Live share status chip — only while in a shared session (otherwise
+          Share lives in the burger menu). The dot mirrors the connection state
+          and the label shows how many people are here. Collab builds only. */}
+      {COLLAB_ENABLED && collabMode === "shared" && (
+        <button
+          className="btn keep-label sharing"
+          id="shareBtn"
+          title="Shared board — link, who's here, leave"
+          onClick={props.onShare}
+        >
+          <span className={"status-dot status-" + collabStatus} />
+          <span className="label">{peerCount + 1 + " here"}</span>
+        </button>
+      )}
 
-      <button
-        className="btn"
-        id="paperBtn"
-        onClick={(e) => props.onPaper(e.currentTarget)}
-      >
-        <span className="ico">{GLYPH.paper}</span>
-        <span className="label">Paper</span>
-      </button>
-      <button
-        className="btn"
-        id="undoBtn"
-        disabled={!canUndo}
-        onClick={undo}
-      >
-        <span className="ico">{GLYPH.undo}</span>
-        <span className="label">Undo</span>
-      </button>
-      <button
-        className="btn"
-        id="redoBtn"
-        disabled={!canRedo}
-        onClick={redo}
-      >
-        <span className="ico">{GLYPH.redo}</span>
-        <span className="label">Redo</span>
-      </button>
-      <button
-        className="btn"
-        id="editObjBtn"
-        title="Edit selected object"
-        disabled={!canEdit}
-        onClick={props.onEditSelected}
-      >
-        <span className="ico" id="editIco">
-          <DrawIcon />
-        </span>
-        <span className="label">Edit</span>
-      </button>
-      <button
-        className="btn"
-        id="deleteObjBtn"
-        title="Delete selection"
-        disabled={!hasSelection}
-        onClick={() => deleteSelection()}
-      >
-        <span className="ico">{GLYPH.delete}</span>
-        <span className="label">Delete</span>
-      </button>
-
-      <div className="spacer" />
-
-      <button
-        className="btn keep-label"
-        id="saveBtn"
-        onClick={props.onSaveImage}
-      >
-        <span className="ico">{GLYPH.save}</span>
-        <span className="label">Save image</span>
-      </button>
-      <button className="btn keep-label" id="helpBtn" onClick={props.onHelp}>
-        <span className="ico">{GLYPH.help}</span>
-        <span className="label">Help</span>
-      </button>
+      <OverflowMenu
+        onJoin={props.onJoin}
+        onShare={props.onShare}
+        onPaper={props.onPaper}
+        onBoards={props.onBoards}
+        onSaveImage={props.onSaveImage}
+        onHelp={props.onHelp}
+      />
     </div>
   );
 }

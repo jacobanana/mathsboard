@@ -1,0 +1,77 @@
+# LOCAL END-TO-END TEST OVERLAY - run the entire production topology on your
+# machine before deploying, with MinIO standing in for S3 and throwaway dev
+# credentials baked in (safe to commit; NEVER reuse these values in production).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+#
+# Then open http://localhost:8080 in two browser windows, click Share in one,
+# paste the link into the other, and draw. No .env file, domain or S3 account
+# is needed. Y-Sweet documents and uploaded images land in the `minio_data`
+# volume (inspect at http://localhost:9001, login dev-minio / dev-minio-secret).
+
+services:
+  web:
+    # Plain HTTP on :8080 instead of the production 80/443 + auto-TLS.
+    ports: !override
+      - "8080:8080"
+    environment:
+      SITE_ADDRESS: ":8080"
+
+  api:
+    environment:
+      # server_token half of the committed DEV keypair (see ysweet below).
+      YSWEET_CONNECTION_STRING: ys://AAAg6DB6hG-3FlnY9HyNLEYh9I7CIBXcHHnKB184_TvKK-8@ysweet:8080
+      S3_BUCKET: mathboard
+      AWS_ACCESS_KEY_ID: dev-minio
+      AWS_SECRET_ACCESS_KEY: dev-minio-secret
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT_URL_S3: http://minio:9000
+      AWS_S3_USE_PATH_STYLE: "true"
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+
+  ysweet:
+    environment:
+      # DEV-ONLY keypair, generated with `y-sweet gen-auth` and committed on
+      # purpose so the local test needs zero setup. Generate your own for
+      # production (see .env.example).
+      Y_SWEET_AUTH: d_EZ_OHsusz9uFe2ECUadSG9O_EJ7uLfE44wXniT
+      Y_SWEET_STORE: s3://mathboard/ysweet
+      AWS_ACCESS_KEY_ID: dev-minio
+      AWS_SECRET_ACCESS_KEY: dev-minio-secret
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT_URL_S3: http://minio:9000
+      AWS_S3_USE_PATH_STYLE: "true"
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: dev-minio
+      MINIO_ROOT_PASSWORD: dev-minio-secret
+    ports:
+      - "9001:9001" # web console (optional, handy for poking at the bucket)
+    volumes:
+      - minio_data:/data
+
+  # One-shot job: wait for MinIO, create the bucket, exit.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until mc alias set local http://minio:9000 dev-minio dev-minio-secret >/dev/null 2>&1; do
+          sleep 1
+        done
+        mc mb -p local/mathboard
+
+volumes:
+  minio_data:

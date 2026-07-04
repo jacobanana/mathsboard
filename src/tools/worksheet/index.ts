@@ -2,9 +2,10 @@
 //
 // Unlike canvas tools, this renders as an interactive React overlay (the
 // .iworksheet card) positioned by the WidgetLayer. The component reads/updates
-// its object through the store; typed answers + marks are ephemeral React
-// state (not persisted in v1), while the generated `questions` live on the
-// object so they persist and sync.
+// its object through the store. The generated `questions`, the typed answers
+// and the marks all live on the object, so they sync to collaborators and
+// persist with the document (answers/marks as per-question "ans:<qid>" /
+// "mark:<qid>" fields — see Worksheet.tsx).
 //
 // Ported from maths-whiteboard.html: genQuestions, widgetTitle, addWorksheet /
 // updateWorksheet and worksheetDialog (lines 578-604).
@@ -12,8 +13,17 @@
 import { defineWidgetTool } from "@/tools/registry";
 import { Worksheet } from "@/tools/worksheet/Worksheet";
 import { WorksheetDialog } from "@/tools/worksheet/Dialog";
+import { id as newId } from "@/board/types";
 
 export interface Question {
+  /**
+   * Stable id: typed answers and marks live on the object as per-question
+   * fields keyed by it ("ans:<id>" / "mark:<id>"), so they sync per-field
+   * between collaborators and a fresh question set starts blank everywhere
+   * without any clearing pass. Absent on documents saved before ids existed
+   * (the Worksheet falls back to the question's index).
+   */
+  id: string;
   a: number;
   op: string;
   b: number;
@@ -41,7 +51,8 @@ export function genQuestions(cfg: WorksheetParams): Question[] {
   if (cfg.mode === "times") {
     const k = cfg.k ?? 7;
     const rows = cfg.rows ?? 12;
-    for (let i = 1; i <= rows; i++) q.push({ a: i, op: "×", b: k, ans: i * k });
+    for (let i = 1; i <= rows; i++)
+      q.push({ id: newId(), a: i, op: "×", b: k, ans: i * k });
     return q;
   }
   const max = cfg.max ?? 12;
@@ -71,7 +82,7 @@ export function genQuestions(cfg: WorksheetParams): Question[] {
       a = b * qq;
       ans = qq;
     }
-    q.push({ a, op, b, ans });
+    q.push({ id: newId(), a, op, b, ans });
   }
   return q;
 }

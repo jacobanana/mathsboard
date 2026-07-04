@@ -29,6 +29,12 @@ export interface Stroke {
   color: string;
   size: number;
   points: { x: number; y: number }[];
+  /**
+   * Z-order key (see src/collab/docModel.ts). Shapes live in unordered CRDT
+   * maps, so draw order is derived by sorting on this field. Objects carry the
+   * same key via their open Record type. Optional for legacy documents.
+   */
+  order?: number;
 }
 
 export type Background = "squared" | "lined" | "blank";

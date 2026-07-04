@@ -30,32 +30,44 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BoardCanvas } from "@/canvas/BoardCanvas";
 import { WidgetLayer } from "@/canvas/WidgetLayer";
+import { PresenceLayer } from "@/ui/PresenceLayer";
+import { ShareModal } from "@/ui/ShareModal";
+import { WelcomeModal } from "@/ui/WelcomeModal";
+import { JoinForm } from "@/ui/JoinForm";
+import { boardIdFromUrl } from "@/collab/session";
+import { getStoredName, setStoredName } from "@/collab/profile";
 import { Toolbar } from "@/ui/Toolbar";
 import { FloatButtons } from "@/ui/FloatButtons";
 import { ZoomCluster } from "@/ui/ZoomCluster";
 import { Modal } from "@/ui/Modal";
 import { InsertGallery } from "@/ui/InsertGallery";
 import { PaperMenu } from "@/ui/PaperMenu";
-import { HelpModal } from "@/ui/HelpModal";
 import { BoardsManager } from "@/ui/BoardsManager";
 import { NamePrompt } from "@/ui/NamePrompt";
+import { ShortcutsHelp } from "@/ui/ShortcutsHelp";
+import { useImageDrop } from "@/ui/useImageDrop";
 import { useBoardStore } from "@/board/store";
-import { useUiStore } from "@/ui/uiStore";
 import { screenToWorld } from "@/board/geometry";
+import { COLLAB_ENABLED } from "@/config";
 import { getTool } from "@/tools/registry";
 import { id as makeId } from "@/board/types";
 import { theme } from "@/styles/theme";
+import { handleShortcut, type ShortcutHost } from "@/ui/shortcuts";
 import type { AnyBoardObject } from "@/board/types";
 import type { CanvasTool, WidgetTool } from "@/tools/registry";
 
 // --- modal routing ---------------------------------------------------------
 
 type ModalState =
+  | { kind: "welcome" }
   | { kind: "insert" }
   | { kind: "dialog"; toolType: string; objId?: string; initial?: Record<string, unknown> }
-  | { kind: "help" }
   | { kind: "boards" }
   | { kind: "saveAs"; initial: string }
+  | { kind: "share" }
+  | { kind: "join" }
+  | { kind: "joinName" }
+  | { kind: "help" }
   | null;
 
 /** Pull the registered tool's size for given params (canvas: size(p); widget: fixed). */
@@ -82,6 +94,12 @@ function paramsOf(obj: AnyBoardObject): Record<string, unknown> {
   return params;
 }
 
+// The global keyboard shortcuts — tool keys, the internal clipboard
+// (copy/cut/paste/duplicate), colour/size, arrow-nudge and Save — live in
+// src/ui/shortcuts.ts as a single declarative catalog that also drives the
+// help sheet. App only supplies the ShortcutHost (the actions that open a
+// modal or save) and forwards keydown to handleShortcut.
+
 export default function App(): JSX.Element {
   const init = useBoardStore((s) => s.init);
   const addObject = useBoardStore((s) => s.addObject);
@@ -107,9 +125,32 @@ export default function App(): JSX.Element {
   }, []);
 
   // Load (or create) the current board once on mount.
+  //   - Share link (?board=<id>): join directly, asking for a display name
+  //     FIRST if none is stored — init() then joins the shared board with it.
+  //   - Plain load: show the WELCOME screen while init() loads the draft
+  //     behind it. Continue just closes it; Join / New / Open replace the
+  //     draft from inside the modal.
   useEffect(() => {
+    if (boardIdFromUrl()) {
+      if (!getStoredName()) {
+        setModal({ kind: "joinName" });
+        return; // init() runs from the prompt's onSubmit
+      }
+      void init();
+      return;
+    }
+    setModal({ kind: "welcome" });
     void init();
   }, [init]);
+
+  const handleJoinName = useCallback(
+    (name: string) => {
+      setStoredName(name);
+      setModal(null);
+      void init();
+    },
+    [init],
+  );
 
   const closeModal = useCallback(() => setModal(null), []);
 
@@ -152,22 +193,28 @@ export default function App(): JSX.Element {
 
   // --- placement (CREATE) --------------------------------------------------
   // Ports prototype addObject (line 351): centre on screen, cascade 22px per
-  // object (mod 6) so successive inserts fan out instead of stacking.
+  // object (mod 6) so successive inserts fan out instead of stacking. `at`
+  // (screen px relative to #stage) overrides the centre for drag-dropped
+  // images so they land under the cursor; a dropped object skips the cascade.
   const placeNew = useCallback(
-    (toolType: string, params: Record<string, unknown>) => {
+    (
+      toolType: string,
+      params: Record<string, unknown>,
+      at?: { x: number; y: number },
+    ) => {
       const size = toolSize(toolType, params);
       if (!size) return;
       const { camera, board } = useBoardStore.getState();
       const r = document.getElementById("stage")?.getBoundingClientRect();
       const W = r?.width ?? 0;
       const H = r?.height ?? 0;
-      const centre = screenToWorld(camera, W / 2, H / 2);
-      const casc = (board.objects.length % 6) * 22;
+      const anchor = screenToWorld(camera, at ? at.x : W / 2, at ? at.y : H / 2);
+      const casc = at ? 0 : (board.objects.length % 6) * 22;
       const obj: AnyBoardObject = {
         id: makeId(),
         type: toolType,
-        x: centre.x - size.w / 2 + casc,
-        y: centre.y - size.h / 2 + casc,
+        x: anchor.x - size.w / 2 + casc,
+        y: anchor.y - size.h / 2 + casc,
         w: size.w,
         h: size.h,
         ...params,
@@ -177,6 +224,16 @@ export default function App(): JSX.Element {
       setTool("select");
     },
     [addObject, select, setTool],
+  );
+
+  // Drag-and-drop an image file onto the board: uploads via the same backend
+  // path as the Picture dialog, then places it at the drop point. Wired to
+  // #stage only in collab builds (COLLAB_ENABLED) — the backend does the upload.
+  const imageDrop = useImageDrop(
+    useCallback(
+      (image, at) => placeNew("image", { ...image }, at),
+      [placeNew],
+    ),
   );
 
   // --- editing (EDIT) ------------------------------------------------------
@@ -214,9 +271,9 @@ export default function App(): JSX.Element {
     });
   }, []);
 
-  // Toolbar / keyboard "edit selected": resolve the selection, then route.
-  // Editing applies to exactly one object (a stroke or multi-select has no
-  // settings dialog).
+  // Float-button "edit selected": resolve the selection, then route. Editing
+  // applies to exactly one object (a stroke or multi-select has no settings
+  // dialog).
   const editSelected = useCallback(() => {
     const { selection, board } = useBoardStore.getState();
     if (selection.strokeIds.length > 0 || selection.objectIds.length !== 1) return;
@@ -272,59 +329,42 @@ export default function App(): JSX.Element {
     a.click();
   }, []);
 
-  // --- global keyboard shortcuts (port of prototype line 340) --------------
-  // Delete/Backspace removes the whole selection (objects + strokes); Ctrl/Cmd+A
-  // selects everything; Escape clears the selection; Ctrl/Cmd+Z undoes,
-  // +Shift redoes. Suppressed while any modal is open or a text object is being
-  // edited in place (the textarea/worksheet inputs stopPropagation on their own
-  // keys).
+  // --- global keyboard shortcuts ------------------------------------------
+  // The whole catalog (which key does what, its guards, and its help text)
+  // lives in src/ui/shortcuts.ts; handleShortcut runs it against each keydown.
+  // Here we only bind the listener and supply the host — the actions that open
+  // a modal or save, which the catalog can't perform on its own. Everything
+  // else (tools, clipboard, colour/size, nudge) is pure store work in there.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const st = useBoardStore.getState();
-      // Save shortcuts work even while editing text, but defer to any open
-      // dialog (its own buttons own Enter/Escape).
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-        if (useUiStore.getState().modalOpen) return;
-        e.preventDefault();
-        if (e.shiftKey) doSaveAs();
-        else void doSave();
-        return;
-      }
-      if (useUiStore.getState().modalOpen || st.editingId != null) return;
-      const hasSelection =
-        st.selection.objectIds.length + st.selection.strokeIds.length > 0;
-      if ((e.key === "Delete" || e.key === "Backspace") && hasSelection) {
-        e.preventDefault();
-        st.deleteSelection();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
-        e.preventDefault();
-        st.setTool("select");
-        st.selectAll();
-      } else if (e.key === "Escape" && hasSelection) {
-        e.preventDefault();
-        st.clearSelection();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        if (e.shiftKey) st.redo();
-        else st.undo();
-      }
+    const host: ShortcutHost = {
+      save: () => void doSave(),
+      saveAs: doSaveAs,
+      openInsert: () => setModal({ kind: "insert" }),
+      openImage: () => handlePick("image"),
+      openHelp: () => setModal({ kind: "help" }),
     };
+    const onKey = (e: KeyboardEvent) => handleShortcut(e, host);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [doSave, doSaveAs]);
+  }, [doSave, doSaveAs, handlePick]);
 
   // --- the open tool Dialog (create or edit), resolved from the registry ---
   let dialogNode: JSX.Element | null = null;
   if (modal?.kind === "dialog") {
-    const Dialog = getTool(modal.toolType)?.Dialog;
+    const tool = getTool(modal.toolType);
+    const Dialog = tool?.Dialog;
     if (Dialog) {
       const editing = modal.objId != null;
+      // CREATE cancel returns to the gallery — but only for tools that live in
+      // it. A tool opened from a dedicated entry point (e.g. the Picture
+      // button, inGallery:false) has nowhere to go back to, so cancel closes.
+      // EDIT cancel always just closes.
+      const backToGallery = !editing && tool?.inGallery !== false;
       dialogNode = (
         <Dialog
           initial={modal.initial as never}
           onSubmit={handleDialogSubmit as never}
-          // CREATE cancel returns to the gallery; EDIT cancel just closes.
-          onCancel={editing ? closeModal : () => setModal({ kind: "insert" })}
+          onCancel={backToGallery ? () => setModal({ kind: "insert" }) : closeModal}
         />
       );
     }
@@ -337,17 +377,30 @@ export default function App(): JSX.Element {
         onBoards={() => setModal({ kind: "boards" })}
         onPaper={(anchor) => setPaperAnchor(anchor)}
         onSaveImage={saveImage}
+        onShare={() => setModal({ kind: "share" })}
+        onJoin={() => setModal({ kind: "join" })}
+        onAddImage={() => handlePick("image")}
         onHelp={() => setModal({ kind: "help" })}
-        onEditSelected={editSelected}
       />
 
       {/* #stage is the positioned board viewport. It holds the two stacked
           canvases + in-place text editor (BoardCanvas), the interactive widget
           overlay (WidgetLayer), and the zoom cluster. FloatButtons portals in. */}
-      <div id="stage" ref={setStageRef}>
+      <div
+        id="stage"
+        ref={setStageRef}
+        className={COLLAB_ENABLED && imageDrop.active ? "stage-dropping" : undefined}
+        {...(COLLAB_ENABLED ? imageDrop.handlers : {})}
+      >
         <BoardCanvas onEditObject={openEditFor} />
         <WidgetLayer onEditObject={openEditFor} />
+        {COLLAB_ENABLED && <PresenceLayer />}
         <ZoomCluster getStageSize={getStageSize} />
+        {COLLAB_ENABLED && imageDrop.active && (
+          <div className="drop-overlay" aria-hidden>
+            <span className="drop-hint">Drop image to add it</span>
+          </div>
+        )}
       </div>
 
       {/* Float edit/delete buttons portal into #stage (positioned absolute). */}
@@ -355,16 +408,46 @@ export default function App(): JSX.Element {
 
       <PaperMenu anchor={paperAnchor} onClose={() => setPaperAnchor(null)} />
 
+      {/* Welcome screen (plain loads only; share links join directly). Closing
+          it any way — Continue, backdrop, Escape — resumes the draft. */}
+      <Modal open={modal?.kind === "welcome"} onClose={closeModal}>
+        {modal?.kind === "welcome" && (
+          <WelcomeModal
+            onClose={closeModal}
+            onOpenBoards={() => setModal({ kind: "boards" })}
+          />
+        )}
+      </Modal>
+
+      {/* Mid-session "Join a board" (toolbar Join button). Collab builds only. */}
+      <Modal open={COLLAB_ENABLED && modal?.kind === "join"} onClose={closeModal}>
+        {COLLAB_ENABLED && modal?.kind === "join" && (
+          <>
+            <h2>Join a board</h2>
+            <p className="hint">
+              Type the code you were given, or paste the link. Your current
+              drawing stays saved as your own draft.
+            </p>
+            <JoinForm autoFocus onJoined={closeModal} />
+            <div className="card-actions">
+              <button className="btn" onClick={closeModal}>
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+
       <Modal open={modal?.kind === "insert"} onClose={closeModal}>
         <InsertGallery onPick={handlePick} />
       </Modal>
 
-      <Modal open={modal?.kind === "dialog"} onClose={closeModal}>
-        {dialogNode}
+      <Modal open={modal?.kind === "help"} onClose={closeModal}>
+        <ShortcutsHelp />
       </Modal>
 
-      <Modal open={modal?.kind === "help"} onClose={closeModal}>
-        <HelpModal onClose={closeModal} />
+      <Modal open={modal?.kind === "dialog"} onClose={closeModal}>
+        {dialogNode}
       </Modal>
 
       <Modal open={modal?.kind === "boards"} onClose={closeModal}>
@@ -382,6 +465,36 @@ export default function App(): JSX.Element {
           />
         )}
       </Modal>
+
+      <Modal open={COLLAB_ENABLED && modal?.kind === "share"} onClose={closeModal}>
+        {COLLAB_ENABLED && modal?.kind === "share" && (
+          <ShareModal onClose={closeModal} />
+        )}
+      </Modal>
+
+      {/* Joining a shared link: ask for a display name, then join. Closing the
+          prompt joins as "Guest" rather than stranding the user on a blank app.
+          Collab builds only — plain loads never reach the joinName modal since
+          boardIdFromUrl() returns null when collaboration is compiled out. */}
+      <Modal
+        open={COLLAB_ENABLED && modal?.kind === "joinName"}
+        onClose={() => handleJoinName("Guest")}
+      >
+        {COLLAB_ENABLED && modal?.kind === "joinName" && (
+          <NamePrompt
+            title="Joining a shared board — what's your name?"
+            confirmLabel="Join"
+            onSubmit={handleJoinName}
+            onCancel={() => handleJoinName("Guest")}
+          />
+        )}
+      </Modal>
+
+      {COLLAB_ENABLED && imageDrop.error && (
+        <div id="dropError" role="alert">
+          {imageDrop.error}
+        </div>
+      )}
 
       {savedFlash && (
         <div id="savedToast" role="status">

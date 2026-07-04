@@ -8,6 +8,7 @@
 // Tool authors do NOT register themselves; the Assembly phase owns this file.
 
 import { registerTool } from "@/tools/registry";
+import { COLLAB_ENABLED } from "@/config";
 
 // Most tools default-export their Tool; three reference tools only name-export.
 import { textTool } from "@/tools/text";
@@ -31,6 +32,7 @@ import fdpTool from "@/tools/fdp";
 import clockTool from "@/tools/clock";
 import noteTool from "@/tools/note";
 import worksheetTool from "@/tools/worksheet";
+import imageTool from "@/tools/image";
 
 // Gallery order (also the registration order listByCategory preserves).
 const ALL_TOOLS = [
@@ -61,6 +63,10 @@ const ALL_TOOLS = [
   clockTool,
   // Word problems
   noteTool,
+  // Pictures — the upload goes through the backend (/api/upload), so this tool
+  // only exists in the collaborative build. The static single-user build omits
+  // it rather than offer an insert that can't complete.
+  ...(COLLAB_ENABLED ? [imageTool] : []),
 ];
 
 for (const tool of ALL_TOOLS) registerTool(tool);

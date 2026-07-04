@@ -1,11 +1,13 @@
-// The floating edit / delete buttons over a single selected item (.floatbtn).
-// Ported from the prototype (markup lines 118-119, updateOverlays line 335).
+// The floating edit / delete buttons over the current selection (.floatbtn).
+// Ported from the prototype (markup lines 118-119, updateOverlays line 335),
+// extended to multi-select: these are the ONLY on-screen selection actions
+// (the toolbar deliberately carries none), so Delete shows for any selection
+// — single or multi — positioned at the combined bounding box. The Edit
+// button appears only when exactly one OBJECT is selected (a stroke or a
+// multi-select has no settings dialog). The Delete key works too.
 //
-// Shown only when tool === "select" AND exactly ONE item is selected (an object
-// or a drawn stroke). Multi-selection relies on the toolbar Delete button /
-// Delete key instead. The Edit button appears only for an object (a stroke has
-// no settings dialog). Positioned by projecting the item's top-right corner to
-// screen space via worldToScreen and clamping to the stage, like the prototype:
+// Positioned by projecting the selection's top-right corner to screen space
+// via worldToScreen and clamping to the stage, like the prototype:
 //   delete: left = clamp(tr.x - 6, 42, W - 36)
 //   edit:   left = clamp(tr.x - 44, 2, W - 76)
 //   both:   top  = clamp(tr.y - 34, 2, H - 36)
@@ -14,8 +16,8 @@
 // be positioned in canvas-relative space. BoardCanvas owns #stage and doesn't
 // accept children, so we portal into it (the host passes the stage element).
 //
-// Edit delegates to the host (onEditSelected) so the same edit-routing as the
-// toolbar/double-click is reused; delete calls store.deleteSelection directly.
+// Edit delegates to the host (onEditSelected) so the same edit-routing as
+// double-click is reused; delete calls store.deleteSelection directly.
 
 import { createPortal } from "react-dom";
 import { useBoardStore } from "@/board/store";
@@ -41,28 +43,37 @@ export function FloatButtons({
 
   if (container == null) return null;
   if (tool !== "select") return null;
-  if (selection.objectIds.length + selection.strokeIds.length !== 1) return null;
+  if (selection.objectIds.length + selection.strokeIds.length === 0) return null;
 
-  // Resolve the single selected item's bounding box (world coords) and whether
-  // it is an editable object.
-  let bounds: { x: number; y: number; w: number; h: number } | null = null;
-  let canEdit = false;
-  if (selection.objectIds.length === 1) {
-    const o = objects.find((x) => x.id === selection.objectIds[0]);
-    if (o) {
-      bounds = { x: o.x, y: o.y, w: o.w, h: o.h };
-      canEdit = true;
-    }
-  } else {
-    const s = strokes.find((x) => x.id === selection.strokeIds[0]);
-    if (s) bounds = strokeBounds(s);
+  // Combined bounding box of everything selected (world coords).
+  let x1 = Infinity;
+  let y1 = Infinity;
+  let x2 = -Infinity;
+  for (const id of selection.objectIds) {
+    const o = objects.find((obj) => obj.id === id);
+    if (!o) continue;
+    x1 = Math.min(x1, o.x);
+    y1 = Math.min(y1, o.y);
+    x2 = Math.max(x2, o.x + o.w);
   }
-  if (bounds == null) return null;
+  for (const id of selection.strokeIds) {
+    const s = strokes.find((st) => st.id === id);
+    if (!s) continue;
+    const b = strokeBounds(s);
+    x1 = Math.min(x1, b.x);
+    y1 = Math.min(y1, b.y);
+    x2 = Math.max(x2, b.x + b.w);
+  }
+  if (!Number.isFinite(x1)) return null;
+
+  // Editing settings only makes sense for a single placed object.
+  const canEdit =
+    selection.objectIds.length === 1 && selection.strokeIds.length === 0;
 
   const r = container.getBoundingClientRect();
   const W = r.width;
   const H = r.height;
-  const tr = worldToScreen(camera, bounds.x + bounds.w, bounds.y);
+  const tr = worldToScreen(camera, x2, y1);
   const top = clamp(tr.y - 34, 2, H - 36);
 
   return createPortal(
@@ -81,7 +92,7 @@ export function FloatButtons({
       <button
         className="floatbtn show"
         id="floatDel"
-        title="Delete"
+        title="Delete selection"
         style={{ left: clamp(tr.x - 6, 42, W - 36), top }}
         onClick={() => deleteSelection()}
       >
