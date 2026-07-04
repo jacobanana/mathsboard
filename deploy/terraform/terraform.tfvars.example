@@ -2,8 +2,9 @@
 # holds secrets and (like all Terraform state here) they end up in plaintext
 # in *.tfstate too, so keep this whole directory off any public backend.
 
-# The entry name under `clouds:` in ~/.config/openstack/clouds.yaml
-os_cloud = "REPLACE_ME"
+# Auth. Either name a clouds.yaml entry here, OR leave it "" and source your
+# OpenStack RC file (sets OS_* env vars) before running terraform.
+os_cloud = ""
 
 # Your FQDN. Add its A record (-> the `floating_ip` output) in the Infomaniak
 # Manager. Caddy provisions the TLS cert on the first HTTPS request after DNS

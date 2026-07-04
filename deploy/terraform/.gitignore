@@ -9,4 +9,8 @@ crash.*.log
 terraform.tfvars
 *.auto.tfvars
 
+# OpenStack RC / credential files, if kept alongside the config.
+*openrc*
+clouds.yaml
+
 # Keep .terraform.lock.hcl committed for reproducible provider versions.

@@ -8,10 +8,11 @@ terraform {
   }
 }
 
-# Credentials come from ~/.config/openstack/clouds.yaml (download it from the
-# Infomaniak Manager or the OpenStack dashboard). `os_cloud` names the entry.
+# Auth: with os_cloud set, credentials come from ~/.config/openstack/clouds.yaml
+# (download it from the Infomaniak Manager / OpenStack dashboard). Leave os_cloud
+# empty to fall back to OS_* environment variables from a sourced RC file.
 provider "openstack" {
-  cloud = var.os_cloud
+  cloud = var.os_cloud != "" ? var.os_cloud : null
 }
 
 # ---------------------------------------------------------------------------
@@ -134,16 +135,28 @@ locals {
   })
 }
 
+# An explicit port carries the security group (the Neutron way) and gives the
+# floating IP something to bind to, replacing the deprecated Nova association.
+resource "openstack_networking_port_v2" "port" {
+  name               = "${var.name}-port"
+  network_id         = openstack_networking_network_v2.net.id
+  admin_state_up     = true
+  security_group_ids = [openstack_networking_secgroup_v2.sg.id]
+
+  fixed_ip {
+    subnet_id = openstack_networking_subnet_v2.subnet.id
+  }
+}
+
 resource "openstack_compute_instance_v2" "vm" {
-  name            = var.name
-  image_name      = var.image_name
-  flavor_name     = var.flavor_name
-  key_pair        = openstack_compute_keypair_v2.key.name
-  security_groups = [openstack_networking_secgroup_v2.sg.name]
-  user_data       = local.cloud_init
+  name        = var.name
+  image_name  = var.image_name
+  flavor_name = var.flavor_name
+  key_pair    = openstack_compute_keypair_v2.key.name
+  user_data   = local.cloud_init
 
   network {
-    uuid = openstack_networking_network_v2.net.id
+    port = openstack_networking_port_v2.port.id
   }
 
   # The instance needs the subnet wired to the router before it can reach the
@@ -156,7 +169,7 @@ resource "openstack_networking_floatingip_v2" "fip" {
   description = var.name
 }
 
-resource "openstack_compute_floatingip_associate_v2" "fip_assoc" {
+resource "openstack_networking_floatingip_associate_v2" "fip_assoc" {
   floating_ip = openstack_networking_floatingip_v2.fip.address
-  instance_id = openstack_compute_instance_v2.vm.id
+  port_id     = openstack_networking_port_v2.port.id
 }

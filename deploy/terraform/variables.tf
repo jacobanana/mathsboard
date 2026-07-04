@@ -1,6 +1,7 @@
 variable "os_cloud" {
-  description = "Name of the entry under `clouds:` in ~/.config/openstack/clouds.yaml."
+  description = "clouds.yaml entry to authenticate with. Leave empty to use OS_* env vars from a sourced OpenStack RC file instead."
   type        = string
+  default     = ""
 }
 
 variable "name" {
