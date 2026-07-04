@@ -126,6 +126,21 @@ interface Gesture {
   startScale: number;
   worldMid: { x: number; y: number };
 }
+/**
+ * A text-tool tap whose create/edit is deferred until pointerup, so a SECOND
+ * finger can cancel it into a pinch/pan instead. Every other tool starts its
+ * single-pointer action on pointerdown and the two-pointer branch cancels it;
+ * the text tool used to open the editor immediately, which the incoming second
+ * finger then committed-and-swallowed -- so text was the one tool that could
+ * never two-finger zoom. `edit` is the existing text object to re-open, or null
+ * to place a fresh box at (wx, wy).
+ */
+interface PendingText {
+  pid: number;
+  wx: number;
+  wy: number;
+  edit: AnyBoardObject | null;
+}
 /** The active in-place text edit: which object, its pre-edit snapshot flag, and
  *  the uniform scale a resize applied to it (so the textarea matches the on-canvas
  *  font size and the scale survives the edit). */
@@ -253,6 +268,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
   const gestureRef = useRef<Gesture | null>(null);
   const ignoreSingleRef = useRef(false);
   const editorRef = useRef<Editor | null>(null);
+  const pendingTextRef = useRef<PendingText | null>(null);
   // Last pointer position (screen px) while a brush tool (pen / eraser) is
   // active, so the ink layer can draw a light ring showing the brush footprint.
   // The ring IS the cursor for these tools. Null when the pointer is off-canvas
@@ -616,6 +632,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
           renderBack();
         }
         panningRef.current = null;
+        pendingTextRef.current = null; // a deferred text-tool tap becomes a pinch
         startGesture();
         e.preventDefault();
         return;
@@ -627,29 +644,18 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       const w = screenToWorld(camera, pp.x, pp.y);
 
       if (tool === "text") {
+        // Defer the create/edit to pointerup (see release) so a SECOND finger can
+        // turn this tap into a two-finger pan/zoom instead. Acting on pointerdown
+        // made text the only tool that couldn't pinch: finger 1 opened the editor
+        // and finger 2 was swallowed committing it. `edit` re-opens an existing
+        // text object; null places a fresh box.
         const hit = hitTest(st.board.objects, w.x, w.y);
-        if (hit && hit.type === "text") {
-          st.select(hit.id);
-          openEditor(hit, false);
-        } else {
-          // Create a fresh, empty text object then edit it in place.
-          const size = st.textSize;
-          const sz = textSizeOf("", size);
-          const obj: AnyBoardObject = {
-            id: newId(),
-            type: "text",
-            x: w.x,
-            y: w.y,
-            w: sz.w,
-            h: sz.h,
-            text: "",
-            size,
-            color: st.color,
-          };
-          st.addObject(obj);
-          st.select(obj.id);
-          openEditor(obj, true);
-        }
+        pendingTextRef.current = {
+          pid: e.pointerId,
+          wx: w.x,
+          wy: w.y,
+          edit: hit && hit.type === "text" ? hit : null,
+        };
         e.preventDefault();
         return;
       }
@@ -865,6 +871,39 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
         }
       } else {
         const st = store.getState();
+        // A text-tool tap that no second finger interrupted: NOW create the box /
+        // re-open the editor (deferred from pointerdown so a pinch could cancel
+        // it). No other single-pointer interaction can be live for this pointer.
+        const pt = pendingTextRef.current;
+        if (pt && e.pointerId === pt.pid) {
+          pendingTextRef.current = null;
+          // pointercancel = the system took over (scroll/palm); drop the tap. A
+          // real pointerup creates the box / re-opens the editor.
+          if (e.type !== "pointercancel") {
+            if (pt.edit) {
+              st.select(pt.edit.id);
+              openEditor(pt.edit, false);
+            } else {
+              // Create a fresh, empty text object then edit it in place.
+              const size = st.textSize;
+              const sz = textSizeOf("", size);
+              const obj: AnyBoardObject = {
+                id: newId(),
+                type: "text",
+                x: pt.wx,
+                y: pt.wy,
+                w: sz.w,
+                h: sz.h,
+                text: "",
+                size,
+                color: st.color,
+              };
+              st.addObject(obj);
+              st.select(obj.id);
+              openEditor(obj, true);
+            }
+          }
+        }
         const stroke = strokeRef.current;
         if (stroke && e.pointerId === stroke.pid) {
           strokeRef.current = null;
