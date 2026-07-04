@@ -11,6 +11,11 @@
 
 services:
   web:
+    # Build the frontend image from source (production pulls it from GHCR).
+    # Tagged as the same image name, so nothing is fetched from the registry.
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
     # Plain HTTP on :8080 instead of the production 80/443 + auto-TLS.
     ports: !override
       - "8080:8080"
@@ -18,6 +23,8 @@ services:
       SITE_ADDRESS: ":8080"
 
   api:
+    # Build the token/upload service from source (production pulls from GHCR).
+    build: ./server
     environment:
       # server_token half of the committed DEV keypair (see ysweet below).
       YSWEET_CONNECTION_STRING: ys://AAAg6DB6hG-3FlnY9HyNLEYh9I7CIBXcHHnKB184_TvKK-8@ysweet:8080

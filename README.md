@@ -179,30 +179,61 @@ request (`.github/workflows/e2e.yml`).
 
 Everything runs same-origin behind Caddy: `/api/*` → the token/upload service,
 `/ys/*` → the Y-Sweet websocket, everything else → the static frontend. So
-there is no CORS anywhere and `wss://` rides the one TLS certificate.
+there is no CORS anywhere and `wss://` rides the one TLS certificate. TLS is
+automatic — Caddy provisions a Let's Encrypt certificate on the first HTTPS
+request and renews it thereafter (certs live in the `caddy_data` volume; keep
+it).
 
-1. **DNS** — point an A record for your domain (e.g. `board.example.com`) at
-   the VPS.
-2. **Firewall** — open ports **80** and **443** (443 also UDP if you want
-   HTTP/3).
-3. **Get the code** — `git clone` this repo onto the VPS (Docker and the
-   compose plugin installed).
-4. **Configure** — `cp .env.example .env`, then fill it in:
+**Images build in CI; the server only pulls.**
+`.github/workflows/publish.yml` builds the `web` and `api` images on every push
+to `main`, pushes them to GHCR (`ghcr.io/jacobanana/mathboard-{web,api}`), then
+SSHes to the VPS to `git pull && docker compose pull && up`. The box never
+builds: `docker-compose.yml` references the published images, and
+`docker-compose.local.yml` adds `build:` back only for local development and
+e2e. So a push to `main` is the whole deploy loop.
+
+### Infomaniak Public Cloud, with Terraform (recommended)
+
+`deploy/terraform/` provisions everything on Infomaniak's OpenStack — one small
+instance running the compose stack, an S3-compatible bucket, and a floating IP,
+for roughly €3–4/month. Full walkthrough:
+[`deploy/terraform/README.md`](deploy/terraform/README.md). In short:
+
+1. Drop your `clouds.yaml` in `~/.config/openstack/`, then
+   `cp deploy/terraform/terraform.tfvars.example terraform.tfvars` and fill in
+   `site_address`, `ssh_public_key`, and the Y-Sweet keypair
+   (`docker run --rm ghcr.io/jamsocket/y-sweet:latest y-sweet gen-auth --json`).
+   Terraform generates the S3 credentials for you.
+2. `terraform apply` — run it **locally**; provisioning is a one-off, so only
+   the build/deploy pipeline belongs in Actions, not the cloud credential or
+   the (plaintext-secret) state. Then `terraform output floating_ip`.
+3. Add an **A record** for your domain → that IP in the Infomaniak Manager.
+4. Set three GitHub secrets — `DEPLOY_HOST` (the IP), `DEPLOY_USER` (`ubuntu`),
+   `DEPLOY_SSH_KEY` (the private key) — and flip the two GHCR packages public.
+
+From then on, `git push` to `main` builds, ships and restarts automatically.
+
+### Manual, on any VPS
+
+Any box with Docker and the compose plugin works, without Terraform:
+
+1. **DNS** — point an A record (e.g. `board.example.com`) at the VPS.
+2. **Firewall** — open **80** and **443** (also 443/UDP for HTTP/3).
+3. `git clone` this repo onto the box.
+4. `cp .env.example .env` and fill it in:
    - `SITE_ADDRESS` — your domain.
-   - Generate the Y-Sweet keypair **once**:
-     `docker run --rm ghcr.io/jamsocket/y-sweet:latest gen-auth --json`
-     → `private_key` becomes `Y_SWEET_AUTH`, `server_token` goes into
-     `YSWEET_CONNECTION_STRING`. The connection string is the sync server's
-     root credential; it stays between containers and never reaches a browser
-     (browsers get short-scoped per-board tokens from `POST /api/token`).
+   - The Y-Sweet keypair (as above): `private_key` → `Y_SWEET_AUTH`,
+     `server_token` → `YSWEET_CONNECTION_STRING`. The connection string is the
+     sync server's root credential; it stays between containers and never
+     reaches a browser (browsers get short-scoped per-board tokens from
+     `POST /api/token`).
    - An S3-compatible bucket + credentials (any provider). Y-Sweet documents
      persist under `s3://<bucket>/ysweet`, uploaded images under
      `s3://<bucket>/assets`.
-5. **Run** — `docker compose up -d --build` (or `make deploy`).
-6. **First visit** — the first HTTPS request provisions the TLS certificate
-   via Let's Encrypt (a few seconds); after that it renews automatically.
-   Certificates live in the `caddy_data` volume — keep it.
+5. `docker compose up -d` — pulls the published images and starts the stack
+   (or `make deploy`).
 
-Upgrades: `git pull && docker compose up -d --build`. The board documents and
-images are all in the bucket; the containers are stateless apart from Caddy's
+Upgrades: automatic via the push-to-`main` pipeline above, or by hand with
+`git pull && docker compose pull && docker compose up -d`. Board documents and
+images all live in the bucket; the containers are stateless apart from Caddy's
 certificates.

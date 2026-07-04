@@ -52,7 +52,7 @@ help:
 	@echo $(Q)    e2e           Run the Playwright suite (boots the stack if needed)$(Q)
 	@$(BLANK)
 	@echo $(Q)  Production deploy (Docker, needs .env)$(Q)
-	@echo $(Q)    deploy        Build and run the production stack detached$(Q)
+	@echo $(Q)    deploy        Pull the published images and run the production stack detached$(Q)
 	@echo $(Q)    deploy-down   Stop the production stack$(Q)
 	@echo $(Q)    deploy-logs   Follow the production stack logs$(Q)
 	@$(BLANK)
@@ -104,7 +104,8 @@ e2e:
 # ---- Production deploy (Docker, needs .env) ---------------------------------
 
 deploy:
-	docker compose up -d --build
+	docker compose pull
+	docker compose up -d
 
 deploy-down:
 	docker compose down

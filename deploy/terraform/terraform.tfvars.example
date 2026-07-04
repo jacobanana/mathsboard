@@ -1,0 +1,29 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored - it
+# holds secrets and (like all Terraform state here) they end up in plaintext
+# in *.tfstate too, so keep this whole directory off any public backend.
+
+# The entry name under `clouds:` in ~/.config/openstack/clouds.yaml
+os_cloud = "REPLACE_ME"
+
+# Your FQDN. Add its A record (-> the `floating_ip` output) in the Infomaniak
+# Manager. Caddy provisions the TLS cert on the first HTTPS request after DNS
+# resolves.
+site_address = "board.example.com"
+
+# Public SSH key to install on the box. Store the matching PRIVATE key as the
+# DEPLOY_SSH_KEY GitHub secret.
+ssh_public_key = "ssh-ed25519 AAAA... you@host"
+# Lock this down to your own IP once the first deploy works:
+# ssh_cidr = "203.0.113.7/32"
+
+# Generate ONCE:  docker run --rm ghcr.io/jamsocket/y-sweet:latest y-sweet gen-auth --json
+y_sweet_auth         = "REPLACE_WITH_private_key"
+y_sweet_server_token = "REPLACE_WITH_server_token"
+
+# Verify these against your Infomaniak dashboard / region, then uncomment to
+# override the defaults if they differ:
+# image_name            = "Ubuntu 24.04 LTS"
+# flavor_name           = "a1-ram2-disk20-perf1"
+# external_network_name = "ext-floating1"
+# s3_endpoint           = "https://s3.pub1.infomaniak.cloud"
+# s3_bucket             = "mathboard"

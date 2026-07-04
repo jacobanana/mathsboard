@@ -1,0 +1,36 @@
+#cloud-config
+# Runs once on first boot: install Docker, clone the repo, drop in .env, start
+# the stack. Everything after this is handled by the publish.yml deploy job
+# (git pull && docker compose pull && up).
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+  - git
+
+write_files:
+  # Staged here first because `git clone` needs an empty target directory;
+  # runcmd copies it into the repo after cloning.
+  - path: /root/mathboard.env
+    permissions: "0600"
+    content: |
+      SITE_ADDRESS=${site_address}
+      Y_SWEET_AUTH=${y_sweet_auth}
+      YSWEET_CONNECTION_STRING=ys://${y_sweet_server_token}@ysweet:8080
+      S3_BUCKET=${s3_bucket}
+      Y_SWEET_STORE=s3://${s3_bucket}/ysweet
+      S3_ASSET_PREFIX=assets/
+      AWS_ACCESS_KEY_ID=${aws_access_key_id}
+      AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}
+      AWS_REGION=${aws_region}
+      AWS_ENDPOINT_URL_S3=${s3_endpoint}
+      AWS_S3_USE_PATH_STYLE=true
+
+runcmd:
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker ${deploy_user}
+  - git clone ${repo_url} /opt/mathboard
+  - cp /root/mathboard.env /opt/mathboard/.env
+  - chmod 600 /opt/mathboard/.env
+  - chown -R ${deploy_user}:${deploy_user} /opt/mathboard
+  - cd /opt/mathboard && docker compose up -d

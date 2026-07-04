@@ -1,0 +1,81 @@
+# Build the two app images (web + api) on GitHub's runners, push them to the
+# GitHub Container Registry (public), then SSH to the VPS and roll it over.
+# The VPS never builds - it only pulls. GHCR push uses the built-in
+# GITHUB_TOKEN, so no registry secret is needed.
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   DEPLOY_HOST      the floating IP (or board.<domain>) of the VPS
+#   DEPLOY_USER      the instance login user (Infomaniak Ubuntu images: "ubuntu")
+#   DEPLOY_SSH_KEY   private key whose public half Terraform put on the instance
+
+name: Publish & deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - image: web
+            context: .
+            dockerfile: deploy/Dockerfile.web
+          - image: api
+            context: server
+            dockerfile: server/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}-${{ matrix.image }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Only auto-deploy from main; PRs/forks never touch the server.
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Pull new images on the VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/mathboard
+            git pull --ff-only
+            docker compose pull
+            docker compose up -d
+            docker image prune -f
