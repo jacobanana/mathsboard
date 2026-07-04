@@ -1,14 +1,14 @@
-// The contextual options zone (#options), rendered right after the tool
-// buttons:
+// The contextual options pill (#options), a floating layer that sits just
+// above the bottom tool dock:
 //
 //   tool === "pen"    -> size slider (penSize) + colour dropdown.
 //   tool === "text"   -> size slider (textSize) + colour dropdown.
 //   tool === "eraser" -> size slider (eraserSize) only.
-//   otherwise          -> the zone stays, empty.
+//   otherwise          -> nothing (the pill disappears).
 //
-// The zone has a FIXED width (CSS #options) and is always rendered, so the
-// toolbar never reflows when the tool changes — contextual controls appear
-// inside their dedicated slot, never displacing the buttons around it.
+// Because the pill is its own fixed-position layer, its appearance never
+// displaces the dock or any other button — the dock stays static while the
+// options animate in and out above it (CSS #options).
 //
 // The size presets of the prototype (S/M/L buttons) are replaced by a slider;
 // the colour swatch row is collapsed into ONE button showing the current
@@ -57,6 +57,7 @@ function ColorPicker({ onPick }: { onPick: (hex: string) => void }): JSX.Element
       <Popover
         anchor={open ? btnRef.current : null}
         onClose={() => setOpen(false)}
+        side="top"
         id="colorMenu"
       >
         {PALETTE.map(([label, hex]) => (
@@ -89,8 +90,9 @@ export function OptionsStrip(): JSX.Element | null {
   const activeTextId = useBoardStore(activeTextObjectId);
 
   if (tool !== "pen" && tool !== "text" && tool !== "eraser") {
-    // Keep the zone (fixed width) so neighbouring buttons don't shift.
-    return <div className="group" id="options" />;
+    // No options for this tool — the pill simply isn't there. It's a separate
+    // floating layer, so nothing else moves when it comes and goes.
+    return null;
   }
 
   function pickColour(hex: string): void {
@@ -124,7 +126,7 @@ export function OptionsStrip(): JSX.Element | null {
   const dot = Math.round(6 + frac * 16);
 
   return (
-    <div className="group" id="options">
+    <div className="island" id="options">
       <label
         className="size-wrap"
         title={`Size (${keyHint("sizeUp")}/${keyHint("sizeDown")}) — ${value}px`}
