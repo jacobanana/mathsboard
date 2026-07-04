@@ -26,7 +26,6 @@ export interface ProtractorParams {
   // protractor mode
   angle: number;
   showArms: boolean;
-  fill: boolean;
   // facts mode
   fact: "line" | "point" | "triangle";
   given: number[];
@@ -39,12 +38,12 @@ export const protractorTool = defineCanvasTool<ProtractorParams>({
   name: "Protractor & angles",
   blurb: "measure · missing angle",
   category: "geometry",
+  answer: true,
 
   defaults: () => ({
     mode: "protractor",
     angle: 40,
     showArms: true,
-    fill: false,
     fact: "line",
     given: [65, 30],
     givenRaw: "65, 30",
@@ -122,7 +121,7 @@ export const protractorTool = defineCanvasTool<ProtractorParams>({
       ctx.beginPath();
       ctx.arc(cx, cy, 34, (-th * Math.PI) / 180, 0, false);
       ctx.stroke();
-      if (o.fill) {
+      if (o.revealed) {
         const md = ((th / 2) * Math.PI) / 180;
         ctx.fillStyle = theme.bar;
         ctx.font = "700 16px " + font;
@@ -141,7 +140,8 @@ function drawAngleFacts(
   ctx: CanvasRenderingContext2D,
   theme: import("@/styles/theme").Theme,
   font: string,
-  o: { x: number; y: number; w: number; h: number } & ProtractorParams,
+  o: { x: number; y: number; w: number; h: number; revealed?: boolean } &
+    ProtractorParams,
 ): void {
   const total = o.fact === "point" ? 360 : 180;
   const given = o.given.slice();
@@ -171,7 +171,7 @@ function drawAngleFacts(
     ctx.fillText(given[0] != null ? given[0] + "°" : "?", ax, ay + 26);
     ctx.fillText(given[1] != null ? given[1] + "°" : "?", bx + 30, by - 18);
     ctx.fillStyle = theme.bar;
-    ctx.fillText(o.fill ? x + "°" : "x", cxv - 30, cyv - 18);
+    ctx.fillText(o.revealed ? x + "°" : "x", cxv - 30, cyv - 18);
     ctx.restore();
     return;
   }
@@ -224,7 +224,7 @@ function drawAngleFacts(
     const isX = i === all.length - 1;
     ctx.fillStyle = isX ? theme.bar : theme.lineInk;
     ctx.fillText(
-      isX ? (o.fill ? x + "°" : "x") : a + "°",
+      isX ? (o.revealed ? x + "°" : "x") : a + "°",
       O.x + d.x * r * 0.58,
       O.y + d.y * r * 0.58,
     );

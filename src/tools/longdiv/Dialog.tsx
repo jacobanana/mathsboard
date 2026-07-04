@@ -16,7 +16,6 @@ export function LongDivDialog({
 
   const [dd, setDd] = useState(String(initial ? initial.dividend : 4928));
   const [dv, setDv] = useState(String(initial ? initial.divisor : 7));
-  const [fill, setFill] = useState(initial ? !!initial.fill : false);
   const [err, setErr] = useState("");
 
   function submit() {
@@ -30,7 +29,7 @@ export function LongDivDialog({
       setErr("Use up to 5 digits to keep it tidy.");
       return;
     }
-    onSubmit({ dividend: d, divisor: v, fill });
+    onSubmit({ dividend: d, divisor: v });
   }
 
   return (
@@ -61,15 +60,6 @@ export function LongDivDialog({
           onChange={(e) => setDv(e.target.value)}
         />
       </div>
-      <label className="field check">
-        <input
-          id="ldFill"
-          type="checkbox"
-          checked={fill}
-          onChange={(e) => setFill(e.target.checked)}
-        />
-        <span>Fill in the answers (show a worked example)</span>
-      </label>
 
       <p className="err" id="ldErr">
         {err}

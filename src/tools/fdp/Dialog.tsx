@@ -21,7 +21,6 @@ export function FDPDialog({
 
   const [num, setNum] = useState(String(initial ? initial.num : 3));
   const [den, setDen] = useState(String(initial ? initial.den : 4));
-  const [fill, setFill] = useState(initial ? !!initial.fill : false);
   const [err, setErr] = useState("");
 
   function submit() {
@@ -31,7 +30,7 @@ export function FDPDialog({
       setErr("Enter a fraction.");
       return;
     }
-    onSubmit({ num: n, den: d, fill });
+    onSubmit({ num: n, den: d });
   }
 
   return (
@@ -62,15 +61,6 @@ export function FDPDialog({
           onChange={(e) => setDen(e.target.value)}
         />
       </div>
-      <label className="field check">
-        <input
-          id="fdFill"
-          type="checkbox"
-          checked={fill}
-          onChange={(e) => setFill(e.target.checked)}
-        />
-        <span>Fill in the answers (show a worked example)</span>
-      </label>
 
       <p className="err" id="fdErr">
         {err}

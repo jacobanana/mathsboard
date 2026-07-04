@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BoardCanvas } from "@/canvas/BoardCanvas";
 import { WidgetLayer } from "@/canvas/WidgetLayer";
+import { AnswerButtonLayer } from "@/canvas/AnswerButtonLayer";
 import { PresenceLayer } from "@/ui/PresenceLayer";
 import { boardIdFromUrl } from "@/collab/session";
 import { getStoredName } from "@/collab/profile";
@@ -34,6 +35,7 @@ import { exportPNG } from "@/canvas/export";
 import { COLLAB_ENABLED } from "@/config";
 import { getTool } from "@/tools/registry";
 import { handleShortcut, type ShortcutHost } from "@/ui/shortcuts";
+import { track } from "@/analytics";
 import type { AnyBoardObject } from "@/board/types";
 
 export default function App(): JSX.Element {
@@ -153,7 +155,10 @@ export default function App(): JSX.Element {
         onBoards={() => setModal({ kind: "boards" })}
         onPaper={(anchor) => setPaperAnchor(anchor)}
         onSaveImage={exportPNG}
-        onShare={() => setModal({ kind: "share" })}
+        onShare={() => {
+          track("share_opened"); // funnel entry; pairs with board_shared
+          setModal({ kind: "share" });
+        }}
         onJoin={() => setModal({ kind: "join" })}
         onAddImage={openImage}
         onHelp={() => setModal({ kind: "help" })}
@@ -170,6 +175,7 @@ export default function App(): JSX.Element {
       >
         <BoardCanvas onEditObject={openEditFor} />
         <WidgetLayer onEditObject={openEditFor} />
+        <AnswerButtonLayer container={stageEl} />
         {COLLAB_ENABLED && <PresenceLayer />}
         <ZoomCluster getStageSize={getStageSize} />
         {COLLAB_ENABLED && imageDrop.active && (

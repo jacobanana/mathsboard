@@ -13,6 +13,16 @@ export interface BoardObjectBase {
   y: number;
   w: number;
   h: number;
+  /**
+   * SYSTEMIC ANSWER REVEAL. Meaningful only for tools that opt in with
+   * `answer: true` (see registry.ts): when true the tool's draw() shows the
+   * worked answer, when falsy it stays hidden. Toggled at runtime by the
+   * board's reveal button (store.toggleAnswer -> INPUT_ORIGIN), NOT set from a
+   * tool dialog — so it syncs to collaborators and persists, but Ctrl+Z never
+   * flips it. Absent means hidden. Deliberately NOT part of a tool's params:
+   * paramsOf() strips it, so it never enters the sizing/edit pipeline.
+   */
+  revealed?: boolean;
 }
 
 /**

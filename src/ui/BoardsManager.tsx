@@ -137,7 +137,7 @@ export function BoardsManager({ onClose }: BoardsManagerProps): JSX.Element {
         // A remote board lives online: opening it re-joins the shared session
         // (reloading its content from the online store) rather than reading
         // local content. A local board opens from localStorage as before.
-        if (b.remote) await joinBoard(b.id);
+        if (b.remote) await joinBoard(b.id, "library");
         else await openBoard(b.id);
         onClose();
       });

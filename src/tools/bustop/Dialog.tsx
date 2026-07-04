@@ -18,7 +18,6 @@ export function BusStopDialog({
   const [dd, setDd] = useState(String(initial ? initial.dividend : 156));
   const [dv, setDv] = useState(String(initial ? initial.divisor : 4));
   const [long, setLong] = useState(initial ? !!initial.long : false);
-  const [fill, setFill] = useState(initial ? !!initial.fill : false);
   const [err, setErr] = useState("");
 
   function submit() {
@@ -28,7 +27,7 @@ export function BusStopDialog({
       setErr("Enter the number to divide and a divisor of 1 or more.");
       return;
     }
-    onSubmit({ dividend: d, divisor: v, long, fill });
+    onSubmit({ dividend: d, divisor: v, long });
   }
 
   return (
@@ -67,15 +66,6 @@ export function BusStopDialog({
           onChange={(e) => setLong(e.target.checked)}
         />
         <span>Extra space for long division</span>
-      </label>
-      <label className="field check">
-        <input
-          id="bsFill"
-          type="checkbox"
-          checked={fill}
-          onChange={(e) => setFill(e.target.checked)}
-        />
-        <span>Fill in the answers (show a worked example)</span>
       </label>
 
       <p className="err" id="bsErr">

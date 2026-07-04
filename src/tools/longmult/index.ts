@@ -12,7 +12,6 @@ import { LongMultDialog } from "@/tools/longmult/Dialog";
 export interface LongMultParams {
   a: number;
   b: number;
-  fill: boolean;
 }
 
 export default defineCanvasTool<LongMultParams>({
@@ -21,8 +20,9 @@ export default defineCanvasTool<LongMultParams>({
   name: "Long multiplication",
   blurb: "column method",
   category: "number",
+  answer: true,
 
-  defaults: () => ({ a: 34, b: 27, fill: false }),
+  defaults: () => ({ a: 34, b: 27 }),
 
   size: (p) => {
     const nP = String(p.b).length;
@@ -77,7 +77,7 @@ export default defineCanvasTool<LongMultParams>({
       ctx.lineTo(lx1, o.y + pad + aR * rh - 2);
       ctx.stroke();
     }
-    if (o.fill) {
+    if (o.revealed) {
       partials.forEach((p, k) => drawNumRow(p, 2 + k));
       if (partials.length > 1) drawNumRow(ans, 2 + partials.length);
     }

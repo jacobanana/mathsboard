@@ -39,17 +39,15 @@ export function TimesTableDialog({
   const [rows, setRows] = useState(
     String(ex && ex.mode === "single" && ex.rows ? ex.rows : 12),
   );
-  const [fill, setFill] = useState(ex ? !!ex.fill : false);
 
   function submit() {
     if (mode === "grid") {
-      onSubmit({ mode: "grid", n: parseInt(n, 10), fill });
+      onSubmit({ mode: "grid", n: parseInt(n, 10) });
     } else {
       onSubmit({
         mode: "single",
         k: clamp(parseInt(k, 10) || 2, 1, 20),
         rows: clamp(parseInt(rows, 10) || 12, 1, 20),
-        fill,
       });
     }
   }
@@ -108,16 +106,6 @@ export function TimesTableDialog({
           />
         </div>
       </div>
-
-      <label className="field check">
-        <input
-          id="ttFill"
-          type="checkbox"
-          checked={fill}
-          onChange={(e) => setFill(e.target.checked)}
-        />
-        <span>Fill in the answers (show a worked example)</span>
-      </label>
 
       <div className="card-actions">
         <button className="btn" id="ttCancel" onClick={onCancel}>

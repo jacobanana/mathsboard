@@ -16,7 +16,6 @@ export interface BusStopParams {
   dividend: number;
   divisor: number;
   long: boolean;
-  fill: boolean;
 }
 
 export default defineCanvasTool<BusStopParams>({
@@ -25,8 +24,9 @@ export default defineCanvasTool<BusStopParams>({
   name: "Division",
   blurb: "bus-stop method",
   category: "number",
+  answer: true,
 
-  defaults: () => ({ dividend: 156, divisor: 4, long: false, fill: false }),
+  defaults: () => ({ dividend: 156, divisor: 4, long: false }),
 
   size: (p) => ({
     w: String(p.divisor).length * 16 + String(p.dividend).length * 34 + 60,
@@ -60,7 +60,7 @@ export default defineCanvasTool<BusStopParams>({
     ctx.fillStyle = theme.lineInk;
     for (let i = 0; i < dd.length; i++)
       ctx.fillText(dd[i], brX + 20 + i * digitW, midY);
-    if (o.fill) {
+    if (o.revealed) {
       let carry = 0;
       const q: number[] = [];
       const carries: number[] = [];

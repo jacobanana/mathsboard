@@ -39,6 +39,7 @@ import {
 import { useCollabStore, type PeerPresence } from "@/collab/collabStore";
 import { colorForClient } from "@/collab/profile";
 import { COLLAB_ENABLED } from "@/config";
+import { ANALYTICS_ENABLED } from "@/analytics";
 
 const TOKEN_ENDPOINT = "/api/token";
 
@@ -527,5 +528,12 @@ export function shareLink(): string {
   const url = new URL(window.location.href);
   const id = useCollabStore.getState().boardId;
   if (id) url.searchParams.set("board", id);
+  // Tag the SHARED link (not the address bar — putBoardIdInUrl stays clean) so
+  // Umami attributes visits that arrive through a board link. Gated by the
+  // analytics flag: no tracker configured -> no UTM cruft on people's links.
+  if (ANALYTICS_ENABLED) {
+    url.searchParams.set("utm_source", "share");
+    url.searchParams.set("utm_medium", "board-link");
+  }
   return url.toString();
 }

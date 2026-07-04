@@ -12,7 +12,6 @@ import { ArrayDialog } from "@/tools/array/Dialog";
 export interface ArrayParams {
   rows: number;
   cols: number;
-  fill: boolean;
 }
 
 export default defineCanvasTool<ArrayParams>({
@@ -21,8 +20,9 @@ export default defineCanvasTool<ArrayParams>({
   name: "Arrays / dots",
   blurb: "see the product",
   category: "number",
+  answer: true,
 
-  defaults: () => ({ rows: 3, cols: 5, fill: false }),
+  defaults: () => ({ rows: 3, cols: 5 }),
 
   size: (p) => ({ w: Math.max(p.cols * 30 + 28, 200), h: p.rows * 30 + 12 + 44 }),
 
@@ -46,7 +46,7 @@ export default defineCanvasTool<ArrayParams>({
     ctx.textBaseline = "middle";
     const ly = y0 + (o.rows - 1) * g + 34;
     ctx.fillText(
-      o.rows + " × " + o.cols + " = " + (o.fill ? String(o.rows * o.cols) : "__"),
+      o.rows + " × " + o.cols + " = " + (o.revealed ? String(o.rows * o.cols) : "__"),
       x0,
       ly,
     );

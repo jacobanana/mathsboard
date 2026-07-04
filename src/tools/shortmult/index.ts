@@ -11,7 +11,6 @@ import { ShortMultDialog } from "@/tools/shortmult/Dialog";
 export interface ShortMultParams {
   a: number;
   b: number;
-  fill: boolean;
 }
 
 export default defineCanvasTool<ShortMultParams>({
@@ -20,8 +19,9 @@ export default defineCanvasTool<ShortMultParams>({
   name: "Short multiplication",
   blurb: "× 1 digit, carries",
   category: "number",
+  answer: true,
 
-  defaults: () => ({ a: 236, b: 4, fill: false }),
+  defaults: () => ({ a: 236, b: 4 }),
 
   size: (p) => {
     const tc = String(p.a * p.b).length;
@@ -62,7 +62,7 @@ export default defineCanvasTool<ShortMultParams>({
     ctx.moveTo(lx0, o.y + pad + 2 * rh - 2);
     ctx.lineTo(lx1, o.y + pad + 2 * rh - 2);
     ctx.stroke();
-    if (o.fill) {
+    if (o.revealed) {
       drawNumRow(ans, 2);
       const aS = String(a);
       let carry = 0;

@@ -17,7 +17,6 @@ export function PercAmountDialog({
 
   const [pct, setPct] = useState(String(initial ? initial.pct : 15));
   const [whole, setWhole] = useState(String(initial ? initial.whole : 80));
-  const [fill, setFill] = useState(initial ? !!initial.fill : false);
   const [err, setErr] = useState("");
 
   function submit() {
@@ -27,7 +26,7 @@ export function PercAmountDialog({
       setErr("Enter the percentage and the amount.");
       return;
     }
-    onSubmit({ pct: p, whole: w, fill });
+    onSubmit({ pct: p, whole: w });
   }
 
   return (
@@ -57,15 +56,6 @@ export function PercAmountDialog({
           onChange={(e) => setWhole(e.target.value)}
         />
       </div>
-      <label className="field check">
-        <input
-          id="paFill"
-          type="checkbox"
-          checked={fill}
-          onChange={(e) => setFill(e.target.checked)}
-        />
-        <span>Fill in the answers (show a worked example)</span>
-      </label>
 
       <p className="err" id="paErr">
         {err}

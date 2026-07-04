@@ -3,13 +3,16 @@
 // migrateDocument can skip rebuilding an untouched document — these tests pin
 // both the transform and that identity guarantee.
 
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   bakeErasers,
   bakeFractionWalls,
   migrateDocument,
+  revealFromFill,
 } from "@/board/migrations";
 import { newBoardDocument } from "@/board/types";
+import { registerTool } from "@/tools/registry";
+import chunkingTool from "@/tools/chunking";
 import { aStroke, anObject } from "@/testing/fixtures";
 
 describe("bakeErasers", () => {
@@ -57,6 +60,56 @@ describe("bakeFractionWalls", () => {
 
     // Idempotent: with no wall fractions left, the SAME array comes back.
     expect(bakeFractionWalls(baked)).toBe(baked);
+  });
+});
+
+describe("revealFromFill", () => {
+  // The box-recompute path asks the sizing authority for the tool's natural
+  // size, so register a tool that used to grow when filled (chunking).
+  beforeAll(() => {
+    registerTool(chunkingTool);
+  });
+
+  it("renames fill -> revealed and drops the fill field", () => {
+    // Unregistered type (numberline isn't registered in this file), so the box
+    // is left untouched and only the flag rename is exercised.
+    const shown = anObject({ fill: true });
+    const hidden = anObject({ fill: false });
+    const [a, b] = revealFromFill([shown, hidden]);
+    expect(a.revealed).toBe(true);
+    expect("fill" in a).toBe(false);
+    expect(b.revealed).toBeUndefined(); // stays hidden, no revealed field added
+    expect("fill" in b).toBe(false);
+  });
+
+  it("leaves objects without a fill flag untouched (identity)", () => {
+    const objs = [anObject()];
+    expect(revealFromFill(objs)).toBe(objs);
+  });
+
+  it("re-reserves the box for a legacy hidden 'grow-when-filled' tool", () => {
+    // A chunking saved HIDDEN carried the short 86px box; the tool now reserves
+    // the full ladder height always (34 + 2*52 + 54 = 192 for 196 ÷ 14), so the
+    // box is bumped to match what it now draws.
+    const hidden = anObject({
+      type: "chunking",
+      dividend: 196,
+      divisor: 14,
+      w: 320,
+      h: 86,
+      fill: false,
+    });
+    const [out] = revealFromFill([hidden]);
+    expect(out.w).toBe(320);
+    expect(out.h).toBe(192);
+    expect("fill" in out).toBe(false);
+  });
+
+  it("is idempotent once no object carries fill", () => {
+    const migrated = revealFromFill([
+      anObject({ type: "chunking", dividend: 196, divisor: 14, w: 320, h: 192, fill: true }),
+    ]);
+    expect(revealFromFill(migrated)).toBe(migrated);
   });
 });
 

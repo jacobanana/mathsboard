@@ -10,7 +10,6 @@ import { LongDivDialog } from "@/tools/longdiv/Dialog";
 export interface LongDivParams {
   dividend: number;
   divisor: number;
-  fill: boolean;
 }
 
 // --- the ladder, step by step ------------------------------------------------
@@ -46,17 +45,16 @@ export const longDivTool = defineCanvasTool<LongDivParams>({
   name: "Long division",
   blurb: "full ladder",
   category: "number",
+  answer: true,
 
-  defaults: () => ({ dividend: 4928, divisor: 7, fill: false }),
+  defaults: () => ({ dividend: 4928, divisor: 7 }),
 
   size: (p) => {
     const dvW = String(p.divisor).length * 18 + 14;
     const ddW = String(p.dividend).length * 30;
-    let h = 130;
-    if (p.fill) {
-      const st = longDivSteps(p.dividend, p.divisor).steps.length;
-      h = 58 + 38 + (2 * st + 1) * 38 + 16;
-    }
+    // Reserve the ladder space whether or not the answer is shown (no reflow).
+    const st = longDivSteps(p.dividend, p.divisor).steps.length;
+    const h = 58 + 38 + (2 * st + 1) * 38 + 16;
     return { w: dvW + ddW + 30, h };
   },
 
@@ -93,7 +91,7 @@ export const longDivTool = defineCanvasTool<LongDivParams>({
     info.q.forEach((qd) => {
       if (qd.draw) ctx.fillText(String(qd.d), ddX0 + qd.col * DW + DW / 2, qY);
     });
-    if (o.fill) {
+    if (o.revealed) {
       let y = ddY + RH;
       info.steps.forEach((st) => {
         const rightX = ddX0 + (st.col + 1) * DW;

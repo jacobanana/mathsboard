@@ -10,7 +10,6 @@ import { FDPDialog } from "@/tools/fdp/Dialog";
 export interface FDPParams {
   num: number;
   den: number;
-  fill: boolean;
 }
 
 export const fdpTool = defineCanvasTool<FDPParams>({
@@ -19,8 +18,9 @@ export const fdpTool = defineCanvasTool<FDPParams>({
   name: "Fraction ↔ decimal ↔ %",
   blurb: "equivalents",
   category: "fractions",
+  answer: true,
 
-  defaults: () => ({ num: 3, den: 4, fill: false }),
+  defaults: () => ({ num: 3, den: 4 }),
 
   size: () => ({ w: 340, h: 150 }),
 
@@ -49,8 +49,8 @@ export const fdpTool = defineCanvasTool<FDPParams>({
     ctx.strokeRect(bx, by, bw, bh);
     const labels: [string, string][] = [
       ["Fraction", o.num + "/" + o.den],
-      ["Decimal", o.fill ? fmtNum(dec) : "?"],
-      ["Percentage", o.fill ? fmtNum(pct) + "%" : "?"],
+      ["Decimal", o.revealed ? fmtNum(dec) : "?"],
+      ["Percentage", o.revealed ? fmtNum(pct) + "%" : "?"],
     ];
     const colW = bw / 3;
     ctx.textAlign = "center";

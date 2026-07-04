@@ -16,7 +16,6 @@ export function ShortMultDialog({
 
   const [a, setA] = useState(String(initial ? initial.a : 236));
   const [b, setB] = useState(String(initial ? initial.b : 4));
-  const [fill, setFill] = useState(initial ? !!initial.fill : false);
   const [err, setErr] = useState("");
 
   function submit() {
@@ -30,7 +29,7 @@ export function ShortMultDialog({
       setErr("The multiplier should be a single digit (1–9).");
       return;
     }
-    onSubmit({ a: a2, b: b2, fill });
+    onSubmit({ a: a2, b: b2 });
   }
 
   return (
@@ -61,15 +60,6 @@ export function ShortMultDialog({
           onChange={(e) => setB(e.target.value)}
         />
       </div>
-      <label className="field check">
-        <input
-          id="smFill"
-          type="checkbox"
-          checked={fill}
-          onChange={(e) => setFill(e.target.checked)}
-        />
-        <span>Fill in the answers (show a worked example)</span>
-      </label>
 
       <p className="err" id="smErr">
         {err}

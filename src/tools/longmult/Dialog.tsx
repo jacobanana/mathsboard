@@ -21,7 +21,6 @@ export function LongMultDialog({
 
   const [a, setA] = useState(String(initial ? initial.a : 34));
   const [b, setB] = useState(String(initial ? initial.b : 27));
-  const [fill, setFill] = useState(initial ? !!initial.fill : false);
   const [err, setErr] = useState("");
 
   function submit() {
@@ -37,7 +36,7 @@ export function LongMultDialog({
       );
       return;
     }
-    onSubmit({ a: a2, b: b2, fill });
+    onSubmit({ a: a2, b: b2 });
   }
 
   return (
@@ -68,15 +67,6 @@ export function LongMultDialog({
           onChange={(e) => setB(e.target.value)}
         />
       </div>
-      <label className="field check">
-        <input
-          id="lmFill"
-          type="checkbox"
-          checked={fill}
-          onChange={(e) => setFill(e.target.checked)}
-        />
-        <span>Fill in the answers (show a worked example)</span>
-      </label>
 
       <p className="err" id="lmErr">
         {err}

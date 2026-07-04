@@ -76,6 +76,15 @@ export interface ToolMeta {
   category: ToolCategory;
   /** Show in the Insert gallery? Defaults to true; set false for e.g. free text. */
   inGallery?: boolean;
+  /**
+   * Does this tool have a revealable worked answer? When true, the board shows
+   * a systemic "show answer" toggle at the object's top-left (AnswerButtonLayer)
+   * and the tool's draw() reads the object's `revealed` flag to show or hide it.
+   * Replaces the old per-tool create-time "Fill in the answers" checkbox: the
+   * answer is now revealed live, not baked in at creation. Omit for tools with
+   * nothing to reveal.
+   */
+  answer?: boolean;
 }
 
 /** A tool drawn onto the board canvas. */

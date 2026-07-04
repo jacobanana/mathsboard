@@ -6,6 +6,7 @@
 // internals.
 
 import { theme } from "@/styles/theme";
+import { track } from "@/analytics";
 
 let layers: { template: HTMLCanvasElement; ink: HTMLCanvasElement } | null =
   null;
@@ -41,4 +42,5 @@ export function exportPNG(): void {
   a.download = "maths-board-" + new Date().toISOString().slice(0, 10) + ".png";
   a.href = out.toDataURL("image/png");
   a.click();
+  track("board_exported");
 }

@@ -13,7 +13,6 @@ export interface AreaLatticeParams {
   mode: "area" | "lattice";
   a: number;
   b: number;
-  fill: boolean;
 }
 
 export default defineCanvasTool<AreaLatticeParams>({
@@ -22,8 +21,9 @@ export default defineCanvasTool<AreaLatticeParams>({
   name: "Area / lattice",
   blurb: "rectangle / Napier",
   category: "number",
+  answer: true,
 
-  defaults: () => ({ mode: "area", a: 23, b: 14, fill: false }),
+  defaults: () => ({ mode: "area", a: 23, b: 14 }),
 
   size: (p) => {
     if (p.mode === "lattice") {
@@ -67,7 +67,7 @@ export default defineCanvasTool<AreaLatticeParams>({
           ctx.moveTo(x + cell, y);
           ctx.lineTo(x, y + cell);
           ctx.stroke();
-          if (o.fill) {
+          if (o.revealed) {
             const p = +aS[c] * +bS[r];
             const tens = Math.floor(p / 10),
               ones = p % 10;
@@ -123,7 +123,7 @@ export default defineCanvasTool<AreaLatticeParams>({
           colX[c + 1] - colX[c],
           rowY[r + 1] - rowY[r],
         );
-        if (o.fill) {
+        if (o.revealed) {
           ctx.fillStyle = theme.lineInk;
           ctx.fillText(
             String(A[c] * B[r]),
@@ -146,7 +146,7 @@ export default defineCanvasTool<AreaLatticeParams>({
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
     ctx.fillText(
-      o.fill
+      o.revealed
         ? o.a + " × " + o.b + " = " + o.a * o.b
         : o.a + " × " + o.b,
       o.x,

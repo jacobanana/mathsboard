@@ -34,7 +34,6 @@ export function ProtractorDialog({
   const [showArms, setShowArms] = useState(
     initial ? initial.showArms !== false : true,
   );
-  const [fill, setFill] = useState(initial ? !!initial.fill : false);
   const [fact, setFact] = useState<"line" | "point" | "triangle">(
     initial && initial.fact ? initial.fact : "line",
   );
@@ -49,7 +48,6 @@ export function ProtractorDialog({
         mode: "protractor",
         angle: clamp(parseInt(angle, 10) || 0, 0, 180),
         showArms,
-        fill,
         // facts fields carried through with defaults (not used in this mode).
         fact,
         given: initial ? initial.given : [65, 30],
@@ -80,7 +78,6 @@ export function ProtractorDialog({
         fact,
         given: parsed,
         givenRaw: raw,
-        fill,
         // protractor fields carried through with defaults (not used here).
         angle: clamp(parseInt(angle, 10) || 0, 0, 180),
         showArms,
@@ -158,16 +155,6 @@ export function ProtractorDialog({
           />
         </div>
       </div>
-
-      <label className="field check">
-        <input
-          id="prFill"
-          type="checkbox"
-          checked={fill}
-          onChange={(e) => setFill(e.target.checked)}
-        />
-        <span>Fill in the answers (show a worked example)</span>
-      </label>
 
       <p className="err" id="prErr">
         {err}

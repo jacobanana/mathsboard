@@ -42,7 +42,7 @@ export function JoinForm({
     setBusy(true);
     setError("");
     try {
-      await joinBoard(target);
+      await joinBoard(target, "code");
       onJoined();
     } catch {
       setError("Could not join — is the server reachable?");

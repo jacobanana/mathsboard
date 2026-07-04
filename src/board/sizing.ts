@@ -34,13 +34,18 @@ export function naturalSize(type: string, params: Params): Size | null {
 
 /** Strip the geometric base fields, leaving only a tool's own params. */
 export function paramsOf(obj: AnyBoardObject): Params {
-  const { id, type, x, y, w, h, ...params } = obj;
+  // `revealed` is systemic runtime state (the answer toggle), not a tool param:
+  // stripping it keeps reveal out of sizing and out of a dialog's edit params,
+  // so toggling the answer never resizes an object and editing settings never
+  // clobbers the reveal state (patchObject merges, so an omitted field survives).
+  const { id, type, x, y, w, h, revealed, ...params } = obj;
   void id;
   void type;
   void x;
   void y;
   void w;
   void h;
+  void revealed;
   return params;
 }
 

@@ -16,8 +16,8 @@ import { fillPanel } from "@/canvas/drawHelpers";
 import { TimesTableDialog } from "@/tools/timestable/Dialog";
 
 export type TimesTableParams =
-  | { mode: "grid"; n: number; fill: boolean }
-  | { mode: "single"; k: number; rows: number; fill: boolean };
+  | { mode: "grid"; n: number }
+  | { mode: "single"; k: number; rows: number };
 
 export const timesTableTool = defineCanvasTool<TimesTableParams>({
   kind: "canvas",
@@ -25,8 +25,9 @@ export const timesTableTool = defineCanvasTool<TimesTableParams>({
   name: "Times tables",
   blurb: "full grid or one table",
   category: "number",
+  answer: true,
 
-  defaults: () => ({ mode: "grid", n: 12, fill: false }),
+  defaults: () => ({ mode: "grid", n: 12 }),
 
   size: (p) => {
     if (p.mode === "single") return { w: 240, h: p.rows * 34 };
@@ -55,7 +56,7 @@ export const timesTableTool = defineCanvasTool<TimesTableParams>({
         ctx.strokeStyle = "#C3D4D2";
         ctx.lineWidth = 1.5;
         ctx.strokeRect(bx, by, bw, bh);
-        if (o.fill) {
+        if (o.revealed) {
           ctx.textAlign = "center";
           ctx.fillText(String(i * k), bx + bw / 2, y + rowH / 2);
         }
@@ -82,7 +83,7 @@ export const timesTableTool = defineCanvasTool<TimesTableParams>({
         if (r === 0 && c === 0) t = "×";
         else if (r === 0) t = String(c);
         else if (c === 0) t = String(r);
-        else if (o.fill) t = String(r * c);
+        else if (o.revealed) t = String(r * c);
         if (t) {
           ctx.fillStyle = theme.lineInk;
           ctx.fillText(t, cx + cell / 2, cy + cell / 2 + 1);

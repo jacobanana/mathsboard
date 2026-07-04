@@ -16,6 +16,7 @@
 
 import type { AnyBoardObject, BoardDocument, Stroke } from "@/board/types";
 import { applyEraser } from "@/board/geometry";
+import { paramsOf, scaleOf, sizedBox } from "@/board/sizing";
 
 /**
  * Fold every stored "eraser" overlay stroke into the pen strokes that precede it
@@ -60,6 +61,37 @@ export function bakeFractionWalls(objects: AnyBoardObject[]): AnyBoardObject[] {
   });
 }
 
+/**
+ * Migrate documents off the old create-time `fill` (show-answer) flag. Answer
+ * reveal is now SYSTEMIC runtime state (`revealed`, flipped by the board's
+ * reveal button under INPUT_ORIGIN), not a baked-in tool param — so a saved
+ * `fill: true` becomes `revealed: true` and the `fill` field is dropped.
+ *
+ * Several tools (chunking, long division, fraction/percentage of an amount)
+ * used to GROW when filled but now reserve the answer's space always, so a
+ * legacy object saved HIDDEN carries a too-short box. We re-derive the box from
+ * the tool's CURRENT natural size at the object's existing resize scale — the
+ * same rule editObject uses (sizedBox at scaleOf) — so the box matches what the
+ * tool now draws. If the tool isn't registered (naturalSize null), the box is
+ * left as-is and only the field rename happens. Idempotent: once no object
+ * carries `fill`, the pass returns its input array unchanged (identity contract).
+ */
+export function revealFromFill(objects: AnyBoardObject[]): AnyBoardObject[] {
+  if (!objects.some((o) => "fill" in o)) return objects;
+  return objects.map((o) => {
+    if (!("fill" in o)) return o;
+    const { fill, ...rest } = o;
+    const next: AnyBoardObject = { ...rest };
+    if (fill) next.revealed = true; // keep a shown worked example shown
+    const box = sizedBox(next.type, paramsOf(next), scaleOf(next));
+    if (box) {
+      next.w = box.w;
+      next.h = box.h;
+    }
+    return next;
+  });
+}
+
 // --- the registry ---------------------------------------------------------
 
 /**
@@ -93,6 +125,7 @@ const onStrokes =
 const MIGRATIONS: Migration[] = [
   onStrokes(bakeErasers),
   onObjects(bakeFractionWalls),
+  onObjects(revealFromFill),
 ];
 
 /**

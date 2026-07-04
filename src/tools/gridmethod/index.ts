@@ -14,7 +14,6 @@ import { GridMethodDialog } from "@/tools/gridmethod/Dialog";
 export interface GridMethodParams {
   a: number;
   b: number;
-  fill: boolean;
 }
 
 export const gridMethodTool = defineCanvasTool<GridMethodParams>({
@@ -23,8 +22,9 @@ export const gridMethodTool = defineCanvasTool<GridMethodParams>({
   name: "Multiplication grid",
   blurb: "box / grid method",
   category: "number",
+  answer: true,
 
-  defaults: () => ({ a: 34, b: 6, fill: false }),
+  defaults: () => ({ a: 34, b: 6 }),
 
   size: (p) => ({
     w: (partition(p.a).length + 1) * 72,
@@ -58,7 +58,7 @@ export const gridMethodTool = defineCanvasTool<GridMethodParams>({
         if (r === 0 && c === 0) t = "×";
         else if (r === 0) t = String(A[c - 1]);
         else if (c === 0) t = String(B[r - 1]);
-        else if (o.fill) t = String(A[c - 1] * B[r - 1]);
+        else if (o.revealed) t = String(A[c - 1] * B[r - 1]);
         if (t) {
           ctx.fillStyle = theme.lineInk;
           ctx.fillText(t, cx + cw / 2, cy + ch / 2 + 1);
@@ -72,7 +72,7 @@ export const gridMethodTool = defineCanvasTool<GridMethodParams>({
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
     ctx.fillText(
-      o.fill
+      o.revealed
         ? o.a + " × " + o.b + " = " + o.a * o.b
         : o.a + " × " + o.b,
       o.x,

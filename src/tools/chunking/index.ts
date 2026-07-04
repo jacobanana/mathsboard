@@ -9,7 +9,6 @@ import { ChunkingDialog } from "@/tools/chunking/Dialog";
 export interface ChunkingParams {
   dividend: number;
   divisor: number;
-  fill: boolean;
 }
 
 // --- the chunks, step by step --------------------------------------------
@@ -44,15 +43,18 @@ export const chunkingTool = defineCanvasTool<ChunkingParams>({
   name: "Chunking",
   blurb: "repeated subtraction",
   category: "number",
+  answer: true,
 
-  defaults: () => ({ dividend: 196, divisor: 14, fill: false }),
+  defaults: () => ({ dividend: 196, divisor: 14 }),
 
   size: (p) => {
     let n = 0;
     const q = Math.floor(p.dividend / p.divisor);
     if (Math.floor(q / 10) * 10 > 0) n++;
     if (q - Math.floor(q / 10) * 10 > 0) n++;
-    return { w: 320, h: p.fill ? 34 + n * 52 + 54 : 86 };
+    // Reserve the ladder space whether or not the answer is shown, so the
+    // box never reflows when the answer is toggled.
+    return { w: 320, h: 34 + n * 52 + 54 };
   },
 
   draw: ({ ctx, theme, font }, o) => {
@@ -62,7 +64,7 @@ export const chunkingTool = defineCanvasTool<ChunkingParams>({
     ctx.fillStyle = theme.lineInk;
     const rx = o.x + o.w - 96;
     let y = o.y + 26;
-    if (!o.fill) {
+    if (!o.revealed) {
       ctx.font = "600 22px " + font;
       ctx.textAlign = "left";
       ctx.fillText(o.dividend + " ÷ " + o.divisor + " =", o.x + 10, y);

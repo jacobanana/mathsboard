@@ -15,7 +15,6 @@ import { PercAmountDialog } from "@/tools/percamount/Dialog";
 export interface PercAmountParams {
   pct: number;
   whole: number;
-  fill: boolean;
 }
 
 export const percAmountTool = defineCanvasTool<PercAmountParams>({
@@ -24,10 +23,12 @@ export const percAmountTool = defineCanvasTool<PercAmountParams>({
   name: "Percentage of an amount",
   blurb: "e.g. 15% of 80",
   category: "fractions",
+  answer: true,
 
-  defaults: () => ({ pct: 15, whole: 80, fill: false }),
+  defaults: () => ({ pct: 15, whole: 80 }),
 
-  size: (p) => ({ w: 340, h: p.fill ? 156 : 60 }),
+  // Space reserved whether or not the answer is shown (no reflow on toggle).
+  size: () => ({ w: 340, h: 156 }),
 
   draw: ({ ctx, theme, font }, o) => {
     const ans = (o.whole * o.pct) / 100,
@@ -43,11 +44,11 @@ export const percAmountTool = defineCanvasTool<PercAmountParams>({
     const head = fmtNum(o.pct) + "% of " + fmtNum(o.whole) + " =";
     ctx.fillText(head, o.x + 16, cy);
     ctx.fillText(
-      o.fill ? fmtNum(ans) : "",
+      o.revealed ? fmtNum(ans) : "",
       o.x + 16 + ctx.measureText(head).width + 10,
       cy,
     );
-    if (o.fill) {
+    if (o.revealed) {
       ctx.font = "600 17px " + font;
       ctx.fillStyle = theme.muted;
       let y = o.y + 74;

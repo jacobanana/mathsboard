@@ -18,7 +18,6 @@ export interface FracAmountParams {
   num: number;
   den: number;
   whole: number;
-  fill: boolean;
 }
 
 export default defineCanvasTool<FracAmountParams>({
@@ -27,10 +26,12 @@ export default defineCanvasTool<FracAmountParams>({
   name: "Fraction of an amount",
   blurb: "e.g. ¾ of 20",
   category: "fractions",
+  answer: true,
 
-  defaults: () => ({ num: 3, den: 4, whole: 20, fill: false }),
+  defaults: () => ({ num: 3, den: 4, whole: 20 }),
 
-  size: (p) => ({ w: 340, h: p.fill ? 128 : 60 }),
+  // Space reserved whether or not the answer is shown (no reflow on toggle).
+  size: () => ({ w: 340, h: 128 }),
 
   draw: ({ ctx, theme, font }, o) => {
     const part = o.whole / o.den,
@@ -49,8 +50,8 @@ export default defineCanvasTool<FracAmountParams>({
     ctx.fillText(mid, x, cy);
     x += ctx.measureText(mid).width + 12;
     ctx.font = "700 24px " + font;
-    ctx.fillText(o.fill ? fmtNum(ans) : "", x, cy);
-    if (o.fill) {
+    ctx.fillText(o.revealed ? fmtNum(ans) : "", x, cy);
+    if (o.revealed) {
       ctx.font = "600 17px " + font;
       ctx.fillStyle = theme.muted;
       ctx.textAlign = "left";

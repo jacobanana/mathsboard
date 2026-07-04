@@ -20,7 +20,6 @@ export function ChunkingDialog({
   const [divisor, setDivisor] = useState(
     String(initial ? initial.divisor : 14),
   );
-  const [fill, setFill] = useState(initial ? !!initial.fill : false);
   const [err, setErr] = useState("");
 
   function submit() {
@@ -30,7 +29,7 @@ export function ChunkingDialog({
       setErr("Enter a number and a divisor of 1 or more.");
       return;
     }
-    onSubmit({ dividend: d, divisor: v, fill });
+    onSubmit({ dividend: d, divisor: v });
   }
 
   return (
@@ -61,15 +60,6 @@ export function ChunkingDialog({
           onChange={(e) => setDivisor(e.target.value)}
         />
       </div>
-      <label className="field check">
-        <input
-          id="ckFill"
-          type="checkbox"
-          checked={fill}
-          onChange={(e) => setFill(e.target.checked)}
-        />
-        <span>Fill in the answers (show a worked example)</span>
-      </label>
 
       <p className="err" id="ckErr">
         {err}

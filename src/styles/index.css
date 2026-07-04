@@ -133,6 +133,14 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 .ilayer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
+/* --- Systemic "show answer" toggle (AnswerButtonLayer) --- */
+.answer-layer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
+.answer-btn{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;color:var(--bar);background:var(--island);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--island-border);box-shadow:var(--island-shadow);opacity:.45;transition:opacity .12s,background .12s,color .12s;}
+.answer-btn:hover{opacity:1;background:var(--hover);}
+.answer-btn.on{opacity:1;background:var(--bar);color:#fff;border-color:var(--bar);}
+.answer-btn.on:hover{background:#15302f;}
+.answer-btn:active{transform:scale(.92);}
+.answer-btn svg{width:17px;height:17px;}
 .iworksheet{position:absolute;transform-origin:0 0;pointer-events:auto;width:300px;background:#fff;border:1px solid #E4D9B8;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
 .iw-head{display:flex;align-items:center;gap:6px;background:var(--bar);color:#fff;padding:7px 9px;cursor:grab;user-select:none;touch-action:none;}
 .iw-head:active{cursor:grabbing;}

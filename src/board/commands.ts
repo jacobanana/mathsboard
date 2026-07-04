@@ -15,6 +15,7 @@ import { id as makeId } from "@/board/types";
 import { naturalSize, scaleOf, sizedBox } from "@/board/sizing";
 import type { Params } from "@/board/sizing";
 import type { AnyBoardObject, Stroke } from "@/board/types";
+import { track, trackBoardActivated } from "@/analytics";
 
 // --- placement (CREATE) -----------------------------------------------------
 
@@ -66,6 +67,11 @@ export function placeObject(
   st.addObject(obj);
   st.select(obj.id);
   st.setTool("select");
+  // Widget-popularity signal: one event per placement, keyed by the tool's
+  // registry id (single source of truth — no per-tool literals). Placing a
+  // widget also activates the board (fires once/board).
+  track("tool_used", { tool: type });
+  trackBoardActivated(board.id);
 }
 
 // --- editing (EDIT) ----------------------------------------------------------
@@ -82,6 +88,7 @@ export function editObject(objId: string, params: Params): void {
   const size = sizedBox(existing.type, params, scaleOf(existing));
   if (!size) return;
   st.updateObject(objId, { ...params, w: size.w, h: size.h });
+  track("tool_edited", { tool: existing.type });
 }
 
 // --- internal clipboard (copy / cut / paste / duplicate) ---------------------

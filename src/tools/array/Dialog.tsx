@@ -19,12 +19,11 @@ export function ArrayDialog({
 
   const [rows, setRows] = useState(String(initial ? initial.rows : 3));
   const [cols, setCols] = useState(String(initial ? initial.cols : 5));
-  const [fill, setFill] = useState(initial ? !!initial.fill : false);
 
   function submit() {
     const r = clamp(parseInt(rows, 10) || 1, 1, 12);
     const c = clamp(parseInt(cols, 10) || 1, 1, 12);
-    onSubmit({ rows: r, cols: c, fill });
+    onSubmit({ rows: r, cols: c });
   }
 
   return (
@@ -57,15 +56,6 @@ export function ArrayDialog({
           onChange={(e) => setCols(e.target.value)}
         />
       </div>
-      <label className="field check">
-        <input
-          id="arFill"
-          type="checkbox"
-          checked={fill}
-          onChange={(e) => setFill(e.target.checked)}
-        />
-        <span>Fill in the answers (show a worked example)</span>
-      </label>
 
       <p className="err" id="arErr"></p>
       <div className="card-actions">

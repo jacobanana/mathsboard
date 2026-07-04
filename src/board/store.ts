@@ -41,6 +41,7 @@ import * as session from "@/collab/session";
 import { SEED_ORIGIN } from "@/collab/docModel";
 import { useCollabStore } from "@/collab/collabStore";
 import { getStoredName } from "@/collab/profile";
+import { track, trackBoardActivated } from "@/analytics";
 
 /**
  * The current selection. Holds object ids AND stroke ids so freehand "arcs" can
@@ -53,6 +54,14 @@ export interface Selection {
 }
 
 const EMPTY_SELECTION: Selection = { objectIds: [], strokeIds: [] };
+
+/**
+ * How a shared board was joined, for the `board_joined` analytics event:
+ *   link    - opened a ?board=<code> share link (URL)
+ *   code    - typed a code / pasted a link into the Join form
+ *   library - re-opened a remembered shared board from the boards manager
+ */
+export type JoinSource = "link" | "code" | "library";
 
 export const selectionCount = (s: Selection): number =>
   s.objectIds.length + s.strokeIds.length;
@@ -111,6 +120,13 @@ interface BoardState {
    */
   updateWidgetState(id: string, patch: Record<string, unknown>): void;
   /**
+   * Toggle a tool's worked answer on/off (the systemic reveal button). Flips the
+   * object's `revealed` flag as LIVE WIDGET STATE (INPUT_ORIGIN): it syncs to
+   * peers and persists, but never enters the undo history. No-op if the object
+   * is gone. Only meaningful for tools registered with `answer: true`.
+   */
+  toggleAnswer(id: string): void;
+  /**
    * Move an object. Does NOT push history -- the drag handler pushes once at
    * drag start so the whole drag is a single undo step.
    */
@@ -167,8 +183,9 @@ interface BoardState {
   setEditingId(id: string | null): void;
 
   // ---- COLLAB lifecycle ----
-  /** Join the shared board `boardId` (from a share link). */
-  joinBoard(boardId: string): Promise<void>;
+  /** Join the shared board `boardId`. `source` (default "link") tags how the
+   *  join was initiated for analytics. */
+  joinBoard(boardId: string, source?: JoinSource): Promise<void>;
   /**
    * Start sharing the CURRENT board under a fresh id: seeds a shared session
    * with the current content, puts ?board=<id> in the URL and returns the
@@ -361,6 +378,15 @@ export const useBoardStore = create<BoardState>((set, get) => {
       session.patchObjectInput(id, patch);
     },
 
+    toggleAnswer(id) {
+      const obj = get().board.objects.find((o) => o.id === id);
+      if (!obj) return;
+      // Reveal is live widget state, exactly like typed quiz answers: shared and
+      // persisted, but undo-invisible (INPUT_ORIGIN), and it never resizes the
+      // object (paramsOf strips `revealed`, so the box is reveal-independent).
+      session.patchObjectInput(id, { revealed: !obj.revealed });
+    },
+
     moveObject(id, x, y) {
       // No history boundary here -- caller pushed once at drag start.
       session.patchObject(id, { x, y });
@@ -395,6 +421,8 @@ export const useBoardStore = create<BoardState>((set, get) => {
     addStroke(stroke) {
       session.stopCapture();
       session.insertStroke(stroke);
+      // First mark on this board = the board is "activated" (fires once/board).
+      trackBoardActivated(get().board.id);
     },
 
     eraseStrokes(eraser) {
@@ -416,6 +444,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
     setBackground(bg) {
       session.stopCapture();
       session.setBackground(bg);
+      track("background_set", { kind: bg });
     },
 
     // ---- HISTORY ----
@@ -476,9 +505,10 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
 
     // ---- COLLAB lifecycle ----
-    async joinBoard(boardId) {
+    async joinBoard(boardId, source = "link") {
       const board = session.joinShared(boardId, displayName());
       session.putBoardIdInUrl(boardId);
+      track("board_joined", { via: source });
       // A joined board is remote content: unlink it from the local library and
       // keep the user's own private draft untouched (don't overwrite it with
       // someone else's board). The FRESH state clears undo/selection.
@@ -520,6 +550,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
       });
       if (prevSourceId) await localRepository.remove(prevSourceId);
       await localRepository.clearDraft();
+      track("board_shared");
       return session.shareLink();
     },
 
@@ -540,7 +571,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
       // A share link takes precedence over the local draft: join that board.
       const sharedId = session.boardIdFromUrl();
       if (sharedId) {
-        await get().joinBoard(sharedId);
+        await get().joinBoard(sharedId, "link");
         return;
       }
 
@@ -617,6 +648,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
       await localRepository.save(doc);
       await flushDraft(doc, sourceId, false);
       set({ dirty: false });
+      track("board_saved", { as: "same" });
       return { needsName: false };
     },
 
@@ -649,6 +681,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
       session.setBoardName(name);
       await flushDraft(doc, docId, false);
       set({ sourceId: docId, dirty: false });
+      track("board_saved", { as: "new" });
     },
 
     async renameBoard(boardId, name) {
@@ -706,6 +739,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
         camera: { x: 0, y: 0, scale: 1 },
         ...FRESH_DOC_STATE,
       });
+      track("board_created");
     },
 
     async deleteBoard(boardId) {
