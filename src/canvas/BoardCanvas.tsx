@@ -309,11 +309,25 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
   // LIFECYCLE + STORE SUBSCRIPTIONS
   // ======================================================================
 
-  // Initial sizing + window resize.
+  // Initial sizing + resize tracking. A ResizeObserver on #stage is the source
+  // of truth: it fires for ANY change to the stage's box, not just window
+  // resizes. This matters because the MathLive virtual keyboard shrinks the
+  // stage via layout (it reserves space at the bottom) WITHOUT firing a window
+  // "resize" — so a window listener alone left the canvas bitmap at the old
+  // tall size while its CSS box shrank, squashing the drawing (broken aspect
+  // ratio). The window listener stays as a belt-and-braces for viewport / dpr
+  // changes (browser zoom) that needn't alter the stage's CSS box. resize() is
+  // idempotent, so the two firing together is harmless.
   useEffect(() => {
     resize();
+    const stage = tCanvasRef.current?.parentElement;
+    const ro = stage ? new ResizeObserver(() => resize()) : null;
+    if (stage && ro) ro.observe(stage);
     window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", resize);
+    };
   }, [resize]);
 
   // Expose the two layers to the PNG export service (no shell DOM reach).
