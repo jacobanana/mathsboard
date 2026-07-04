@@ -2,6 +2,7 @@
   "name": "mathsboard-api",
   "private": true,
   "version": "0.1.0",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "description": "Token endpoint + image upload proxy for the collaborative maths board",
   "scripts": {
