@@ -34,6 +34,91 @@ import type { MathfieldElement } from "mathlive";
 type MathliveModule = typeof import("mathlive");
 let mathlive: Promise<MathliveModule> | null = null;
 
+// THE KS1–KS3 MATHS KEYBOARD.
+//
+// A curated layout set REPLACES MathLive's stock numeric/symbols/greek set, so
+// the on-screen keyboard only ever shows what this curriculum band actually
+// writes — no LaTeX literacy, no wall of symbols a child will never touch. The
+// switcher shows three tabs: "123", "x²" and the alphabet.
+//
+//  • "123" (Numbers)  — KS1/KS2 core: digits, the FOUR operations with proper
+//    curriculum symbols (× ÷, never * /), brackets, compare < > =, and a
+//    double-wide fraction key so fractions are the easiest thing on the board.
+//  • "x²" (More)      — the stretch into upper-KS2 / early-KS3: powers & roots,
+//    the full inequality set, % and π, a row of measurement UNITS, and x / y
+//    for Year-6+ algebra. Units insert upright via \mathrm{} — "cm" must read
+//    as a unit, not as italic c×m, which is what typing the letters would give.
+//  • "abc" (alphabetic) — MathLive's built-in letter keyboard, for touch
+//    devices with no physical keyboard (labelling variables, writing answers).
+//    Named layouts and custom ones can share the list; only these three show.
+//
+// Custom keys insert via MathLive's placeholder tokens:
+//   #@  → the current selection, or the term just left of the cursor
+//   #?  → an empty \placeholder{} the cursor lands in next
+// so typing 5 then tapping x² gives 5², √ wraps a selection under the radical,
+// and the fraction key turns 5 into 5/▯ with the cursor in the denominator.
+// The fraction and backspace keys live on both custom tabs so neither is ever a
+// tab away. Assigning `layouts` replaces the defaults wholesale.
+const MATH_KEYBOARD_LAYOUTS = [
+  {
+    label: "123",
+    tooltip: "Numbers",
+    rows: [
+      ["7", "8", "9", { latex: "\\times" }, { latex: "\\div" }],
+      ["4", "5", "6", { latex: "+" }, { latex: "-" }],
+      ["1", "2", "3", "(", ")"],
+      ["0", ".", { latex: "=" }, { latex: "<" }, { latex: ">" }],
+      [
+        { latex: "\\frac{#@}{#?}", width: 2 as const },
+        "[backspace]",
+        "[left]",
+        "[right]",
+      ],
+    ],
+  },
+  {
+    label: "x²",
+    tooltip: "More",
+    rows: [
+      [
+        { latex: "#@^{2}" },
+        { latex: "#@^{3}" },
+        { latex: "#@^{#?}" },
+        { latex: "\\sqrt{#@}" },
+        { latex: "\\sqrt[#?]{#@}" },
+      ],
+      [
+        { latex: "<" },
+        { latex: ">" },
+        { latex: "\\le" },
+        { latex: "\\ge" },
+        { latex: "\\ne" },
+      ],
+      ["(", ")", { latex: "\\pi" }, { latex: "\\%" }, { latex: "=" }],
+      // Measurement units, upright. \mathrm keeps "cm" a unit rather than the
+      // product c×m; the degree key raises a ∘ so 90 then ° reads as 90°.
+      [
+        { latex: "\\mathrm{cm}" },
+        { latex: "\\mathrm{m}" },
+        { latex: "\\mathrm{kg}" },
+        { latex: "\\mathrm{ml}" },
+        { latex: "^{\\circ}", label: "°" },
+      ],
+      [
+        { latex: "x" },
+        { latex: "y" },
+        ".",
+        { latex: "\\frac{#@}{#?}" },
+        "[backspace]",
+      ],
+      ["[left]", "[right]"],
+    ],
+  },
+  // MathLive's stock alphabet keyboard — the third tab, for touch entry of
+  // letters and short word answers where there's no physical keyboard.
+  "alphabetic" as const,
+];
+
 function loadMathlive(): Promise<MathliveModule> {
   mathlive ??= Promise.all([
     import("mathlive"),
@@ -45,6 +130,9 @@ function loadMathlive(): Promise<MathliveModule> {
     // fonts come from the stylesheet above (no runtime fetch), sounds are off.
     m.MathfieldElement.fontsDirectory = null;
     m.MathfieldElement.soundsDirectory = null;
+    // The virtual keyboard is a GLOBAL singleton (window.mathVirtualKeyboard),
+    // so its layout is set once here rather than per <math-field>.
+    window.mathVirtualKeyboard.layouts = MATH_KEYBOARD_LAYOUTS;
     return m;
   });
   return mathlive;
