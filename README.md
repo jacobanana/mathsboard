@@ -1,10 +1,18 @@
+[![Maths Board — teach and learn maths together on a shared, infinite canvas](docs/header.png)](https://mathboard.mixedmode.ch)
+
 # Maths Board
 
-An infinite-canvas maths whiteboard for the classroom: freehand pen/eraser,
-free text, uploaded pictures, and a growing toolbox of maths widgets (number
-lines, times tables, long division, fractions, clocks, ...) — with real-time
-collaboration: share a link and everyone edits the same board live, with
-each other's cursors visible. A Vite + React + TypeScript app backed by
+**▶ Try it live at [mathboard.mixedmode.ch](https://mathboard.mixedmode.ch)** — open it, or share a board and collaborate in real time.
+
+An infinite-canvas whiteboard for teaching and learning maths together. The
+heart of it is the maths: a growing toolbox of widgets — number lines, times
+tables, fraction walls, clocks — and, above all, **written-method scaffolds**
+(bus-stop division, grid and column multiplication, long division, chunking,
+...) that you fill in and then **reveal** the worked answer, step by step.
+Around that maths core sit the whiteboard basics — freehand pen/eraser, free
+text, uploaded pictures — and real-time collaboration: share a link and
+everyone edits the same board live, with each other's cursors visible. Built
+for one-to-one remote tuition; equally at home in a small group or a classroom. A Vite + React + TypeScript app backed by
 [Yjs](https://yjs.dev) + a self-hosted
 [Y-Sweet](https://github.com/jamsocket/y-sweet) server.
 
