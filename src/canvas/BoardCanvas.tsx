@@ -78,6 +78,11 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
   useEffect(
     () => () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      // Reset the guard, or the cancelled handle blocks every later
+      // requestRender: StrictMode's simulated unmount/remount reuses the same
+      // refs, so leaving the stale id here froze all rAF-scheduled repaints
+      // for the rest of the session (only sync resize() paints got through).
+      rafRef.current = 0;
     },
     [],
   );

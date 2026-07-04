@@ -12,6 +12,7 @@ import { COLLAB_ENABLED } from "@/config";
 
 // Most tools default-export their Tool; three reference tools only name-export.
 import { textTool } from "@/tools/text";
+import { mathTextTool } from "@/tools/mathtext";
 import { numberLineTool } from "@/tools/numberline";
 import fractionTool from "@/tools/fraction";
 import fractionWallTool from "@/tools/fractionwall";
@@ -39,6 +40,8 @@ import imageTool from "@/tools/image";
 const ALL_TOOLS = [
   textTool,
   // Number & calculating (prototype gallery order: place value comes LAST here).
+  // Maths notation (roadmap B1) is new, and general-purpose enough to lead.
+  mathTextTool,
   numberLineTool,
   timesTableTool,
   gridMethodTool,
