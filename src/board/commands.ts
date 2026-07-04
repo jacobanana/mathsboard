@@ -67,10 +67,12 @@ export function placeObject(
   st.addObject(obj);
   st.select(obj.id);
   st.setTool("select");
-  // Widget-popularity signal: one event per placement, keyed by the tool's
-  // registry id (single source of truth — no per-tool literals). Placing a
-  // widget also activates the board (fires once/board).
-  track("tool_used", { tool: type });
+  // One event for every tool interaction — `action` is the verb, `tool` the
+  // registry id (single source of truth). Umami's Properties tab filters by
+  // property value, so `tool_action` gives the full tool×action matrix (filter
+  // action -> rank tools; filter tool -> see its action mix). Placing a widget
+  // also activates the board (fires once/board).
+  track("tool_action", { tool: type, action: "created" });
   trackBoardActivated(board.id);
 }
 
@@ -88,7 +90,7 @@ export function editObject(objId: string, params: Params): void {
   const size = sizedBox(existing.type, params, scaleOf(existing));
   if (!size) return;
   st.updateObject(objId, { ...params, w: size.w, h: size.h });
-  track("tool_edited", { tool: existing.type });
+  track("tool_action", { tool: existing.type, action: "edited" });
 }
 
 // --- internal clipboard (copy / cut / paste / duplicate) ---------------------

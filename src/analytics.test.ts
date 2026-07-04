@@ -39,7 +39,9 @@ describe("analytics feature-flag gating", () => {
   });
 
   it("track / identify / activation are safe no-ops before the tracker loads", () => {
-    expect(() => track("tool_used", { tool: "clock" })).not.toThrow();
+    expect(() =>
+      track("tool_action", { tool: "clock", action: "created" }),
+    ).not.toThrow();
     expect(() => identify({ build: "app" })).not.toThrow();
     expect(() => trackBoardActivated("board-noop")).not.toThrow();
   });
@@ -48,8 +50,11 @@ describe("analytics feature-flag gating", () => {
     const umami = { track: vi.fn(), identify: vi.fn() };
     (window as UmamiWin).umami = umami;
 
-    track("tool_used", { tool: "clock" });
-    expect(umami.track).toHaveBeenCalledWith("tool_used", { tool: "clock" });
+    track("tool_action", { tool: "clock", action: "created" });
+    expect(umami.track).toHaveBeenCalledWith("tool_action", {
+      tool: "clock",
+      action: "created",
+    });
 
     identify({ build: "app", collab: true });
     expect(umami.identify).toHaveBeenCalledWith({ build: "app", collab: true });

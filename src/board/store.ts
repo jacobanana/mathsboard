@@ -384,7 +384,10 @@ export const useBoardStore = create<BoardState>((set, get) => {
       // Reveal is live widget state, exactly like typed quiz answers: shared and
       // persisted, but undo-invisible (INPUT_ORIGIN), and it never resizes the
       // object (paramsOf strips `revealed`, so the box is reveal-independent).
-      session.patchObjectInput(id, { revealed: !obj.revealed });
+      const revealing = !obj.revealed;
+      session.patchObjectInput(id, { revealed: revealing });
+      // Only the reveal direction is an "answers revealed" signal, not hiding.
+      if (revealing) track("tool_action", { tool: obj.type, action: "revealed" });
     },
 
     moveObject(id, x, y) {
@@ -405,17 +408,34 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
 
     removeObject(id) {
+      const obj = get().board.objects.find((o) => o.id === id);
       session.stopCapture();
       session.removeShapes([id], []);
+      // A deliberate widget delete (e.g. the worksheet's own trash button).
+      // Skip the text-editor's cleanup of an abandoned EMPTY text box — that was
+      // never a committed widget, so counting it as a delete would be noise
+      // (and text is created off-placeObject, so it has no matching "created").
+      if (obj && !(obj.type === "text" && !obj.text)) {
+        track("tool_action", { tool: obj.type, action: "deleted" });
+      }
       // Selection pruning happens in onBoardChange (ids no longer on the board).
     },
 
     deleteSelection() {
       const sel = get().selection;
       if (selectionCount(sel) === 0) return;
+      // Resolve the deleted widgets' types BEFORE removal (one event each;
+      // strokes aren't tools, so they're excluded from the matrix).
+      const { objects } = get().board;
+      const deletedTools = sel.objectIds
+        .map((oid) => objects.find((o) => o.id === oid)?.type)
+        .filter((t): t is string => t != null);
       session.stopCapture();
       session.removeShapes(sel.objectIds, sel.strokeIds);
       set({ selection: EMPTY_SELECTION });
+      for (const tool of deletedTools) {
+        track("tool_action", { tool, action: "deleted" });
+      }
     },
 
     addStroke(stroke) {
