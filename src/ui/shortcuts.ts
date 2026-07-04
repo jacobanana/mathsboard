@@ -5,11 +5,12 @@
 // the two can never drift: App.tsx drives its window keydown handler from this
 // list (handleShortcut) and ShortcutsHelp renders the same list grouped.
 //
-// The pure store operations the shortcuts fire (clipboard, colour cycle, size
-// nudge, arrow-nudge history batching) live here too — they need no React and
-// keep the same module-level-state pattern App used before. Only the actions
-// that open a modal / save through the host (which own React state) are passed
-// in via ShortcutHost.
+// The pure store operations the shortcuts fire (colour cycle, size nudge,
+// arrow-nudge history batching) live here too — they need no React. The
+// internal clipboard is a placement service, not a shortcut: it lives in
+// board/commands.ts and is only WIRED here. Only the actions that open a
+// modal / save through the host (which own React state) are passed in via
+// ShortcutHost.
 //
 // Dispatch contract (handleShortcut), matching the old inline handler exactly:
 //   - nothing fires while a modal is open;
@@ -19,7 +20,11 @@
 
 import { useBoardStore, activeTextObjectId } from "@/board/store";
 import { useUiStore } from "@/ui/uiStore";
-import { id as makeId } from "@/board/types";
+import {
+  copySelection,
+  duplicateSelection,
+  pasteClipboard,
+} from "@/board/commands";
 import { textSizeOf } from "@/canvas/drawHelpers";
 import { COLLAB_ENABLED } from "@/config";
 import {
@@ -28,7 +33,6 @@ import {
   TEXT_SIZE_RANGE,
   ERASER_SIZE_RANGE,
 } from "@/ui/constants";
-import type { AnyBoardObject, Stroke } from "@/board/types";
 
 type BoardState = ReturnType<typeof useBoardStore.getState>;
 
@@ -128,89 +132,6 @@ function adjustSize(dir: 1 | -1): void {
       st.updateObject(tid, { size: next, w, h });
     }
   }
-}
-
-// --- copy / cut / paste / duplicate --------------------------------------
-// An INTERNAL clipboard (not the OS clipboard): Ctrl+C/X snapshot the selected
-// shapes here, Ctrl+V / Ctrl+D re-insert clones with fresh ids and a cascading
-// offset. Matches how Excalidraw/Miro handle in-app copy.
-
-type ShapeBag = { objects: AnyBoardObject[]; strokes: Stroke[] };
-
-/** World-px offset applied to each paste/duplicate so a copy doesn't land
- *  exactly on top of its source. */
-const PASTE_OFFSET = 24;
-
-let clipboard: ShapeBag | null = null;
-// How many times the CURRENT clipboard has been pasted, so repeated pastes
-// cascade instead of stacking. Reset on every copy/cut.
-let pasteSeq = 0;
-
-/** The selected objects + strokes, resolved to their document shapes. */
-function selectedShapes(): ShapeBag {
-  const st = useBoardStore.getState();
-  const objects = st.selection.objectIds
-    .map((id) => st.board.objects.find((o) => o.id === id))
-    .filter((o): o is AnyBoardObject => o != null);
-  const strokes = st.selection.strokeIds
-    .map((id) => st.board.strokes.find((s) => s.id === id))
-    .filter((s): s is Stroke => s != null);
-  return { objects, strokes };
-}
-
-/** Deep-clone shapes with fresh ids and a world offset; strips `order` so the
- *  batch re-inserts on top (insertShapes assigns fresh order keys). */
-function cloneShapes(src: ShapeBag, dx: number, dy: number): ShapeBag {
-  const objects = src.objects.map((o) => {
-    const { order, ...rest } = structuredClone(o);
-    void order;
-    return { ...rest, id: makeId(), x: o.x + dx, y: o.y + dy };
-  });
-  const strokes = src.strokes.map((s) => {
-    const { order, ...rest } = structuredClone(s);
-    void order;
-    return {
-      ...rest,
-      id: makeId(),
-      points: rest.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
-    };
-  });
-  return { objects, strokes };
-}
-
-/** Insert a clone batch, then select it and switch to the select tool so the
- *  fresh copy can be moved immediately (mirrors placeNew). */
-function placeClones(batch: ShapeBag): void {
-  if (batch.objects.length === 0 && batch.strokes.length === 0) return;
-  const st = useBoardStore.getState();
-  st.addShapes(batch.objects, batch.strokes);
-  st.setSelection({
-    objectIds: batch.objects.map((o) => o.id),
-    strokeIds: batch.strokes.map((s) => s.id),
-  });
-  st.setTool("select");
-}
-
-function copySelection(): void {
-  const sel = selectedShapes();
-  if (sel.objects.length === 0 && sel.strokes.length === 0) return;
-  clipboard = {
-    objects: sel.objects.map((o) => structuredClone(o)),
-    strokes: sel.strokes.map((s) => structuredClone(s)),
-  };
-  pasteSeq = 0;
-}
-
-function pasteClipboard(): void {
-  if (!clipboard) return;
-  pasteSeq += 1;
-  const d = PASTE_OFFSET * pasteSeq;
-  placeClones(cloneShapes(clipboard, d, d));
-}
-
-function duplicateSelection(): void {
-  const sel = selectedShapes();
-  placeClones(cloneShapes(sel, PASTE_OFFSET, PASTE_OFFSET));
 }
 
 // --- arrow-nudge ----------------------------------------------------------

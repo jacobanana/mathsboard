@@ -4,13 +4,40 @@
 // drawLongDiv (line 254), longDivDialog (lines 495-502).
 
 import { defineCanvasTool } from "@/tools/registry";
-import { longDivSteps, drawRightNum } from "@/canvas/drawHelpers";
+import { drawRightNum } from "@/canvas/drawHelpers";
 import { LongDivDialog } from "@/tools/longdiv/Dialog";
 
 export interface LongDivParams {
   dividend: number;
   divisor: number;
   fill: boolean;
+}
+
+// --- the ladder, step by step ------------------------------------------------
+// Long-division domain math; lives with the tool, not in shared drawHelpers.
+
+interface LongDivResult {
+  q: { d: number; draw: boolean; col: number }[];
+  steps: { minuend: number; prod: number; rem: number; col: number }[];
+  remainder: number;
+}
+
+function longDivSteps(dividend: number, divisor: number): LongDivResult {
+  const digits = String(dividend).split("").map(Number);
+  const v = divisor;
+  let rem = 0;
+  let started = false;
+  const q: LongDivResult["q"] = [];
+  const steps: LongDivResult["steps"] = [];
+  for (let i = 0; i < digits.length; i++) {
+    const w = rem * 10 + digits[i];
+    const qd = Math.floor(w / v);
+    rem = w - qd * v;
+    if (qd > 0) started = true;
+    q.push({ d: qd, draw: started, col: i });
+    if (started) steps.push({ minuend: w, prod: qd * v, rem, col: i });
+  }
+  return { q, steps, remainder: rem };
 }
 
 export const longDivTool = defineCanvasTool<LongDivParams>({

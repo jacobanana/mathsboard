@@ -150,55 +150,6 @@ export function drawRightNum(
   }
 }
 
-// --- division step generators ---------------------------------------------
-
-export interface LongDivResult {
-  q: { d: number; draw: boolean; col: number }[];
-  steps: { minuend: number; prod: number; rem: number; col: number }[];
-  remainder: number;
-}
-
-export function longDivSteps(dividend: number, divisor: number): LongDivResult {
-  const digits = String(dividend).split("").map(Number);
-  const v = divisor;
-  let rem = 0;
-  let started = false;
-  const q: LongDivResult["q"] = [];
-  const steps: LongDivResult["steps"] = [];
-  for (let i = 0; i < digits.length; i++) {
-    const w = rem * 10 + digits[i];
-    const qd = Math.floor(w / v);
-    rem = w - qd * v;
-    if (qd > 0) started = true;
-    q.push({ d: qd, draw: started, col: i });
-    if (started) steps.push({ minuend: w, prod: qd * v, rem, col: i });
-  }
-  return { q, steps, remainder: rem };
-}
-
-export interface ChunkResult {
-  chunks: { mult: number; sub: number }[];
-  answer: number;
-  remainder: number;
-}
-
-export function chunkSteps(dividend: number, divisor: number): ChunkResult {
-  let rem = dividend;
-  const chunks: ChunkResult["chunks"] = [];
-  const q = Math.floor(dividend / divisor);
-  const tens = Math.floor(q / 10) * 10;
-  if (tens > 0) {
-    chunks.push({ mult: tens, sub: tens * divisor });
-    rem -= tens * divisor;
-  }
-  const ones = q - tens;
-  if (ones > 0) {
-    chunks.push({ mult: ones, sub: ones * divisor });
-    rem -= ones * divisor;
-  }
-  return { chunks, answer: q, remainder: rem };
-}
-
 /** Draw a stacked fraction n/d centred-left at (x, cy). Returns its width. */
 export function drawStackFrac(
   ctx: CanvasRenderingContext2D,

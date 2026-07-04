@@ -4,13 +4,38 @@
 // drawChunking (line 256), chunkingDialog (lines 504-511).
 
 import { defineCanvasTool } from "@/tools/registry";
-import { chunkSteps } from "@/canvas/drawHelpers";
 import { ChunkingDialog } from "@/tools/chunking/Dialog";
 
 export interface ChunkingParams {
   dividend: number;
   divisor: number;
   fill: boolean;
+}
+
+// --- the chunks, step by step --------------------------------------------
+// Chunking domain math; lives with the tool, not in shared drawHelpers.
+
+interface ChunkResult {
+  chunks: { mult: number; sub: number }[];
+  answer: number;
+  remainder: number;
+}
+
+function chunkSteps(dividend: number, divisor: number): ChunkResult {
+  let rem = dividend;
+  const chunks: ChunkResult["chunks"] = [];
+  const q = Math.floor(dividend / divisor);
+  const tens = Math.floor(q / 10) * 10;
+  if (tens > 0) {
+    chunks.push({ mult: tens, sub: tens * divisor });
+    rem -= tens * divisor;
+  }
+  const ones = q - tens;
+  if (ones > 0) {
+    chunks.push({ mult: ones, sub: ones * divisor });
+    rem -= ones * divisor;
+  }
+  return { chunks, answer: q, remainder: rem };
 }
 
 export const chunkingTool = defineCanvasTool<ChunkingParams>({

@@ -13,6 +13,15 @@ The guiding rule for "worth building now": an abstraction earns its place if a
 500-line handler or a 120-line modal switch. Registries and services that only
 save a few lines are noted but deferred.
 
+> **Status: IMPLEMENTED (2026-07).** T1–T6, the Tier-3 tidies and both cheap
+> wins have landed. The new modules: `canvas/interactions/*` (T1),
+> `ui/modals/*` (T2), `board/sizing.ts` + `board/commands.ts` (T3, includes
+> the internal clipboard), `canvas/scene.ts` (T4, with rAF render batching),
+> `canvas/viewport.ts` (T5), `canvas/textEditor.ts` (T6), `board/selection.ts`
+> / `board/resize.ts` / `canvas/export.ts` (Tier 3). §1–§2 below describe the
+> PRE-refactor shape and are kept as the rationale; §4 is now the actual shape.
+> Still open: data-driving the Toolbar dock from the interaction registry (§6).
+
 ---
 
 ## 1. Concern inventory
@@ -517,7 +526,44 @@ plus one `register…()` call — no edits to `BoardCanvas` or `App`.
 
 ---
 
-## 6. One-line summary
+## 6. Other files audited (large vs god)
+
+`BoardCanvas` is the largest file, but line count alone doesn't identify what
+needs breaking down. The distinction that matters:
+
+- **God file** — tangles many *unrelated* concerns behind one unit. Splitting it
+  is a genuine decomposition. Only `BoardCanvas.tsx` (and, to a lesser degree,
+  `App.tsx`) qualifies.
+- **Large-but-cohesive** — big because its *single* concern is intrinsically
+  large (a declarative catalog, a store, an external seam). Splitting for line
+  count fragments cohesion and makes things worse.
+
+Sizes below are from `wc -l` over `src/`.
+
+| File | Lines | God file? | Verdict |
+|------|------:|-----------|---------|
+| `canvas/BoardCanvas.tsx` | 1137 | **Yes** | The only true god file — see §1.1–§4. In a class of its own. |
+| `board/store.ts` | 813 | **Borderline** | Cohesive as a store, but bundles three separable things: pure **eraser-baking** (`applyEraser`/`bakeErasers`, ~40 lines → geometry or an eraser module), **debounced autosave orchestration** (`scheduleDraftSave`/`flushDraft`/`scheduleRemoteRefSave`, ~50 lines → a persistence-sync module), and the `onBoardChange` selection-reconciliation wiring at the bottom. The ~350 lines of load/save/share/join lifecycle actions **belong together — don't fragment them.** Surgery, not decomposition, and only if it keeps growing. |
+| `ui/shortcuts.ts` | 535 | No | A single-source-of-truth catalog; length is intrinsic. One clean extraction: the **internal clipboard** (`copy`/`cut`/`paste`/`duplicate`, `cloneShapes`/`placeClones`, ~80 lines) is a service, not a shortcut — fold it into the **T3** board-command service. |
+| `collab/session.ts` | 520 | No | A well-factored collab/Yjs seam. Leave it. |
+| `ui/Toolbar.tsx` | 249 | No | One concern (render the chrome); already delegates to `OptionsStrip`/`OverflowMenu`. Its length is repetitive JSX for five near-identical tool buttons. **Not a standalone refactor** — but a free consequence of **T1**: today the dock buttons are hand-kept in sync with the `switch(tool)` in BoardCanvas and the tool keys in `shortcuts.ts`; once interaction tools are registry entries, each contributes its button metadata (icon, label, `keyHint` id) and the dock maps over the registry. Data-drive it *when* T1 lands, not before. |
+| `ui/BoardsManager.tsx` | 346 | No | A clean 3-state view machine (list / name / confirm); the sub-flows swap in-card by design (one scrim). It is one feature. Minor tidy at most (the repeated `await X; refresh(); backToList()` shape). |
+| `canvas/drawHelpers.ts` | 312 | No (one smell) | Mostly cohesive primitives, **but `longDivSteps` and `chunkSteps` are tool-specific math** (long-division / chunking domain logic) leaking into a *shared* canvas helper. Relocate them to `tools/longdiv` and `tools/chunking`. Cheap. |
+| `board/geometry.ts` | 288 | No | Pure, cohesive helpers. Leave it. |
+
+**Two cheap wins, independent of the Tier-1/2 work:**
+
+1. Move the internal clipboard out of `shortcuts.ts` (it lands naturally in the
+   T3 command service).
+2. Move `longDivSteps` / `chunkSteps` from `drawHelpers.ts` back to their tools.
+
+**Watch, don't touch yet:** `store.ts` is the next file likely to cross into
+god-file territory. If it grows, extract eraser-baking and autosave
+orchestration first — but keep the lifecycle actions intact.
+
+---
+
+## 7. One-line summary
 
 `BoardCanvas` and `App` are large because they *host* many concerns instead of
 *delegating* to registries. The app already proves the pattern works — the
