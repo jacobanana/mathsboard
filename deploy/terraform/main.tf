@@ -147,6 +147,7 @@ locals {
     repo_url              = var.repo_url
     deploy_user           = var.deploy_user
     site_address          = var.site_address
+    analytics_address     = var.analytics_address
     y_sweet_auth          = var.y_sweet_auth
     y_sweet_server_token  = var.y_sweet_server_token
     s3_bucket             = var.s3_bucket

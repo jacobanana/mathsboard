@@ -210,9 +210,10 @@ request, gated behind the unit tests (`.github/workflows/e2e.yml`).
 ## Deploy (single VPS, one domain)
 
 Everything runs same-origin behind Caddy: `/api/*` → the token/upload service,
-`/ys/*` → the Y-Sweet websocket, `/umami/*` → the optional Umami analytics
-dashboard (see **Analytics** below), everything else → the static frontend. So
-there is no CORS anywhere and `wss://` rides the one TLS certificate. TLS is
+`/ys/*` → the Y-Sweet websocket, everything else → the static frontend. So
+there is no CORS anywhere and `wss://` rides the one TLS certificate. (The
+optional Umami analytics dashboard runs on its own subdomain — see **Analytics**
+below.) TLS is
 automatic — Caddy provisions a Let's Encrypt certificate on the first HTTPS
 request and renews it thereafter (certs live in the `caddy_data` volume; keep
 it).
@@ -277,39 +278,42 @@ Privacy-first, cookieless usage analytics that stay on your own box — no
 third-party service in the data path, no consent banner. Three extra containers
 (`postgres`, `umami`, `pg_backup`) sit behind a Docker Compose **`analytics`
 profile**, so they are **off unless you opt in**, and the local test overlay
-never starts them.
+never starts them. Umami runs on **its own subdomain** (the prebuilt image
+doesn't support a runtime subpath, so it can't live under `/umami`).
 
-**1. Turn the stack on** — add to `.env` (all four are in `.env.example`):
+**1. DNS** — add an A record for the analytics subdomain (e.g.
+`analytics.board.example.com`) pointing at the same VPS IP.
+
+**2. Turn the stack on** — add to `.env` (all are in `.env.example`):
 
 - `COMPOSE_PROFILES=analytics` — activates the three services.
+- `ANALYTICS_ADDRESS` — the subdomain from step 1 (Caddy auto-provisions its cert).
 - `POSTGRES_PASSWORD` — password for the Umami database.
 - `UMAMI_APP_SECRET` — session-signing secret (`openssl rand -hex 32`).
 - `BACKUP_KEEP_DAYS` — nightly-dump retention in days (default `14`).
 
-Then `docker compose pull && docker compose up -d`. Umami is served
-same-origin at `https://<domain>/umami`. Log in with `admin` / `umami`,
-**change that password immediately**, then add a website (one per build you
-want to track — the collab domain and/or the static Pages URL) and copy its
-**website id**.
+Then `docker compose pull && docker compose up -d`. Umami is served at
+`https://<ANALYTICS_ADDRESS>`. Log in with `admin` / `umami`, **change that
+password immediately**, then add a website (one per build you want to track —
+the collab domain and/or the static Pages URL) and copy its **website id**.
 
-**2. Wire the frontend** — the dashboard stays empty until the app loads the
+**3. Wire the frontend** — the dashboard stays empty until the app loads the
 tracker. `src/analytics.ts` injects it only when both build-time vars are set
 (unset in dev/CI = no-op), and exposes `track(event, data)` for custom
-feature-usage events:
+feature-usage events. These bake in at build time, passed via repo **variables**
+(Settings → Secrets and variables → Actions → Variables):
 
-- `VITE_UMAMI_SRC` — `/umami/script.js` for the self-hosted build (same-origin),
-  or the absolute `https://<domain>/umami/script.js` for the cross-origin
-  GitHub Pages build.
-- `VITE_UMAMI_WEBSITE_ID` — the website id from step 1.
+| Variable | Used by | Value |
+|---|---|---|
+| `UMAMI_SRC` | both builds | `https://<ANALYTICS_ADDRESS>/script.js` |
+| `UMAMI_WEBSITE_ID` | self-hosted `web` image (`publish.yml`) | website id of the collab site |
+| `UMAMI_PAGES_WEBSITE_ID` | Pages build (`deploy.yml`) | website id of the Pages site |
 
-These are baked in at build time, so they must be passed into the frontend
-build: a build-arg for the self-hosted `web` image (`publish.yml` /
-`deploy/Dockerfile.web`) and build env for the Pages workflow (`deploy.yml`,
-alongside `VITE_COLLAB`). Because the id doesn't exist until Umami is first
-deployed, the order is: deploy the stack → register the website → set the vars
-→ rebuild.
+Because the ids don't exist until Umami is first deployed, the order is: deploy
+→ register the website(s) → set the variables → re-run the build
+(*workflow_dispatch* on `publish.yml` / `deploy.yml`).
 
-**3. Backups** — `pg_backup` runs `pg_dump` of the Umami database `@daily` to
+**4. Backups** — `pg_backup` runs `pg_dump` of the Umami database `@daily` to
 `s3://<bucket>/backups/`, pruning dumps older than `BACKUP_KEEP_DAYS`. Restore
 the latest dump onto a fresh Postgres:
 

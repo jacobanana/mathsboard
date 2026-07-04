@@ -68,6 +68,11 @@ variable "site_address" {
   type        = string
 }
 
+variable "analytics_address" {
+  description = "Public FQDN for the self-hosted Umami dashboard, e.g. analytics.board.example.com. Needs its own DNS A record -> the same VPS; Caddy provisions its TLS cert automatically."
+  type        = string
+}
+
 variable "repo_url" {
   description = "Public git URL cloud-init clones on the instance."
   type        = string

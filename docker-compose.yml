@@ -24,6 +24,10 @@ services:
       - "443:443/udp" # HTTP/3
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:8080}
+      # Subdomain Caddy serves Umami on. Falls back to a local-only HTTP address
+      # so the Caddyfile parses (and never attempts ACME) in local testing, where
+      # ANALYTICS_ADDRESS is unset and umami isn't running.
+      ANALYTICS_ADDRESS: ${ANALYTICS_ADDRESS:-http://localhost:8099}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data # ACME account + certificates - keep across restarts
@@ -89,16 +93,15 @@ services:
     image: ghcr.io/umami-software/umami:postgresql-latest
     profiles: ["analytics"]
     restart: unless-stopped
-    # Served same-origin at /umami by Caddy (see deploy/Caddyfile); BASE_PATH
-    # tells the app it's mounted under that prefix. Register two websites in the
-    # dashboard - one for this collab domain, one for the static GitHub Pages
-    # build - to see them separately or combined. Change the default admin
-    # password (admin / umami) on first login.
+    # Served on its OWN subdomain (ANALYTICS_ADDRESS) by Caddy, at the app root -
+    # the prebuilt image doesn't honour a runtime subpath/BASE_PATH, so it can't
+    # live under /umami on the main domain. Register two websites in the dashboard
+    # (this collab domain + the static GitHub Pages build) to see them separately
+    # or combined. Change the default admin password (admin / umami) on first login.
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/umami
       DATABASE_TYPE: postgresql
       APP_SECRET: ${UMAMI_APP_SECRET}
-      BASE_PATH: /umami
     depends_on:
       postgres:
         condition: service_healthy

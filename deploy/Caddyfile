@@ -1,44 +1,47 @@
-# One domain, three routes, all same-origin (so no CORS anywhere and the
-# websocket rides the same TLS cert):
+# The app on one domain, self-hosted analytics on a subdomain - both on this
+# box, both with automatic TLS:
 #
-#   /api/*  -> the token/upload service
-#   /ys/*   -> the Y-Sweet sync server (websocket; prefix stripped - the
-#              container serves at root, and the token endpoint rewrites the
-#              URLs inside minted tokens to point here)
-#   rest    -> the static frontend build
+#   <SITE_ADDRESS>/api/*  -> the token/upload service
+#   <SITE_ADDRESS>/ys/*   -> the Y-Sweet sync server (websocket; prefix stripped -
+#                            the container serves at root, and the token endpoint
+#                            rewrites the URLs inside minted tokens to point here)
+#   <SITE_ADDRESS>/*      -> the static frontend build
+#   <ANALYTICS_ADDRESS>   -> self-hosted Umami, at its own root (the prebuilt
+#                            image doesn't honour a runtime subpath/BASE_PATH, so
+#                            it can't live under /umami on the main domain)
 #
-# SITE_ADDRESS comes from the environment:
-#   production      SITE_ADDRESS=board.example.com   (automatic HTTPS via ACME;
-#                   the FIRST request after DNS is live provisions the cert)
-#   local testing   SITE_ADDRESS=:8080               (plain HTTP on port 8080)
+# Addresses come from the environment (see .env.example):
+#   production   SITE_ADDRESS=board.example.com  ANALYTICS_ADDRESS=analytics.example.com
+#                (automatic HTTPS via ACME on the first request to each; certs
+#                live in the caddy_data volume - keep it)
+#   local test   SITE_ADDRESS=:8080  (ANALYTICS_ADDRESS falls back to the
+#                http://localhost:8099 default below - plain HTTP, and never
+#                reached since umami isn't in the local compose profile)
 
-{$SITE_ADDRESS}
+{$SITE_ADDRESS} {
+	encode zstd gzip
 
-encode zstd gzip
+	handle /api/* {
+		reverse_proxy api:8787
+	}
 
-handle /api/* {
-	reverse_proxy api:8787
+	handle_path /ys/* {
+		reverse_proxy ysweet:8080
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
 }
 
-handle_path /ys/* {
-	reverse_proxy ysweet:8080
-}
-
-# Self-hosted Umami analytics, same-origin (the tracker at /umami/script.js is
-# first-party, so ad-blockers don't drop it). Umami runs with BASE_PATH=/umami,
-# so the prefix is passed through unstripped. Only present when the stack runs
-# with the `analytics` profile; Caddy resolves the upstream lazily, so this is
-# harmless when umami isn't running.
-#
-# Match BOTH the bare /umami and /umami/* — a `/umami/*` matcher alone does NOT
-# match the slash-less entry URL, so it would fall through to the SPA catch-all.
-@umami path /umami /umami/*
-handle @umami {
+# Self-hosted Umami analytics on its own subdomain, served at root. Only reachable
+# when the stack runs with the `analytics` profile; Caddy resolves the upstream
+# lazily, so this block is harmless when umami isn't running. The localhost
+# default keeps local testing (ANALYTICS_ADDRESS unset, HTTP only) from attempting
+# ACME for a real hostname.
+{$ANALYTICS_ADDRESS:http://localhost:8099} {
+	encode zstd gzip
 	reverse_proxy umami:3000
-}
-
-handle {
-	root * /srv
-	try_files {path} /index.html
-	file_server
 }

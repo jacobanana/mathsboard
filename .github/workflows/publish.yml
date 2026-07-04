@@ -78,9 +78,10 @@ jobs:
           WEB: ${{ steps.filter.outputs.web }}
           API: ${{ steps.filter.outputs.api }}
           DEPLOYCFG: ${{ steps.filter.outputs.deploycfg }}
-          # Optional Umami website id, baked into the web bundle at build time.
-          # Empty unless set as a repo variable (Settings -> Secrets and
-          # variables -> Actions -> Variables). See the README "Analytics" section.
+          # Optional Umami tracker URL + website id, baked into the web bundle at
+          # build time. Empty unless set as repo variables (Settings -> Secrets
+          # and variables -> Actions -> Variables). See the README "Analytics".
+          UMAMI_SRC: ${{ vars.UMAMI_SRC }}
           UMAMI_WEBSITE_ID: ${{ vars.UMAMI_WEBSITE_ID }}
         run: |
           web=$WEB
@@ -91,8 +92,8 @@ jobs:
           fi
           include='[]'
           if [ "$web" = "true" ]; then
-            include=$(jq -cn --argjson a "$include" --arg id "$UMAMI_WEBSITE_ID" \
-              '$a + [{"image":"web","context":".","dockerfile":"deploy/Dockerfile.web","buildArgs":"UMAMI_WEBSITE_ID=\($id)"}]')
+            include=$(jq -cn --argjson a "$include" --arg src "$UMAMI_SRC" --arg id "$UMAMI_WEBSITE_ID" \
+              '$a + [{"image":"web","context":".","dockerfile":"deploy/Dockerfile.web","buildArgs":"UMAMI_SRC=\($src)\nUMAMI_WEBSITE_ID=\($id)"}]')
           fi
           if [ "$api" = "true" ]; then
             include=$(jq -cn --argjson a "$include" \
@@ -194,13 +195,13 @@ jobs:
             cd /opt/mathboard
             git pull --ff-only
             docker compose pull
-            docker compose up -d
             # The Caddyfile is bind-mounted, so `up -d` won't recreate the web
             # container for a routing-only change - reload it explicitly so
             # Caddyfile edits take effect. Graceful and a near no-op when the
             # config is unchanged; fails the deploy loudly if the new Caddyfile
             # is invalid (Caddy keeps serving the old config in that case).
             docker compose exec -T web caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+            docker compose up -d
             docker image prune -f
 
   # Record every successful deploy as a GitHub Release, tagged with the same

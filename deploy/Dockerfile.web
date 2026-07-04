@@ -13,13 +13,14 @@ COPY src ./src
 # above stays cached when only the version changes.
 ARG APP_VERSION=dev
 ENV VITE_APP_VERSION=$APP_VERSION
-# Umami analytics (optional). The tracker is same-origin on the self-hosted
-# build, so the script URL is a constant; only the website id (from the Umami
-# dashboard) varies, passed as a build-arg by publish.yml. Empty by default ->
-# src/analytics.ts requires both vars, so nothing loads unless the id is set.
+# Umami analytics (optional). Umami runs on its own subdomain, so the tracker URL
+# is an absolute, deployment-specific value - both it and the website id are
+# passed as build-args by publish.yml from repo variables. Empty by default ->
+# src/analytics.ts requires both, so nothing loads unless they're set.
+ARG UMAMI_SRC=
 ARG UMAMI_WEBSITE_ID=
+ENV VITE_UMAMI_SRC=$UMAMI_SRC
 ENV VITE_UMAMI_WEBSITE_ID=$UMAMI_WEBSITE_ID
-ENV VITE_UMAMI_SRC=/umami/script.js
 RUN npm run build
 
 FROM caddy:2-alpine
