@@ -6,7 +6,7 @@
 
 import { hitTest } from "@/board/geometry";
 import { id as newId } from "@/board/types";
-import { mathTextTool } from "@/tools/mathtext";
+import { mathTextTool, MATH_BASE_PX } from "@/tools/mathtext";
 import { prewarmMathEditor } from "@/canvas/mathEditor";
 import type { AnyBoardObject } from "@/board/types";
 import type { InteractionController } from "@/canvas/interactions/types";
@@ -55,17 +55,21 @@ export const mathController: InteractionController = {
       st.select(pt.edit.id);
       c.mathEditor.open(pt.edit, false);
     } else {
-      // Create a fresh, empty maths object then edit it in place. The params
-      // are the tool's defaults; the real natW/natH land at editor commit.
-      const params = mathTextTool.defaults();
+      // Create a fresh, empty maths object then edit it in place, in the
+      // current draw colour (like text). The params are the tool's defaults;
+      // the real natW/natH land at editor commit. The maths size option maps
+      // onto the uniform resize scale, so the box is pre-scaled here — the
+      // editor's font-size and the commit box both derive from it.
+      const params = { ...mathTextTool.defaults(), color: st.color };
       const sz = mathTextTool.size(params);
+      const k = st.mathSize / MATH_BASE_PX;
       const obj: AnyBoardObject = {
         id: newId(),
         type: "mathtext",
         x: pt.wx,
         y: pt.wy,
-        w: sz.w,
-        h: sz.h,
+        w: sz.w * k,
+        h: sz.h * k,
         ...params,
       };
       st.addObject(obj);

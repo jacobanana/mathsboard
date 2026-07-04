@@ -8,7 +8,7 @@
 //                                               actions below, which write to
 //                                               the CRDT - the mirror flows
 //                                               back through onBoardChange)
-//   EPHEMERAL state -> camera, tool, color, penSize, textSize, selection
+//   EPHEMERAL state -> camera, tool, color, pen/text/math/eraser sizes, selection
 //                                               (local-only; never persisted to
 //                                               the document, never synced)
 //
@@ -87,6 +87,9 @@ interface BoardState {
   color: string;
   penSize: number;
   textSize: number;
+  /** Base font size new maths notation is placed at (maps onto the uniform
+   *  resize scale: 26 = the layout size, i.e. scale 1 — see tools/mathtext). */
+  mathSize: number;
   /** Eraser footprint diameter (screen px, like penSize). */
   eraserSize: number;
   /** Object + stroke ids currently selected (multi-select). */
@@ -170,6 +173,7 @@ interface BoardState {
   setColor(c: string): void;
   setPenSize(n: number): void;
   setTextSize(n: number): void;
+  setMathSize(n: number): void;
   setEraserSize(n: number): void;
   setCamera(patch: Partial<Camera>): void;
   /** Select exactly one object (or clear the selection when id is null). */
@@ -290,14 +294,15 @@ const FRESH_DOC_STATE = {
 };
 
 /**
- * The lone TEXT object currently being styled, or null. Editing (the overlay)
- * wins over selection; for selection only a single selected object qualifies
- * (never a multi-select or a stroke). Shared by the options strip and the
- * colour / size keyboard shortcuts so "which text updates live" stays in one
- * place.
+ * The lone object of `type` currently being styled, or null. Editing (an
+ * in-place overlay) wins over selection; for selection only a single selected
+ * object qualifies (never a multi-select or a stroke). Shared by the options
+ * strip and the colour / size keyboard shortcuts so "which object updates
+ * live" stays in one place. Use the named wrappers below as store selectors.
  */
-export function activeTextObjectId(
+function activeObjectIdOfType(
   s: Pick<BoardState, "editingId" | "selection" | "board">,
+  type: string,
 ): string | null {
   const id =
     s.editingId ??
@@ -306,7 +311,19 @@ export function activeTextObjectId(
       : null);
   if (id == null) return null;
   const o = s.board.objects.find((obj) => obj.id === id);
-  return o && o.type === "text" ? o.id : null;
+  return o && o.type === type ? o.id : null;
+}
+
+export function activeTextObjectId(
+  s: Pick<BoardState, "editingId" | "selection" | "board">,
+): string | null {
+  return activeObjectIdOfType(s, "text");
+}
+
+export function activeMathObjectId(
+  s: Pick<BoardState, "editingId" | "selection" | "board">,
+): string | null {
+  return activeObjectIdOfType(s, "mathtext");
 }
 
 /**
@@ -348,6 +365,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
     color: theme.ink,
     penSize: 6,
     textSize: 26,
+    mathSize: 26,
     eraserSize: 45,
     selection: EMPTY_SELECTION,
     editingId: null,
@@ -490,6 +508,9 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
     setTextSize(n) {
       set({ textSize: n });
+    },
+    setMathSize(n) {
+      set({ mathSize: n });
     },
     setEraserSize(n) {
       set({ eraserSize: n });

@@ -20,6 +20,7 @@
 
 import { defineCanvasTool } from "@/tools/registry";
 import { getMathImage, mathImageState } from "@/tools/mathtext/render";
+import { theme } from "@/styles/theme";
 // The KaTeX page stylesheet serves svg.ts's hidden-DOM measurement pass.
 // Imported from this eagerly-registered module so measurement works on a
 // saved board that loads straight into draw().
@@ -31,6 +32,9 @@ export interface MathTextParams {
   /** Layout size in px at MATH_BASE_PX, measured at editor commit. */
   natW: number;
   natH: number;
+  /** Notation colour. Objects saved before this field existed omit it —
+   *  readers fall back to theme.ink. */
+  color: string;
 }
 
 /** The font size the notation is laid out (and edited) at. Shared by the
@@ -51,7 +55,7 @@ export const mathTextTool = defineCanvasTool<MathTextParams>({
   // Created by clicking with the maths dock tool, not the Insert gallery.
   inGallery: false,
 
-  defaults: () => ({ latex: "", natW: 220, natH: 64 }),
+  defaults: () => ({ latex: "", natW: 220, natH: 64, color: theme.ink }),
 
   size: (p) => {
     const s = Math.min(1, MAX_W / (p.natW || 1), MAX_H / (p.natH || 1));
@@ -66,13 +70,14 @@ export const mathTextTool = defineCanvasTool<MathTextParams>({
     // async measure landing) or an undone empty-abort. Paint nothing, exactly
     // like an empty free-text object — never a stuck placeholder box.
     if (!o.latex) return;
-    const img = getMathImage(o.latex);
+    const color = o.color || theme.ink; // legacy objects predate the field
+    const img = getMathImage(o.latex, color);
     if (img) {
       ctx.drawImage(img, o.x, o.y, o.w, o.h);
       return;
     }
     // Placeholder while rasterising / if the render pipeline failed.
-    const failed = mathImageState(o.latex) === "error";
+    const failed = mathImageState(o.latex, color) === "error";
     ctx.save();
     ctx.fillStyle = "#F4F6F5";
     ctx.strokeStyle = theme.grid;

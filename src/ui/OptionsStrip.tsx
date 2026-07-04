@@ -3,6 +3,7 @@
 //
 //   tool === "pen"    -> size slider (penSize) + colour dropdown.
 //   tool === "text"   -> size slider (textSize) + colour dropdown.
+//   tool === "math"   -> size slider (mathSize) + colour dropdown.
 //   tool === "eraser" -> size slider (eraserSize) only.
 //   otherwise          -> nothing (the pill disappears).
 //
@@ -17,21 +18,28 @@
 // Selecting a colour or size updates the store's ephemeral drawing state.
 // Additionally — mirroring the prototype, where changing colour/size while a
 // text object is selected or being edited mutates that object live — when a
-// TEXT object is the current selection (or is being edited via the overlay),
-// the change is also written back through updateObject so the object updates
-// immediately.
+// TEXT or MATHS object is the current selection (or is being edited via its
+// overlay), the change is also written back through updateObject so the
+// object updates immediately.
 
 import { useRef, useState } from "react";
-import { useBoardStore, activeTextObjectId } from "@/board/store";
+import {
+  useBoardStore,
+  activeTextObjectId,
+  activeMathObjectId,
+} from "@/board/store";
 import { Popover } from "@/ui/Popover";
 import { keyHint } from "@/ui/shortcuts";
 import {
   PALETTE,
   PEN_SIZE_RANGE,
   TEXT_SIZE_RANGE,
+  MATH_SIZE_RANGE,
   ERASER_SIZE_RANGE,
 } from "@/ui/constants";
 import { textSizeOf } from "@/canvas/drawHelpers";
+import { paramsOf, sizedBox } from "@/board/sizing";
+import { MATH_BASE_PX } from "@/tools/mathtext";
 
 /** One swatch button showing the current colour; clicking opens a popover
  *  with the full palette. Closes on pick or any outside click. */
@@ -82,15 +90,23 @@ export function OptionsStrip(): JSX.Element | null {
   const tool = useBoardStore((s) => s.tool);
   const penSize = useBoardStore((s) => s.penSize);
   const textSize = useBoardStore((s) => s.textSize);
+  const mathSize = useBoardStore((s) => s.mathSize);
   const eraserSize = useBoardStore((s) => s.eraserSize);
   const setColor = useBoardStore((s) => s.setColor);
   const setPenSize = useBoardStore((s) => s.setPenSize);
   const setTextSize = useBoardStore((s) => s.setTextSize);
+  const setMathSize = useBoardStore((s) => s.setMathSize);
   const setEraserSize = useBoardStore((s) => s.setEraserSize);
   const updateObject = useBoardStore((s) => s.updateObject);
   const activeTextId = useBoardStore(activeTextObjectId);
+  const activeMathId = useBoardStore(activeMathObjectId);
 
-  if (tool !== "pen" && tool !== "text" && tool !== "eraser") {
+  if (
+    tool !== "pen" &&
+    tool !== "text" &&
+    tool !== "math" &&
+    tool !== "eraser"
+  ) {
     // No options for this tool — the pill simply isn't there. It's a separate
     // floating layer, so nothing else moves when it comes and goes.
     return null;
@@ -99,6 +115,7 @@ export function OptionsStrip(): JSX.Element | null {
   function pickColour(hex: string): void {
     setColor(hex);
     if (activeTextId != null) updateObject(activeTextId, { color: hex });
+    if (activeMathId != null) updateObject(activeMathId, { color: hex });
   }
 
   function pickTextSize(px: number): void {
@@ -114,12 +131,28 @@ export function OptionsStrip(): JSX.Element | null {
     }
   }
 
+  function pickMathSize(px: number): void {
+    setMathSize(px);
+    if (activeMathId != null) {
+      // Maths size = the uniform resize scale (26px = the natural layout
+      // size, scale 1) — re-derive the box like a handle-resize would.
+      const obj = useBoardStore
+        .getState()
+        .board.objects.find((o) => o.id === activeMathId);
+      if (!obj) return;
+      const box = sizedBox("mathtext", paramsOf(obj), px / MATH_BASE_PX);
+      if (box) updateObject(activeMathId, { w: box.w, h: box.h });
+    }
+  }
+
   const [range, value, setValue] =
     tool === "pen"
       ? ([PEN_SIZE_RANGE, penSize, setPenSize] as const)
       : tool === "text"
         ? ([TEXT_SIZE_RANGE, textSize, pickTextSize] as const)
-        : ([ERASER_SIZE_RANGE, eraserSize, setEraserSize] as const);
+        : tool === "math"
+          ? ([MATH_SIZE_RANGE, mathSize, pickMathSize] as const)
+          : ([ERASER_SIZE_RANGE, eraserSize, setEraserSize] as const);
 
   // Preview dot next to the slider: scaled into the 6-22px display band so the
   // 120px eraser doesn't blow the toolbar height.
@@ -142,12 +175,12 @@ export function OptionsStrip(): JSX.Element | null {
           value={value}
           onChange={(e) => setValue(Number(e.target.value))}
         />
-        {tool === "text" ? (
+        {tool === "text" || tool === "math" ? (
           <span
             className="size-glyph"
             style={{ fontSize: Math.max(11, dot) }}
           >
-            A
+            {tool === "math" ? "√" : "A"}
           </span>
         ) : (
           <span

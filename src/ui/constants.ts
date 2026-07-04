@@ -25,4 +25,7 @@ export interface SizeRange {
 
 export const PEN_SIZE_RANGE: SizeRange = { min: 1, max: 24, step: 1 };
 export const TEXT_SIZE_RANGE: SizeRange = { min: 12, max: 64, step: 2 };
+/** Maths-notation base size: same band as text (26 = the natural layout size,
+ *  i.e. uniform-resize scale 1). */
+export const MATH_SIZE_RANGE: SizeRange = { min: 12, max: 64, step: 2 };
 export const ERASER_SIZE_RANGE: SizeRange = { min: 12, max: 120, step: 4 };

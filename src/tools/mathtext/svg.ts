@@ -125,7 +125,7 @@ interface Layout {
  * full-width centered block. inline-flex blockifies the .katex child so the
  * box hugs it exactly — no baseline line-box slack to mis-measure.
  */
-async function layoutMath(latex: string): Promise<Layout> {
+async function layoutMath(latex: string, color: string): Promise<Layout> {
   const katex = (await import("katex")).default;
   const html = katex.renderToString("\\displaystyle " + latex, {
     throwOnError: false, // errors render as red text rather than throwing
@@ -136,7 +136,7 @@ async function layoutMath(latex: string): Promise<Layout> {
   const box = document.createElement("div");
   box.setAttribute(
     "style",
-    `display:inline-flex;font-size:${BASE_PX}px;color:${theme.ink};`,
+    `display:inline-flex;font-size:${BASE_PX}px;color:${color};`,
   );
   box.innerHTML = html;
   const host = document.createElement("div");
@@ -162,16 +162,20 @@ async function layoutMath(latex: string): Promise<Layout> {
  * The natural size the notation will occupy on the board. The in-place maths
  * editor stores this as natW/natH at commit so the tool's size() stays
  * synchronous — the same trick as the image tool's intrinsic dimensions.
+ * Colour never changes the metrics, so it isn't a parameter here.
  */
 export async function measureMath(latex: string): Promise<{ w: number; h: number }> {
-  const { w, h } = await layoutMath(latex);
+  const { w, h } = await layoutMath(latex, theme.ink);
   return { w, h };
 }
 
 /** LaTeX -> decoded HTMLImageElement, ready for ctx.drawImage. */
-export async function renderMathToImage(latex: string): Promise<HTMLImageElement> {
+export async function renderMathToImage(
+  latex: string,
+  color: string,
+): Promise<HTMLImageElement> {
   const [{ xhtml, w, h }, css] = await Promise.all([
-    layoutMath(latex),
+    layoutMath(latex, color),
     embeddedCss(),
   ]);
   // CDATA keeps the stylesheet opaque to the XML parser; the comment markers

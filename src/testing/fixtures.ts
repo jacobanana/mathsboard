@@ -42,6 +42,7 @@ export function freshBoard(partial: Partial<BoardDocument> = {}): BoardDocument 
     color: theme.ink,
     penSize: 6,
     textSize: 26,
+    mathSize: 26,
     eraserSize: 45,
     selection: { objectIds: [], strokeIds: [] },
     editingId: null,

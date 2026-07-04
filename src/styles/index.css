@@ -67,9 +67,16 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
    and the raw-LaTeX textarea inherit it. data-mode picks which one shows. */
 #mathEditor{position:absolute;z-index:7;display:none;}
 #mathEditor.open{display:block;}
-#mathEditor math-field{display:none;font-size:inherit;min-width:2.2em;border:1px dashed var(--accent);border-radius:8px;background:rgba(255,255,255,.85);padding:2px 4px;margin:-3px 0 0 -5px;}
+/* color:inherit twice over: MathLive's shadow :host rule pins `fieldtext` on
+   the element and .ML__content pins #000 inside it — the element rule and the
+   ::part(content) rule below override both, so glyphs take the host div's
+   (= the object's) colour. */
+#mathEditor math-field{display:none;font-size:inherit;color:inherit;min-width:2.2em;border:1px dashed var(--accent);border-radius:8px;background:rgba(255,255,255,.85);padding:2px 4px;margin:-3px 0 0 -5px;}
 #mathEditor[data-mode=visual] math-field{display:block;}
 #mathEditor math-field::part(menu-toggle){display:none;}
+/* MathLive's shadow styles hard-code black content; ::part lets the overlay
+   inherit the object's colour from the host div instead. */
+#mathEditor math-field::part(content){color:inherit;}
 #mathEditor #mathLatexInput{display:none;border:1px dashed var(--accent);border-radius:8px;background:rgba(255,255,255,.9);padding:6px 8px;margin:-3px 0 0 -5px;resize:none;overflow:hidden;font-family:ui-monospace,Consolas,monospace;font-size:15px;line-height:1.4;color:var(--ink);}
 #mathEditor[data-mode=latex] #mathLatexInput{display:block;}
 #mathEditor .math-loading{display:inline-block;background:var(--island);border:1px solid var(--island-border);border-radius:10px;padding:7px 11px;font-size:13px;color:var(--muted);white-space:nowrap;}

@@ -1,10 +1,10 @@
 // HTMLImageElement cache for the maths-notation tool's canvas draw.
 //
-// Mirrors tools/image/cache.ts: draw() is synchronous, so each distinct LaTeX
-// string is rasterised in the background (svg.ts, loaded lazily so the KaTeX
-// engine stays out of the eager bundle); when the image becomes ready (or
-// fails) the canvas is nudged to repaint by re-wrapping the board mirror -
-// the same reference-change signal every other redraw uses.
+// Mirrors tools/image/cache.ts: draw() is synchronous, so each distinct
+// (latex, colour) pair is rasterised in the background (svg.ts, loaded lazily
+// so the KaTeX engine stays out of the eager bundle); when the image becomes
+// ready (or fails) the canvas is nudged to repaint by re-wrapping the board
+// mirror - the same reference-change signal every other redraw uses.
 
 import { useBoardStore } from "@/board/store";
 
@@ -27,13 +27,15 @@ function requestRepaint(): void {
   }, 0);
 }
 
-function entry(latex: string): Entry {
-  let e = cache.get(latex);
+function entry(latex: string, color: string): Entry {
+  // "\n" can't appear in a hex colour, so the key is unambiguous.
+  const key = color + "\n" + latex;
+  let e = cache.get(key);
   if (!e) {
     const fresh: Entry = { img: null, state: "loading" };
-    cache.set(latex, fresh);
+    cache.set(key, fresh);
     void import("@/tools/mathtext/svg")
-      .then(({ renderMathToImage }) => renderMathToImage(latex))
+      .then(({ renderMathToImage }) => renderMathToImage(latex, color))
       .then((img) => {
         fresh.img = img;
         fresh.state = "ready";
@@ -48,13 +50,16 @@ function entry(latex: string): Entry {
 }
 
 /** The rasterised notation if ready, else null (kicks off rendering). */
-export function getMathImage(latex: string): HTMLImageElement | null {
+export function getMathImage(
+  latex: string,
+  color: string,
+): HTMLImageElement | null {
   if (!latex) return null;
-  const e = entry(latex);
+  const e = entry(latex, color);
   return e.state === "ready" ? e.img : null;
 }
 
-export function mathImageState(latex: string): MathState {
+export function mathImageState(latex: string, color: string): MathState {
   if (!latex) return "error";
-  return entry(latex).state;
+  return entry(latex, color).state;
 }

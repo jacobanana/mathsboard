@@ -18,7 +18,11 @@
 //   - entries are tried in ARRAY ORDER, the first whose test() matches wins,
 //     preventDefault() is called, and dispatch stops.
 
-import { useBoardStore, activeTextObjectId } from "@/board/store";
+import {
+  useBoardStore,
+  activeTextObjectId,
+  activeMathObjectId,
+} from "@/board/store";
 import { useUiStore } from "@/ui/uiStore";
 import {
   copySelection,
@@ -26,11 +30,14 @@ import {
   pasteClipboard,
 } from "@/board/commands";
 import { textSizeOf } from "@/canvas/drawHelpers";
+import { paramsOf, sizedBox } from "@/board/sizing";
+import { MATH_BASE_PX } from "@/tools/mathtext";
 import { COLLAB_ENABLED } from "@/config";
 import {
   PALETTE,
   PEN_SIZE_RANGE,
   TEXT_SIZE_RANGE,
+  MATH_SIZE_RANGE,
   ERASER_SIZE_RANGE,
 } from "@/ui/constants";
 
@@ -93,18 +100,18 @@ const bare = (c: ShortcutCtx): boolean => !c.mod && !c.e.altKey && !c.inField;
 // --- colour + size (active-tool options) ----------------------------------
 
 /** Cycle the draw colour to the next palette entry (C). Also recolours a live
- *  text object, matching a swatch click. */
+ *  text or maths object, matching a swatch click. */
 function cycleColor(): void {
   const st = useBoardStore.getState();
   const idx = PALETTE.findIndex(([, hex]) => hex === st.color);
   const [, next] = PALETTE[(idx + 1) % PALETTE.length];
   st.setColor(next);
-  const tid = activeTextObjectId(st);
+  const tid = activeTextObjectId(st) ?? activeMathObjectId(st);
   if (tid != null) st.updateObject(tid, { color: next });
 }
 
 /** Nudge the active tool's size one step (+/-), clamped to that tool's range.
- *  No-op unless a size-bearing tool (pen / eraser / text) is active. */
+ *  No-op unless a size-bearing tool (pen / eraser / text / maths) is active. */
 function adjustSize(dir: 1 | -1): void {
   const st = useBoardStore.getState();
   const conf =
@@ -114,7 +121,9 @@ function adjustSize(dir: 1 | -1): void {
         ? { range: ERASER_SIZE_RANGE, cur: st.eraserSize, set: st.setEraserSize }
         : st.tool === "text"
           ? { range: TEXT_SIZE_RANGE, cur: st.textSize, set: st.setTextSize }
-          : null;
+          : st.tool === "math"
+            ? { range: MATH_SIZE_RANGE, cur: st.mathSize, set: st.setMathSize }
+            : null;
   if (!conf) return;
   const next = Math.min(
     conf.range.max,
@@ -130,6 +139,16 @@ function adjustSize(dir: 1 | -1): void {
       const text = (obj?.text as string) ?? "";
       const { w, h } = textSizeOf(text, next);
       st.updateObject(tid, { size: next, w, h });
+    }
+  }
+  // Maths: the size maps onto the uniform resize scale (26 = scale 1) — the
+  // live object's box re-derives exactly like a handle-resize.
+  if (st.tool === "math") {
+    const mid = activeMathObjectId(st);
+    if (mid != null) {
+      const obj = st.board.objects.find((o) => o.id === mid);
+      const box = obj && sizedBox("mathtext", paramsOf(obj), next / MATH_BASE_PX);
+      if (box) st.updateObject(mid, { w: box.w, h: box.h });
     }
   }
 }
@@ -360,7 +379,7 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "sizeUp",
     group: "options",
     keys: [["+"]],
-    label: "Bigger pen / text / eraser",
+    label: "Bigger pen / text / maths / eraser",
     // Accept "=" so the +/= key works without Shift.
     test: (c) => bare(c) && (c.e.key === "+" || c.e.key === "="),
     run: () => adjustSize(1),
@@ -369,7 +388,7 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "sizeDown",
     group: "options",
     keys: [["−"]],
-    label: "Smaller pen / text / eraser",
+    label: "Smaller pen / text / maths / eraser",
     test: (c) => bare(c) && (c.e.key === "-" || c.e.key === "_"),
     run: () => adjustSize(-1),
   },

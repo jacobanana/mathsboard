@@ -24,6 +24,7 @@
 
 import { scaleOf, sizedBox } from "@/board/sizing";
 import { MATH_BASE_PX } from "@/tools/mathtext";
+import { theme } from "@/styles/theme";
 import { track, trackBoardActivated } from "@/analytics";
 import type { useBoardStore } from "@/board/store";
 import type { AnyBoardObject } from "@/board/types";
@@ -56,13 +57,12 @@ export function prewarmMathEditor(): void {
   void import("@/tools/mathtext/svg");
 }
 
-/** The active in-place maths edit. `scale` is the uniform resize applied to
- *  the object (captured at open, re-applied to the re-measured box at commit
- *  so editing never snaps a resized formula back to 1x). */
+/** The active in-place maths edit. The object's uniform resize scale is NOT
+ *  captured here: commit reads it fresh (scaleOf) so a size-option change
+ *  made mid-edit survives into the committed box. */
 interface Session {
   objId: string;
   isNew: boolean;
-  scale: number;
   initialLatex: string;
   mode: "visual" | "latex";
   /** MathLive finished loading and the field holds the object's LaTeX. Until
@@ -182,10 +182,6 @@ export function createMathEditor(opts: {
     const mySession: Session = {
       objId: obj.id,
       isNew,
-      // NOT drawScale: the commit box is re-derived through sizedBox, whose
-      // natural size is CAPPED (tool.size), so the scale must be measured
-      // against that same cap or big formulas would shrink on every edit.
-      scale: scaleOf(obj),
       initialLatex: ((obj.latex as string) ?? "").trim(),
       mode: "visual",
       ready: false,
@@ -197,6 +193,9 @@ export function createMathEditor(opts: {
     h.style.left = sx + "px";
     h.style.top = sy + "px";
     h.style.fontSize = Math.max(12, MATH_BASE_PX * drawScale * camera.scale) + "px";
+    // The field's glyphs inherit currentColor, so the overlay previews the
+    // object's colour (legacy objects predate the field — ink).
+    h.style.color = (obj.color as string) || theme.ink;
     // The mode toggle floats above the field; flip it below when the object
     // sits too close to the top of the stage to fit it.
     h.classList.toggle("flip", sy < 64);
@@ -264,6 +263,12 @@ export function createMathEditor(opts: {
     render();
     if (latex === s.initialLatex && !s.isNew) return; // untouched — no write
 
+    // The object's CURRENT uniform resize scale (vs the CAPPED natural size —
+    // sizedBox measures against the same cap, or big formulas would shrink on
+    // every edit). Read now, not at open, so a size-option change made while
+    // the editor was up carries into the new box.
+    const scale = scaleOf(obj);
+
     // Detached: measure the new layout, then write params + box in one step.
     void (async () => {
       const cur = store.getState;
@@ -272,7 +277,7 @@ export function createMathEditor(opts: {
         const { w, h: mh } = await measureMath(latex);
         if (!cur().board.objects.some((o) => o.id === s.objId)) return; // undone
         const params = { latex, natW: w, natH: mh };
-        const box = sizedBox("mathtext", params, s.scale) ?? { w, h: mh };
+        const box = sizedBox("mathtext", params, scale) ?? { w, h: mh };
         cur().updateObject(s.objId, { ...params, w: box.w, h: box.h });
       } catch {
         // Measurement failed (KaTeX unreachable?) — keep the typed LaTeX at
