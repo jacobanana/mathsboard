@@ -14,6 +14,7 @@ each other's cursors visible. A Vite + React + TypeScript app backed by
 npm install
 npm run dev        # start Vite dev server
 npm run typecheck  # tsc -b --noEmit
+npm test           # unit tests (Vitest, headless — see Unit tests below)
 npm run build      # typecheck + production build
 npm run preview    # preview the production build
 ```
@@ -137,6 +138,37 @@ Dialog conventions: render only the card body (`<h2>`, `.hint`, `.field` rows,
 present (`Add to board`/`Back` vs `Save`/`Cancel`); validate on submit, set the
 `.err` text on failure, and call `onSubmit(params)` with the stored param shape.
 
+## Unit tests
+
+The behavioural suite in `src/**/*.test.ts` runs headlessly with
+[Vitest](https://vitest.dev) + jsdom — no Docker, no browser — in seconds:
+
+```bash
+npm test              # run once           (make test)
+npm run test:watch    # re-run on change   (make test-watch)
+```
+
+The tests drive the same seams the real UI drives (store actions, interaction
+controllers, the shortcut dispatcher) and assert only on observable outcomes:
+the document mirror, the selection, localStorage, the undo flags. Solo mode
+runs on a real local `Y.Doc`, so undo/redo semantics are exercised against the
+real `Y.UndoManager` — no mocks. Covered: document edits + undo step
+boundaries, the geometric eraser, the draft/library persistence lifecycle,
+placement + clipboard commands, select-tool interactions (click/lasso/resize),
+keyboard-shortcut dispatch, viewport maths, worksheet generation/marking, and
+a registry sweep every tool must pass (`src/tools/registry.test.ts` — a new
+tool gets its baseline checks for free). Shared fixtures live in
+`src/testing/fixtures.ts`; the lone environment shim (a canvas text-measure
+stub) in `src/testing/vitestSetup.ts`. Rendering and collaboration are
+deliberately out of scope here — they belong to the Playwright suite below.
+
+In CI the suite is the fast gate in front of everything else
+(`.github/workflows/unit-run.yml`, reusable): pull requests run unit → e2e
+(`e2e.yml`), and a push to `main` runs it at the head of both deploy
+pipelines — `publish.yml` (unit → e2e → image build → VPS deploy) and
+`deploy.yml` (unit → GitHub Pages build → deploy). A red unit suite therefore
+blocks every deployment and skips the 30-minute e2e run entirely.
+
 ## Test the whole stack locally
 
 Before deploying anywhere, run the complete production topology on your own
@@ -173,7 +205,7 @@ image bakes the frontend in, so rebuild (`up --build`) after changing `src/`.
 Board content lives on `<canvas>`, so the tests assert document state through
 the read-only `window.__mathsboard` hook (`src/testing/e2eHooks.ts`) while
 driving all input through the real UI. CI runs the suite on every pull
-request (`.github/workflows/e2e.yml`).
+request, gated behind the unit tests (`.github/workflows/e2e.yml`).
 
 ## Deploy (single VPS, one domain)
 

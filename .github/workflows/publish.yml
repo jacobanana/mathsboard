@@ -16,22 +16,112 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Fast unit suite first (shared with e2e.yml / deploy.yml via the reusable
+  # workflow): a logic regression fails here in ~2 minutes and skips the whole
+  # 30-min e2e + build + deploy chain.
+  unit:
+    uses: ./.github/workflows/unit-run.yml
+
+  # Collaboration e2e suite (shared with e2e.yml via the reusable workflow).
+  # build gates on it, so a red suite blocks image build/push and the VPS
+  # rollover entirely - nothing untested is ever published. A red/skipped e2e
+  # also blocks deploy via its explicit `needs.e2e.result == 'success'` check,
+  # so the unit gate propagates all the way down.
+  e2e:
+    needs: unit
+    uses: ./.github/workflows/e2e-run.yml
+
+  # Decide what actually changed so a frontend-only or server-only push doesn't
+  # rebuild both images. Runs in parallel with e2e (it's a cheap git diff); the
+  # build gate on e2e still holds because build needs both jobs.
+  #
+  # Path detection compares only the commits in *this* push, not against what is
+  # currently deployed - so if an earlier image change never deployed (e.g. a
+  # failed run) a later unrelated push won't pick it up. workflow_dispatch is the
+  # escape hatch: a manual run forces a full rebuild of both images.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}   # build matrix of only changed images
+      build: ${{ steps.set.outputs.build }}      # 'true' if any image needs rebuilding
+      deploy: ${{ steps.set.outputs.deploy }}    # 'true' if anything needs deploying
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            # web mirrors the COPY set in deploy/Dockerfile.web - keep in sync.
+            web:
+              - 'src/**'
+              - 'index.html'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'vite.config.ts'
+              - 'tsconfig.json'
+              - 'tsconfig.node.json'
+              - 'deploy/Dockerfile.web'
+            api:
+              - 'server/**'
+            # No image rebuild, but the VPS still needs a redeploy to apply these
+            # (docker-compose.yml is not baked in; the Caddyfile is bind-mounted).
+            deploycfg:
+              - 'docker-compose.yml'
+              - 'deploy/Caddyfile'
+
+      - name: Assemble build matrix
+        id: set
+        env:
+          FORCE: ${{ github.event_name == 'workflow_dispatch' }}
+          WEB: ${{ steps.filter.outputs.web }}
+          API: ${{ steps.filter.outputs.api }}
+          DEPLOYCFG: ${{ steps.filter.outputs.deploycfg }}
+        run: |
+          web=$WEB
+          api=$API
+          if [ "$FORCE" = "true" ]; then
+            web=true
+            api=true
+          fi
+          include='[]'
+          if [ "$web" = "true" ]; then
+            include=$(jq -cn --argjson a "$include" \
+              '$a + [{"image":"web","context":".","dockerfile":"deploy/Dockerfile.web"}]')
+          fi
+          if [ "$api" = "true" ]; then
+            include=$(jq -cn --argjson a "$include" \
+              '$a + [{"image":"api","context":"server","dockerfile":"server/Dockerfile"}]')
+          fi
+          echo "matrix={\"include\":$include}" >> "$GITHUB_OUTPUT"
+          if [ "$include" = "[]" ]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$include" != "[]" ] || [ "$DEPLOYCFG" = "true" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "web=$web api=$api deploycfg=$DEPLOYCFG force=$FORCE -> $include"
+
   build:
+    needs: [e2e, changes]
+    if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     strategy:
-      matrix:
-        include:
-          - image: web
-            context: .
-            dockerfile: deploy/Dockerfile.web
-          - image: api
-            context: server
-            dockerfile: server/Dockerfile
+      matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v5
+
+      - name: Compute version
+        id: version
+        uses: ./.github/actions/app-version
 
       # Buildx's docker-container driver is required for the type=gha cache
       # export below (the default docker driver can't export cache).
@@ -62,14 +152,29 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Both Dockerfiles declare ARG APP_VERSION; web maps it to
+          # VITE_APP_VERSION, api reads it at runtime.
+          build-args: |
+            APP_VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   deploy:
-    needs: build
+    needs: [e2e, changes, build]
     runs-on: ubuntu-latest
-    # Only auto-deploy from main; PRs/forks never touch the server.
-    if: github.ref == 'refs/heads/main'
+    # always() so a *skipped* build (deploy-config-only change) still deploys;
+    # the explicit checks re-impose the gates always() drops:
+    #   - only auto-deploy from main; PRs/forks never touch the server
+    #   - e2e must have passed (a red suite skips build, which always() ignores)
+    #   - a failed/cancelled build must block the rollover
+    #   - something must actually need deploying
+    if: >-
+      always()
+      && github.ref == 'refs/heads/main'
+      && needs.e2e.result == 'success'
+      && needs.build.result != 'failure'
+      && needs.build.result != 'cancelled'
+      && needs.changes.outputs.deploy == 'true'
     steps:
       - name: Pull new images on the VPS
         uses: appleboy/ssh-action@v1
@@ -83,4 +188,41 @@ jobs:
             git pull --ff-only
             docker compose pull
             docker compose up -d
+            # The Caddyfile is bind-mounted, so `up -d` won't recreate the web
+            # container for a routing-only change - reload it explicitly so
+            # Caddyfile edits take effect. Graceful and a near no-op when the
+            # config is unchanged; fails the deploy loudly if the new Caddyfile
+            # is invalid (Caddy keeps serving the old config in that case).
+            docker compose exec -T web caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
             docker image prune -f
+
+  # Record every successful deploy as a GitHub Release, tagged with the same
+  # CalVer+sha version baked into the images. needs: deploy means it only runs
+  # when a deploy actually happened (skipped/failed deploy -> no release). Tag
+  # pushes don't match this workflow's push:branches trigger, so no loop.
+  release:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Compute version
+        id: version
+        uses: ./.github/actions/app-version
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ steps.version.outputs.version }}"
+          # Re-runs of the same commit would clash on the tag; treat as a no-op.
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "release $tag already exists, skipping"
+          else
+            gh release create "$tag" \
+              --title "$tag" \
+              --generate-notes \
+              --target "${{ github.sha }}"
+          fi

@@ -42,6 +42,42 @@ export interface WorksheetParams {
   questions: Question[];
 }
 
+// --- per-question shared-state fields ---------------------------------------
+// Typed answers and marks live on the OBJECT as "ans:<qid>" / "mark:<qid>"
+// fields (written under INPUT_ORIGIN via updateWidgetState), so they sync
+// per-field between collaborators and a fresh question set starts blank
+// everywhere. Documents saved before questions had ids fall back to the index
+// (until "New" regenerates the set with ids).
+
+export type Mark = { kind: "ok" | "no"; text: string } | null;
+
+export const qKey = (q: Question, i: number): string => q.id ?? String(i);
+export const ansField = (q: Question, i: number): string => "ans:" + qKey(q, i);
+export const markField = (q: Question, i: number): string =>
+  "mark:" + qKey(q, i);
+
+/**
+ * Mark a worksheet: one mark patch entry per question, keyed by its mark
+ * field. Blank answers get a null mark (unanswered, not wrong); a wrong answer
+ * carries the correct one so the pupil can see it. Ported from checkWidget.
+ */
+export function markAnswers(
+  questions: Question[],
+  answers: string[],
+): Record<string, Mark> {
+  const patch: Record<string, Mark> = {};
+  questions.forEach((q, i) => {
+    const raw = (answers[i] ?? "").trim();
+    patch[markField(q, i)] =
+      raw === ""
+        ? null
+        : Number(raw) === q.ans
+          ? { kind: "ok", text: "✓" }
+          : { kind: "no", text: "✗ " + q.ans };
+  });
+  return patch;
+}
+
 const rnd = (a: number, b: number): number =>
   a + Math.floor(Math.random() * (b - a + 1));
 

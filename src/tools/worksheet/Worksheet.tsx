@@ -21,19 +21,15 @@ import { useRef } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import {
+  ansField,
   genQuestions,
+  markAnswers,
+  markField,
+  qKey,
   widgetTitle,
-  type Question,
+  type Mark,
   type WorksheetParams,
 } from "@/tools/worksheet";
-
-type Mark = { kind: "ok" | "no"; text: string } | null;
-
-/** Per-question field keys. Documents saved before questions had ids fall
- *  back to the index (until "New" regenerates the set with ids). */
-const qKey = (q: Question, i: number): string => q.id ?? String(i);
-const ansField = (q: Question, i: number): string => "ans:" + qKey(q, i);
-const markField = (q: Question, i: number): string => "mark:" + qKey(q, i);
 
 export function Worksheet({ obj, onEdit }: WidgetProps<WorksheetParams>) {
   const updateObject = useBoardStore((s) => s.updateObject);
@@ -85,19 +81,9 @@ export function Worksheet({ obj, onEdit }: WidgetProps<WorksheetParams>) {
     head.addEventListener("pointerup", up);
   }
 
-  // --- check (port of checkWidget; marks are shared, score derives) --------
+  // --- check (marks are shared state, the score derives from them) ---------
   function check() {
-    const patch: Record<string, unknown> = {};
-    obj.questions.forEach((q, i) => {
-      const raw = (answers[i] ?? "").trim();
-      patch[markField(q, i)] =
-        raw === ""
-          ? null
-          : Number(raw) === q.ans
-            ? { kind: "ok", text: "✓" }
-            : { kind: "no", text: "✗ " + q.ans };
-    });
-    updateWidgetState(obj.id, patch);
+    updateWidgetState(obj.id, markAnswers(obj.questions, answers));
   }
 
   // --- new questions (port of regenWidget — persists via the store) -------

@@ -269,6 +269,16 @@ function scheduleDraftSave(): void {
     void localRepository.saveDraft({ doc: board, sourceId, dirty });
   }, 400);
 }
+/**
+ * Cancel any pending debounced draft save without writing. Lifecycle actions
+ * cancel implicitly via flushDraft; this is for hosts that tear the world
+ * down between edits (the unit tests' afterEach — a timer firing after jsdom
+ * teardown would crash on the missing localStorage).
+ */
+export function cancelScheduledDraftSave(): void {
+  cancelDraftSave();
+}
+
 /** Write the draft immediately (used by explicit lifecycle actions). */
 async function flushDraft(
   doc: BoardDocument,

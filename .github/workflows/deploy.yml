@@ -18,11 +18,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Fast unit suite (shared with e2e.yml / publish.yml via the reusable
+  # workflow): the static single-user build ships the exact code the suite
+  # covers, so a red suite must block the Pages rollout too.
+  unit:
+    uses: ./.github/workflows/unit-run.yml
+
   build:
+    needs: unit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Compute version
+        id: version
+        uses: ./.github/actions/app-version
 
       - name: Setup Node
         uses: actions/setup-node@v5
@@ -40,6 +51,7 @@ jobs:
         run: npm run build
         env:
           VITE_COLLAB: "0"
+          VITE_APP_VERSION: ${{ steps.version.outputs.version }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v6

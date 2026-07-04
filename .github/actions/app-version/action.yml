@@ -1,0 +1,24 @@
+name: App version
+description: >-
+  Derive the app version string (CalVer + short SHA, e.g. 2026.07.04-c50b64e)
+  from the checked-out commit. Single source of truth for the version FORMAT:
+  publish.yml (image build + GitHub Release) and deploy.yml (Pages build) both
+  call this so their version strings can never drift apart. Deterministic per
+  commit - rebuilding the same commit yields the same version. Requires the repo
+  to be checked out first (it reads git).
+outputs:
+  version:
+    description: The version string, e.g. 2026.07.04-c50b64e
+    value: ${{ steps.compute.outputs.version }}
+runs:
+  using: composite
+  steps:
+    - id: compute
+      shell: bash
+      run: |
+        # Committer date of HEAD (not the build date) so the version is stable
+        # across re-runs/rebuilds of the same commit.
+        date=$(git show -s --format=%cd --date=format:'%Y.%m.%d' HEAD)
+        sha=$(git rev-parse --short HEAD)
+        echo "version=${date}-${sha}" >> "$GITHUB_OUTPUT"
+        echo "app version: ${date}-${sha}"

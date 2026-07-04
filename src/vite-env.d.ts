@@ -5,4 +5,6 @@
 interface ImportMetaEnv {
   /** "0" disables collaboration + image upload (the static GitHub Pages build). */
   readonly VITE_COLLAB?: string;
+  /** Build version, e.g. "2026.07.04-c50b64e" (see .github/actions/app-version). Unset in dev. */
+  readonly VITE_APP_VERSION?: string;
 }

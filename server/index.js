@@ -31,6 +31,9 @@ function requireEnv(name) {
 }
 
 const PORT = Number(process.env.PORT ?? 8787);
+// Baked into the image at CI build time (see .github/actions/app-version); "dev"
+// for a local/unversioned run.
+const VERSION = process.env.APP_VERSION ?? "dev";
 const CONNECTION_STRING = requireEnv("YSWEET_CONNECTION_STRING");
 const S3_BUCKET = requireEnv("S3_BUCKET");
 const ASSET_PREFIX = process.env.S3_ASSET_PREFIX ?? "assets/";
@@ -70,6 +73,12 @@ function publicOrigin(req) {
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
+});
+
+// The frontend fetches this on startup to log the backend build alongside its
+// own in the browser console (see src/version.ts).
+app.get("/api/version", (_req, res) => {
+  res.json({ version: VERSION });
 });
 
 // --- token minting -----------------------------------------------------------
@@ -162,5 +171,5 @@ app.get("/api/img/:key", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`mathsboard api listening on :${PORT}`);
+  console.log(`mathsboard api ${VERSION} listening on :${PORT}`);
 });

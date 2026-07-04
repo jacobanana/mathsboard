@@ -1,0 +1,37 @@
+# Reusable unit-test job (Vitest, headless — no Docker stack needed).
+#
+# The fast gate in front of every heavier pipeline. Called by:
+#   e2e.yml     PRs:  unit → e2e
+#   publish.yml main: unit → e2e → image build → VPS deploy
+#   deploy.yml  main: unit → Pages build → Pages deploy
+# Typecheck + the behavioural suite finish in a couple of minutes, so logic
+# regressions fail before a 30-minute e2e run starts or anything deploys.
+# No push/PR trigger of its own — it only runs when another workflow calls it.
+
+name: Unit tests (reusable)
+
+on:
+  workflow_call:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm test

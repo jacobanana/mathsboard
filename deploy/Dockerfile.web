@@ -8,6 +8,11 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json tsconfig.node.json vite.config.ts index.html ./
 COPY src ./src
+# Passed by publish.yml (see .github/actions/app-version); Vite bakes any VITE_*
+# env var into the bundle. Placed just before the build so the npm ci layer
+# above stays cached when only the version changes.
+ARG APP_VERSION=dev
+ENV VITE_APP_VERSION=$APP_VERSION
 RUN npm run build
 
 FROM caddy:2-alpine

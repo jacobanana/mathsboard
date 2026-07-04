@@ -19,6 +19,22 @@ import type { AnyBoardObject, Stroke } from "@/board/types";
 // --- placement (CREATE) -----------------------------------------------------
 
 /**
+ * How placeObject learns the visible stage size (to centre new objects).
+ * The default reads the #stage element; headless tests (no DOM layout) swap in
+ * a fixed size via setStageSizeProvider so placement stays deterministic.
+ */
+export type StageSizeProvider = () => { w: number; h: number };
+
+let stageSize: StageSizeProvider = () => {
+  const r = document.getElementById("stage")?.getBoundingClientRect();
+  return { w: r?.width ?? 0, h: r?.height ?? 0 };
+};
+
+export function setStageSizeProvider(fn: StageSizeProvider): void {
+  stageSize = fn;
+}
+
+/**
  * Place a new object: centre it on screen with a 22px cascade (mod 6) so
  * successive inserts fan out instead of stacking, then select it and switch to
  * the select tool. `at` (screen px relative to #stage) overrides the centre
@@ -34,9 +50,7 @@ export function placeObject(
   if (!size) return;
   const st = useBoardStore.getState();
   const { camera, board } = st;
-  const r = document.getElementById("stage")?.getBoundingClientRect();
-  const W = r?.width ?? 0;
-  const H = r?.height ?? 0;
+  const { w: W, h: H } = stageSize();
   const at = opts.at;
   const anchor = screenToWorld(camera, at ? at.x : W / 2, at ? at.y : H / 2);
   const casc = at ? 0 : (board.objects.length % 6) * 22;
@@ -85,6 +99,13 @@ let clipboard: ShapeBag | null = null;
 // How many times the CURRENT clipboard has been pasted, so repeated pastes
 // cascade instead of stacking. Reset on every copy/cut.
 let pasteSeq = 0;
+
+/** Empty the internal clipboard (tests reset between cases; also the hook a
+ *  future "clear board" flow would want). */
+export function resetClipboard(): void {
+  clipboard = null;
+  pasteSeq = 0;
+}
 
 /** The selected objects + strokes, resolved to their document shapes. */
 function selectedShapes(): ShapeBag {

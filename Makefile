@@ -26,7 +26,7 @@ COMPOSE_LOCAL := docker compose -f docker-compose.yml -f docker-compose.local.ym
 .DEFAULT_GOAL := help
 .PHONY: help install dev typecheck build preview \
         up up-d down reset logs \
-        e2e-install e2e \
+        test test-watch e2e-install e2e \
         deploy deploy-down deploy-logs \
         clean
 
@@ -47,7 +47,9 @@ help:
 	@echo $(Q)    reset         Stop the stack and wipe its volumes (MinIO data)$(Q)
 	@echo $(Q)    logs          Follow the stack logs$(Q)
 	@$(BLANK)
-	@echo $(Q)  End-to-end tests (Playwright)$(Q)
+	@echo $(Q)  Tests$(Q)
+	@echo $(Q)    test          Run the unit test suite (Vitest, headless - no Docker)$(Q)
+	@echo $(Q)    test-watch    Run the unit tests in watch mode$(Q)
 	@echo $(Q)    e2e-install   Install the Chromium browser (run once)$(Q)
 	@echo $(Q)    e2e           Run the Playwright suite (boots the stack if needed)$(Q)
 	@$(BLANK)
@@ -93,7 +95,13 @@ reset:
 logs:
 	$(COMPOSE_LOCAL) logs -f
 
-# ---- End-to-end tests (Playwright) ------------------------------------------
+# ---- Tests -------------------------------------------------------------------
+
+test:
+	npm test
+
+test-watch:
+	npm run test:watch
 
 e2e-install:
 	npx playwright install chromium
