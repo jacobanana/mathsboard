@@ -428,7 +428,12 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
 
   // --- devicePixelRatio sizing + resize -------------------------------------
   const resize = useCallback(() => {
-    commitEditorRef.current?.();
+    // NOTE: do NOT commit the text editor here. On mobile, focusing the textarea
+    // opens the virtual keyboard, which fires a window "resize"; committing would
+    // blur and discard the just-created (still empty) text box — the keyboard
+    // would slam shut the instant you tried to type. A viewport resize never
+    // moves the camera, so the overlay stays correctly positioned and editing
+    // continues uninterrupted.
     const tCanvas = tCanvasRef.current;
     const iCanvas = iCanvasRef.current;
     // The host's #stage is the canvas's offset parent; size to it.
@@ -471,12 +476,23 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       renderBack();
       const sx = obj.x * camera.scale + camera.x;
       const sy = obj.y * camera.scale + camera.y;
+      const fontPx = (obj.size as number) * s * camera.scale;
       ta.style.display = "block";
-      ta.style.left = sx + "px";
-      ta.style.top = sy + "px";
-      ta.style.font =
-        "500 " + (obj.size as number) * s * camera.scale + "px " + FONT;
+      ta.style.font = "500 " + fontPx + "px " + FONT;
+      // The `font` shorthand resets line-height to `normal`; pin it to 1.3 so the
+      // editor's line spacing matches the canvas render (drawText uses size*1.3).
+      ta.style.lineHeight = "1.3";
       ta.style.color = obj.color as string;
+      // Place the textarea so its glyphs land exactly where the committed text
+      // renders. The canvas draws with textBaseline "top" flush at (obj.x, obj.y)
+      // — no leading, no inset. The textarea instead pushes its first line down by
+      // its 1px top border plus the line-box leading and font-ascent gap the
+      // browser reserves above the first line (measured at ~0.265 of the font
+      // size for our UI font). Horizontally it insets text by 1px border + 2px
+      // padding. Compensate both so text doesn't shift when you start/stop
+      // editing.
+      ta.style.left = sx - 3 + "px";
+      ta.style.top = sy - 1 - 0.265 * fontPx + "px";
       ta.value = (obj.text as string) || "";
       autoSize();
       setTimeout(() => {
@@ -517,9 +533,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     renderAll();
   }, [renderAll, store]);
 
-  // Stable refs so resize/effects can call the latest commit/render closures.
-  const commitEditorRef = useRef<() => void>();
-  commitEditorRef.current = commitEditor;
+  // Stable ref so effects can call the latest render closure.
   const renderAllRef = useRef<() => void>();
   renderAllRef.current = renderAll;
 

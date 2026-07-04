@@ -58,6 +58,7 @@ function ColorPicker({ onPick }: { onPick: (hex: string) => void }): JSX.Element
         anchor={open ? btnRef.current : null}
         onClose={() => setOpen(false)}
         side="top"
+        align="right"
         id="colorMenu"
       >
         {PALETTE.map(([label, hex]) => (

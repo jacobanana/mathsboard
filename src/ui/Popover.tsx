@@ -16,7 +16,8 @@
 //   - onClose is read through a ref, so a caller passing a fresh arrow each
 //     render doesn't cancel/re-arm the listener (the bug the Paper menu had).
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { CSSProperties, ReactNode } from "react";
 
 interface PopoverProps {
@@ -75,6 +76,23 @@ export function Popover({
     };
   }, [anchor]);
 
+  // Keep the panel fully on screen: once it has laid out, nudge it horizontally
+  // if it would spill past either viewport edge. Anchor-edge alignment alone
+  // isn't enough for a wide panel near a screen edge — the colour palette used
+  // to run off the right on desktop and off the left on phones.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !anchor) return;
+    el.style.transform = "";
+    const r = el.getBoundingClientRect();
+    const margin = 6;
+    let dx = 0;
+    if (r.right > window.innerWidth - margin)
+      dx = window.innerWidth - margin - r.right;
+    if (r.left + dx < margin) dx = margin - r.left;
+    if (dx) el.style.transform = `translateX(${dx}px)`;
+  }, [anchor, align, side, gap]);
+
   if (!anchor) return null;
 
   const r = anchor.getBoundingClientRect();
@@ -88,7 +106,12 @@ export function Popover({
       ? { bottom: window.innerHeight - r.top + gap }
       : { top: r.bottom + gap };
 
-  return (
+  // Portal to <body>: the panel is position:fixed, but a fixed element nested
+  // inside a transformed ancestor (e.g. #options, which is translateX(-50%) to
+  // centre itself) is positioned relative to THAT ancestor, not the viewport —
+  // which flung the colour palette off to a corner. Rendering at the body root
+  // keeps our viewport-relative maths (and the clamp above) honest.
+  return createPortal(
     <div
       id={id}
       className={className}
@@ -96,6 +119,7 @@ export function Popover({
       style={{ position: "fixed", ...vert, ...horiz }}
     >
       {children}
-    </div>
+    </div>,
+    document.body,
   );
 }
