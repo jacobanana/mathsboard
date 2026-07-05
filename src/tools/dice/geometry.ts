@@ -133,7 +133,7 @@ export interface Solid {
   tilt: number;
 }
 
-export const DICE_FACES = [6, 8, 10, 12, 20] as const;
+export const DICE_FACES = [4, 6, 8, 10, 12, 20] as const;
 export type FaceCount = (typeof DICE_FACES)[number];
 
 export const isFaceCount = (n: number): n is FaceCount =>
@@ -147,6 +147,9 @@ const PHI = (1 + Math.sqrt(5)) / 2;
 const PRESENTATION_TILT = 0.14;
 
 // Vertex sets for the Platonic solids (before normalising to unit circumradius).
+const tetraVerts = (): Vec3[] => [
+  [1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1], // alternate cube corners
+];
 const cubeVerts = (): Vec3[] => {
   const v: Vec3[] = [];
   for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) v.push([x, y, z]);
@@ -359,6 +362,14 @@ export function makeSolid(faces: FaceCount): Solid {
   if (cached) return cached;
   let solid: Solid;
   switch (faces) {
+    case 4:
+      // Each tetra face is opposite a vertex, so its outward normal points along
+      // the negated vertex — the 3 nearest vertices to that direction.
+      solid = assemble(
+        tetraVerts(),
+        facesFromDirections(tetraVerts(), tetraVerts().map((v) => mul(v, -1)), 3),
+      );
+      break;
     case 6:
       solid = assemble(
         cubeVerts(),

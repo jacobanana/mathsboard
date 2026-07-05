@@ -39,7 +39,7 @@ describe.each(DICE_FACES)("d%i", (faces) => {
   });
 
   it("has the expected polygon per face", () => {
-    const sides: Record<number, number> = { 6: 4, 8: 3, 10: 4, 12: 5, 20: 3 };
+    const sides: Record<number, number> = { 4: 3, 6: 4, 8: 3, 10: 4, 12: 5, 20: 3 };
     for (const f of solid.faces) expect(f.indices.length).toBe(sides[faces]);
   });
 
