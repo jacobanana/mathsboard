@@ -6,3 +6,8 @@ test-results
 playwright-report
 # Deployment secrets (copy .env.example -> .env and fill in)
 .env
+.env.local
+.env.*.local
+# Private keys / certificates — never commit
+*.pem
+*.key

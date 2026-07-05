@@ -18,7 +18,12 @@ import { useBoardStore } from "@/board/store";
 import { useUiStore } from "@/ui/uiStore";
 import { resetClipboard } from "@/board/commands";
 import { id as newId } from "@/board/types";
-import { PALETTE, PEN_SIZE_RANGE } from "@/ui/constants";
+import {
+  PALETTE,
+  FILL_PALETTE,
+  LASER_PALETTE,
+  PEN_SIZE_RANGE,
+} from "@/ui/constants";
 import { anObject, aStroke, freshBoard, keydown } from "@/testing/fixtures";
 
 const st = () => useBoardStore.getState();
@@ -163,7 +168,6 @@ describe("shapes, arrange & grouping", () => {
       ["y", "triangle"],
       ["n", "polygon"],
       ["q", "freepoly"],
-      ["b", "curve"],
       ["g", "angle"],
       ["f", "free"],
     ];
@@ -266,6 +270,44 @@ describe("shapes, arrange & grouping", () => {
     st().select(s.id);
     fire(keydown("c"));
     expect(st().board.objects[0].stroke).toBe(PALETTE[1][1]);
+  });
+
+  it("B cycles the background palette and recolours a selected shape's fill", () => {
+    const s = {
+      id: newId(),
+      type: "shape",
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 60,
+      kind: "rect",
+      nw: 100,
+      nh: 60,
+      pts: [],
+      stroke: PALETTE[0][1],
+      strokeWidth: 3,
+      fill: FILL_PALETTE[0][1], // "none"
+      dash: false,
+      showAngles: false,
+      both: false,
+    };
+    freshBoard({ objects: [s] });
+    st().setFillColor(FILL_PALETTE[0][1]);
+    st().select(s.id);
+    expect(fire(keydown("b"))).toBe(true);
+    expect(st().fillColor).toBe(FILL_PALETTE[1][1]);
+    expect(st().board.objects[0].fill).toBe(FILL_PALETTE[1][1]);
+  });
+});
+
+describe("colour cycling in laser mode", () => {
+  it("C cycles the laser palette, leaving the draw colour untouched", () => {
+    st().setTool("select");
+    st().setLaserMode(true);
+    const drawBefore = st().color;
+    expect(fire(keydown("c"))).toBe(true);
+    expect(st().laserColor).toBe(LASER_PALETTE[1][1]);
+    expect(st().color).toBe(drawBefore);
   });
 });
 

@@ -18,12 +18,46 @@ export type CollabStatus =
   | "connected"
   | "error";
 
+/**
+ * A one-shot "guide everyone's view" command sent while laser-pointing (world
+ * coordinates). `seq` is a per-sender counter so receivers act exactly once per
+ * command. `point` recentres a hidden spot into view; `rect` zooms the view to
+ * fit an area. Ephemeral awareness, never written into the document.
+ */
+export interface LaserFocus {
+  seq: number;
+  kind: "point" | "rect";
+  x: number;
+  y: number;
+  /** Present for kind "rect": the area's width/height (world px). */
+  w?: number;
+  h?: number;
+}
+
+/**
+ * A live laser-pointer trail: the recent points (WORLD coords, oldest→newest)
+ * plus the pointer's chosen colour, so a peer's laser renders in their colour.
+ * Ephemeral like the cursor — never written into the document.
+ */
+export interface LaserTrail {
+  points: { x: number; y: number }[];
+  color: string;
+}
+
 export interface PeerPresence {
   clientId: number;
   name: string;
   color: string;
   /** Cursor position in WORLD coordinates (each user has their own camera). */
   cursor: { x: number; y: number } | null;
+  /** Live laser trail + colour, or null when the peer isn't pointing. */
+  laser: LaserTrail | null;
+  /**
+   * Latest laser "guide my view" command from this peer (recentre / zoom), or
+   * null. Applied by whoever RECEIVES it (director model): the pointer drives
+   * the other users' cameras, never their own. See PresenceLayer.
+   */
+  laserFocus: LaserFocus | null;
 }
 
 interface CollabState {

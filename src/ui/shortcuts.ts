@@ -47,6 +47,8 @@ import { MATH_BASE_PX } from "@/tools/mathtext";
 import { COLLAB_ENABLED } from "@/config";
 import {
   PALETTE,
+  FILL_PALETTE,
+  LASER_PALETTE,
   PEN_SIZE_RANGE,
   TEXT_SIZE_RANGE,
   MATH_SIZE_RANGE,
@@ -111,11 +113,17 @@ const bare = (c: ShortcutCtx): boolean => !c.mod && !c.e.altKey && !c.inField;
 
 // --- colour + size (active-tool options) ----------------------------------
 
-/** Cycle the draw colour to the next palette entry (C). Also recolours a live
- *  text or maths object — or a selected shape's border — matching a swatch
- *  click. */
+/** Cycle the colour of whatever palette is active (C). In laser mode that's the
+ *  laser's own palette; otherwise the draw palette — also recolouring a live
+ *  text or maths object, or a selected shape's border, matching a swatch click. */
 function cycleColor(): void {
   const st = useBoardStore.getState();
+  // Laser mode shows its own vivid palette; C cycles that instead.
+  if (st.laserMode) {
+    const li = LASER_PALETTE.findIndex(([, hex]) => hex === st.laserColor);
+    st.setLaserColor(LASER_PALETTE[(li + 1) % LASER_PALETTE.length][1]);
+    return;
+  }
   const idx = PALETTE.findIndex(([, hex]) => hex === st.color);
   const [, next] = PALETTE[(idx + 1) % PALETTE.length];
   st.setColor(next);
@@ -123,6 +131,18 @@ function cycleColor(): void {
   if (tid != null) st.updateObject(tid, { color: next });
   const sid = activeShapeObjectId(st);
   if (sid != null) st.updateObject(sid, { stroke: next });
+}
+
+/** Cycle the BACKGROUND (fill) palette (B). Sets the default fill for new
+ *  shapes and recolours a selected shape's background, matching the fill
+ *  swatch. Includes the "none" (transparent) entry. */
+function cycleFillColor(): void {
+  const st = useBoardStore.getState();
+  const idx = FILL_PALETTE.findIndex(([, hex]) => hex === st.fillColor);
+  const next = FILL_PALETTE[(idx + 1) % FILL_PALETTE.length][1];
+  st.setFillColor(next);
+  const sid = activeShapeObjectId(st);
+  if (sid != null) st.updateObject(sid, { fill: next });
 }
 
 /** Switch to the draw tool in the given mode (the shape keys, L / A / R /
@@ -214,6 +234,21 @@ function nudgeSelection(c: ShortcutCtx): void {
   st.nudgeSelection(dx, dy);
 }
 
+/** The pointer key (1 / V): select the pointer, or — when it is ALREADY the
+ *  active tool — toggle the laser pointer on/off. The laser is a mode of the
+ *  pointer, not a tool of its own (canvas/interactions/laser.ts). */
+function selectOrToggleLaser(st: BoardState): void {
+  // Arriving at the pointer gives the NORMAL pointer; a second press arms the
+  // laser, a third disarms it. So "1" is always a reliable way back to select.
+  // The laser is a collaboration feature (like sharing) — only togglable in
+  // collab builds; otherwise the key just selects the pointer.
+  if (st.tool === "select" && COLLAB_ENABLED) st.toggleLaserMode();
+  else {
+    st.setTool("select");
+    st.setLaserMode(false);
+  }
+}
+
 // --- the catalog ----------------------------------------------------------
 // ORDER IS BEHAVIOUR: dispatch runs the first matching entry, so keep the
 // precedence of the old inline handler (Save first; selection/history combos
@@ -286,6 +321,7 @@ export const SHORTCUTS: ShortcutSpec[] = [
     test: (c) => c.mod && c.key === "a",
     run: (c) => {
       c.st.setTool("select");
+      c.st.setLaserMode(false); // selecting all implies the normal pointer
       c.st.selectAll();
     },
   },
@@ -418,9 +454,11 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "tool-select",
     group: "tools",
     keys: [["1"], ["V"]],
-    label: "Select & move",
+    // Pressing the pointer key when it's already active toggles the laser
+    // pointer (like pressing Draw again cycles modes). See laser.ts.
+    label: "Select & move (press again for the laser pointer)",
     test: (c) => bare(c) && (c.key === "1" || c.key === "v"),
-    run: (c) => c.st.setTool("select"),
+    run: (c) => selectOrToggleLaser(c.st),
   },
   {
     id: "tool-pan",
@@ -504,14 +542,8 @@ export const SHORTCUTS: ShortcutSpec[] = [
     test: (c) => bare(c) && c.key === "q",
     run: () => pickDrawMode("freepoly"),
   },
-  {
-    id: "mode-curve",
-    group: "tools",
-    keys: [["B"]],
-    label: "Curve (click to add points; double-click or Enter to finish)",
-    test: (c) => bare(c) && c.key === "b",
-    run: () => pickDrawMode("curve"),
-  },
+  // Curve has no key: B is the background-colour cycle (see cycleFill). Curve
+  // is still reachable from the draw-mode options row.
   {
     id: "mode-angle",
     group: "tools",
@@ -575,9 +607,17 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "cycleColor",
     group: "options",
     keys: [["C"]],
-    label: "Cycle the draw colour",
+    label: "Cycle the colour (draw / shape / laser)",
     test: (c) => bare(c) && c.key === "c",
     run: () => cycleColor(),
+  },
+  {
+    id: "cycleFill",
+    group: "options",
+    keys: [["B"]],
+    label: "Cycle the background (fill) colour",
+    test: (c) => bare(c) && c.key === "b",
+    run: () => cycleFillColor(),
   },
   {
     id: "sizeUp",

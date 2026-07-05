@@ -17,6 +17,17 @@ export const PALETTE: [string, string][] = [
   ["orange", "#E8842B"],
 ];
 
+/** Vivid, high-visibility colours for the laser pointer (its own palette — the
+ *  muted ink PALETTE reads poorly as a "laser"). First entry is the default and
+ *  MUST match the laser's fallback colour (canvas/interactions/laser.ts). */
+export const LASER_PALETTE: [string, string][] = [
+  ["red", "#ff2b2b"],
+  ["green", "#12d64a"],
+  ["blue", "#2e8bff"],
+  ["magenta", "#ff2bd0"],
+  ["amber", "#ffb020"],
+];
+
 export interface SizeRange {
   min: number;
   max: number;

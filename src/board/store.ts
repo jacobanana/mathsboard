@@ -128,6 +128,22 @@ interface BoardState {
   aspectLock: boolean;
   /** Grid snapping (roadmap A3): honoured only on squared paper; Alt bypasses. */
   snap: boolean;
+  /**
+   * Laser pointer: a TOGGLE on the pointer (Select) tool, not a tool of its
+   * own. While on, the select controller's gestures become the laser (point /
+   * bring-others / frame-an-area) — see canvas/interactions/laser.ts. Ephemeral.
+   */
+  laserMode: boolean;
+  /**
+   * Laser "frame an area" armed: the next laser drag frames a box that zooms
+   * everyone to it, instead of pointing. The touch-friendly equivalent of
+   * holding Shift; auto-disarms once an area is framed. Only meaningful while
+   * laserMode is on (cleared when the laser turns off).
+   */
+  laserFrame: boolean;
+  /** The local user's laser colour (hex). Broadcast with the trail so peers see
+   *  it (see canvas/interactions/laser.ts). Default red = LASER_PALETTE[0]. */
+  laserColor: string;
   /** Object + stroke ids currently selected (multi-select). */
   selection: Selection;
   /**
@@ -236,6 +252,13 @@ interface BoardState {
   setPolygonSides(n: number): void;
   setAspectLock(on: boolean): void;
   setSnap(on: boolean): void;
+  setLaserMode(on: boolean): void;
+  /** Flip the laser toggle (bound to a second press of the pointer key). */
+  toggleLaserMode(): void;
+  /** Arm/disarm "frame an area" (the Shift-less way to frame on touch). */
+  setLaserFrame(on: boolean): void;
+  toggleLaserFrame(): void;
+  setLaserColor(hex: string): void;
   setCamera(patch: Partial<Camera>): void;
   /** Select exactly one object (or clear the selection when id is null). */
   select(id: string | null): void;
@@ -435,6 +458,9 @@ export const useBoardStore = create<BoardState>((set, get) => {
     mathSize: 26,
     eraserSize: 45,
     drawMode: "free",
+    laserMode: false,
+    laserFrame: false,
+    laserColor: "#ff2b2b", // LASER_PALETTE[0] (red)
     fillColor: "none",
     polygonSides: 5,
     aspectLock: false,
@@ -616,6 +642,25 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
     setSnap(on) {
       set({ snap: on });
+    },
+    setLaserMode(on) {
+      // Turning the laser off also disarms area-framing (it's meaningless then).
+      set((s) => ({ laserMode: on, laserFrame: on ? s.laserFrame : false }));
+    },
+    toggleLaserMode() {
+      set((s) => {
+        const laserMode = !s.laserMode;
+        return { laserMode, laserFrame: laserMode && s.laserFrame };
+      });
+    },
+    setLaserFrame(on) {
+      set({ laserFrame: on });
+    },
+    toggleLaserFrame() {
+      set((s) => ({ laserFrame: !s.laserFrame }));
+    },
+    setLaserColor(hex) {
+      set({ laserColor: hex });
     },
     setCamera(patch) {
       set((state) => ({ camera: { ...state.camera, ...patch } }));

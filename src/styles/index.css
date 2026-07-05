@@ -267,6 +267,7 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 
 /* --- Collaboration: presence overlay (remote cursors) --- */
 .presence-layer{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden;}
+.laser-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
 .remote-cursor{position:absolute;transform:translate(-2px,-2px);display:flex;align-items:flex-start;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25));}
 .remote-cursor svg{flex:0 0 auto;}
 .rc-name{margin:12px 0 0 -4px;color:#fff;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:9px;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;}

@@ -54,6 +54,33 @@ export function MathIcon(): JSX.Element {
   );
 }
 
+/** A shining point — the laser pointer. Filled centre dot with radiating
+ *  beams, so it reads as "point / emit" rather than a plain target. */
+export function LaserIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none" />
+      <path d="M12 3v2.4" />
+      <path d="M12 18.6V21" />
+      <path d="M3 12h2.4" />
+      <path d="M18.6 12H21" />
+      <path d="m5.6 5.6 1.7 1.7" />
+      <path d="m16.7 16.7 1.7 1.7" />
+      <path d="m18.4 5.6-1.7 1.7" />
+      <path d="m7.3 16.7-1.7 1.7" />
+    </svg>
+  );
+}
+
+/** A dashed marquee box — the laser's "frame an area to zoom everyone" toggle. */
+export function FrameIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="4 3.5" />
+    </svg>
+  );
+}
+
 export function ImageIcon(): JSX.Element {
   return (
     <svg {...svgProps}>
