@@ -1,10 +1,12 @@
 // The contextual options pill (#options), a floating layer that sits just
 // above the bottom tool dock:
 //
-//   tool === "pen"    -> DRAW MODES (freehand + the shape kinds, roadmap A2)
-//                        + size slider + border colour; shape modes add the
-//                        background (fill) colour, the polygon-sides stepper
-//                        and the grid-snap toggle.
+//   tool === "pen"    -> TWO stacked lines: the contextual menu (size slider +
+//                        border colour; shape modes add the background (fill)
+//                        colour, the polygon-sides stepper, the square/circle
+//                        lock and the grid-snap toggle) on TOP, and the DRAW
+//                        MODE selector (freehand + the shape kinds, roadmap A2)
+//                        on the BOTTOM line, nearest the dock's Draw button.
 //   tool === "select" -> when a single SHAPE is selected: its border width /
 //                        border colour / background colour, edited live, plus
 //                        the snap toggle (styling a shape after the fact —
@@ -430,30 +432,12 @@ export function OptionsStrip(): JSX.Element | null {
 
   const shapeMode = tool === "pen" && drawMode !== "free";
 
-  return (
-    <div className="island" id="options">
-      {tool === "pen" && (
-        <>
-          <div className="mode-row" role="group" aria-label="Drawing mode">
-            {DRAW_MODES.map(({ mode, label, hintId, Icon }) => (
-              <button
-                key={mode}
-                className={"btn small mode" + (drawMode === mode ? " active" : "")}
-                id={"mode-" + mode}
-                title={keyHint(hintId) ? `${label} (${keyHint(hintId)})` : label}
-                aria-label={label}
-                onClick={() => setDrawMode(mode)}
-              >
-                <span className="ico">
-                  <Icon />
-                </span>
-              </button>
-            ))}
-          </div>
-          <span className="opt-sep" />
-        </>
-      )}
-
+  // The contextual controls for the active tool/mode: for the pen, the settings
+  // that style the selected draw mode (aspect/sides, size, colour, fill, snap);
+  // for text/math/eraser simply size (+ colour). For the pen these ride the TOP
+  // line, floating above the draw-mode selector.
+  const controls = (
+    <>
       {tool === "pen" && (drawMode === "rect" || drawMode === "ellipse") && (
         <>
           {/* SQUARE / CIRCLE mode: lock the drag box square. A toggle (not a
@@ -576,6 +560,39 @@ export function OptionsStrip(): JSX.Element | null {
       )}
 
       {tool === "pen" && <SnapToggle />}
+    </>
+  );
+
+  // The draw tool spreads over two lines: the contextual menu on the TOP line,
+  // and the draw-mode selector (its "sub-tool" picker) on the BOTTOM line,
+  // nearest the dock — so the mode buttons sit directly above the Draw button.
+  if (tool === "pen") {
+    return (
+      <div className="island stacked" id="options">
+        <div className="opt-line">{controls}</div>
+        <div className="mode-row" role="group" aria-label="Drawing mode">
+          {DRAW_MODES.map(({ mode, label, hintId, Icon }) => (
+            <button
+              key={mode}
+              className={"btn small mode" + (drawMode === mode ? " active" : "")}
+              id={"mode-" + mode}
+              title={keyHint(hintId) ? `${label} (${keyHint(hintId)})` : label}
+              aria-label={label}
+              onClick={() => setDrawMode(mode)}
+            >
+              <span className="ico">
+                <Icon />
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="island" id="options">
+      {controls}
     </div>
   );
 }

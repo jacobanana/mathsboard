@@ -44,8 +44,12 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 /* --- Options pill: size slider + colour dropdown, floating above the dock.
    A separate fixed layer, so it appears/disappears without moving the dock. */
 #options{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:19;gap:4px;padding:4px 10px;animation:rise .18s cubic-bezier(.34,1.4,.64,1);flex-wrap:wrap;justify-content:center;max-width:min(96vw,640px);}
+/* Draw tool: two stacked lines — the contextual menu (.opt-line) on top, the
+   draw-mode selector (.mode-row) below it, nearest the dock. */
+#options.stacked{flex-direction:column;gap:6px;}
+#options.stacked .opt-line{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px;}
 /* Draw-mode row (freehand + shapes) inside the options pill. */
-.mode-row{display:flex;align-items:center;gap:1px;}
+.mode-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:1px;}
 .mode-row .btn.mode{min-width:36px;min-height:38px;}
 .mode-row .btn.mode .ico svg{width:18px;height:18px;}
 /* Polygon side-count stepper. */
