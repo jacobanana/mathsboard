@@ -302,9 +302,10 @@ export function magneticDirection(a: Pt, b: Pt, tolDeg = 3): Pt | null {
 
 // --- smooth curves through N points (Catmull-Rom -> cubic Bézier) -----------
 // The curve tool stores THROUGH-points: the drawn spline passes through every
-// stored point, so its handles are directly on the curve (drag to reshape,
-// midpoint handles to add detail). Rendering converts each consecutive pair to
-// one cubic Bézier segment with the standard uniform Catmull-Rom tangents.
+// stored point, so its handles are directly on the curve. Each point carries
+// an optional TANGENT OVERRIDE (the "Bézier parameters" a click on the point
+// exposes as draggable arms); absent overrides fall back to the uniform
+// Catmull-Rom tangent, so an untouched curve stays fully automatic.
 
 export interface BezierSegment {
   c1: Pt;
@@ -312,35 +313,91 @@ export interface BezierSegment {
   to: Pt;
 }
 
-/** Cubic Bézier segments of the Catmull-Rom spline through `pts` (n ≥ 2),
- *  one per consecutive pair, endpoints clamped. */
-export function splineSegments(pts: Pt[]): BezierSegment[] {
+/** Optional per-point tangent overrides, parallel to `pts` (null = automatic). */
+export type Tangents = (Pt | null)[] | undefined;
+
+/**
+ * The tangent vector at every point: the override where one exists, else the
+ * uniform Catmull-Rom tangent (P[i+1] - P[i-1]) / 2, one-sided at the ends.
+ * Segment i's Bézier controls are P[i] + m[i]/3 and P[i+1] - m[i+1]/3.
+ */
+export function splineTangents(pts: Pt[], tans?: Tangents): Pt[] {
   const n = pts.length;
+  return pts.map((_p, i) => {
+    const t = tans?.[i];
+    if (t) return t;
+    const prev = pts[Math.max(i - 1, 0)];
+    const next = pts[Math.min(i + 1, n - 1)];
+    return { x: (next.x - prev.x) / 2, y: (next.y - prev.y) / 2 };
+  });
+}
+
+/** Cubic Bézier segments of the spline through `pts` (n ≥ 2), one per
+ *  consecutive pair, honouring any tangent overrides. */
+export function splineSegments(pts: Pt[], tans?: Tangents): BezierSegment[] {
+  const m = splineTangents(pts, tans);
   const out: BezierSegment[] = [];
-  for (let i = 0; i < n - 1; i++) {
-    const p0 = pts[Math.max(i - 1, 0)];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[Math.min(i + 2, n - 1)];
+  for (let i = 0; i < pts.length - 1; i++) {
     out.push({
-      c1: { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 },
-      c2: { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 },
-      to: p2,
+      c1: { x: pts[i].x + m[i].x / 3, y: pts[i].y + m[i].y / 3 },
+      c2: { x: pts[i + 1].x - m[i + 1].x / 3, y: pts[i + 1].y - m[i + 1].y / 3 },
+      to: pts[i + 1],
     });
   }
   return out;
 }
 
-/** The on-curve point halfway along spline segment `seg` (where the "add a
- *  point" handle sits — inserting there leaves the curve's shape intact). */
-export function splineMidpoint(pts: Pt[], seg: number): Pt {
-  const s = splineSegments(pts)[seg];
-  const p1 = pts[seg];
-  // Cubic Bézier at t = 0.5: (P1 + 3·C1 + 3·C2 + P2) / 8.
+/** The point ON the spline at parameter `t` of segment `seg`. */
+export function splinePointAt(
+  pts: Pt[],
+  seg: number,
+  t: number,
+  tans?: Tangents,
+): Pt {
+  const s = splineSegments(pts, tans)[seg];
+  const p = pts[seg];
+  const u = 1 - t;
   return {
-    x: (p1.x + 3 * s.c1.x + 3 * s.c2.x + s.to.x) / 8,
-    y: (p1.y + 3 * s.c1.y + 3 * s.c2.y + s.to.y) / 8,
+    x:
+      u * u * u * p.x +
+      3 * u * u * t * s.c1.x +
+      3 * u * t * t * s.c2.x +
+      t * t * t * s.to.x,
+    y:
+      u * u * u * p.y +
+      3 * u * u * t * s.c1.y +
+      3 * u * t * t * s.c2.y +
+      t * t * t * s.to.y,
   };
+}
+
+/** The on-curve point halfway along spline segment `seg`. */
+export function splineMidpoint(pts: Pt[], seg: number, tans?: Tangents): Pt {
+  return splinePointAt(pts, seg, 0.5, tans);
+}
+
+/**
+ * The spline location nearest to `p` (sampled search, plenty for a click):
+ * segment index, parameter, the on-curve point and its distance. Null for
+ * fewer than 2 points.
+ */
+export function nearestOnSpline(
+  pts: Pt[],
+  p: Pt,
+  tans?: Tangents,
+): { seg: number; t: number; pt: Pt; dist: number } | null {
+  if (pts.length < 2) return null;
+  const STEPS = 24;
+  let best: { seg: number; t: number; pt: Pt; dist: number } | null = null;
+  for (let seg = 0; seg < pts.length - 1; seg++) {
+    for (let k = 0; k <= STEPS; k++) {
+      const t = k / STEPS;
+      const q = splinePointAt(pts, seg, t, tans);
+      const dist = Math.hypot(q.x - p.x, q.y - p.y);
+      if (!best || dist < best.dist) best = { seg, t, pt: q, dist };
+    }
+  }
+  return best;
 }
 
 export interface DragShape {

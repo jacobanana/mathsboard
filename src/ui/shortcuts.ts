@@ -27,9 +27,9 @@ import {
 } from "@/board/store";
 import type { DrawMode } from "@/board/store";
 import {
-  cancelFreePoly,
-  finishFreePoly,
-  freePolyActive,
+  cancelPlacement,
+  finishPlacement,
+  placementActive,
 } from "@/canvas/interactions/draw";
 import { useUiStore } from "@/ui/uiStore";
 import {
@@ -240,32 +240,32 @@ export const SHORTCUTS: ShortcutSpec[] = [
     run: (c) => c.host.save(),
   },
 
-  // The in-progress point-by-point polygon owns Enter/Escape while it's live
-  // (before the selection's own Escape entry below).
+  // The in-progress click-to-place shape (point polygon / curve) owns
+  // Enter/Escape while it's live (before the selection's own Escape below).
   {
-    id: "freepoly-finish",
+    id: "place-finish",
     group: "tools",
     keys: [["Enter"]],
-    label: "Close the point-by-point polygon",
+    label: "Finish the shape being placed (polygon / curve)",
     test: (c) =>
       bare(c) &&
       c.e.key === "Enter" &&
       c.st.tool === "pen" &&
-      c.st.drawMode === "freepoly" &&
-      freePolyActive(),
-    run: () => finishFreePoly(),
+      (c.st.drawMode === "freepoly" || c.st.drawMode === "curve") &&
+      placementActive(),
+    run: () => finishPlacement(),
   },
   {
-    id: "freepoly-cancel",
+    id: "place-cancel",
     group: "tools",
     keys: [["Esc"]],
-    label: "Abandon the point-by-point polygon",
+    label: "Abandon the shape being placed",
     test: (c) =>
       c.e.key === "Escape" &&
       c.st.tool === "pen" &&
-      c.st.drawMode === "freepoly" &&
-      freePolyActive(),
-    run: () => cancelFreePoly(),
+      (c.st.drawMode === "freepoly" || c.st.drawMode === "curve") &&
+      placementActive(),
+    run: () => cancelPlacement(),
   },
 
   // Selection & editing.
@@ -508,7 +508,7 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "mode-curve",
     group: "tools",
     keys: [["B"]],
-    label: "Curve (drag its points; press + handles to add more)",
+    label: "Curve (click to add points; double-click or Enter to finish)",
     test: (c) => bare(c) && c.key === "b",
     run: () => pickDrawMode("curve"),
   },

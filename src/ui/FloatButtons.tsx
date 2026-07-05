@@ -169,8 +169,10 @@ export function FloatButtons({
   const width = buttons.length * SLOT - 4; // last button carries no gap
   // Right edge of the bar sits at the old delete-button spot (tr.x + 28),
   // then the WHOLE bar clamps into the stage so nothing overlaps or hides.
+  // 48 up clears the selection frame + its handles (frame ~8px above the
+  // shape, handles a few px more) so the bar never sits on the shape itself.
   const left = clamp(tr.x + 28 - width, 2, Math.max(2, W - width - 2));
-  const top = clamp(tr.y - 34, 2, H - 36);
+  const top = clamp(tr.y - 48, 2, H - 36);
 
   return createPortal(
     <div id="floatbar" style={{ left, top }}>

@@ -3,15 +3,20 @@
 // freehand ink and the shape kinds (roadmap A2) — one dock button, modes in
 // the options pill / shortcut keys.
 //
-//   free     — delegates every event to the freehand brush controller
-//              (canvas/interactions/brush.ts), unchanged behaviour.
-//   freepoly — point-by-point polygon: each click drops a corner, clicking
-//              back on the first corner (or double-click / Enter) closes the
-//              shape into a `polygon` object; Escape abandons it.
-//   shapes   — drag-to-create: pointer down anchors the shape, dragging
-//              previews it live on the ink layer, release commits it as a
-//              `shape` canvas object. The DRAW TOOL STAYS ACTIVE so several
-//              shapes can be drawn in a row; switch to Select (1/V) to edit.
+//   free       — delegates every event to the freehand brush controller
+//                (canvas/interactions/brush.ts), unchanged behaviour.
+//   freepoly / — CLICK-TO-PLACE (CAD style): each click drops a point.
+//   curve        freepoly closes back onto its first corner into a polygon;
+//                curve is open — every click extends the spline. Double-click
+//                or Enter finishes either; Escape abandons.
+//   shapes     — drag-to-create: pointer down anchors the shape, dragging
+//                previews it live on the ink layer, release commits it as a
+//                `shape` canvas object.
+//
+// Every commit SELECTS the fresh shape but KEEPS the draw tool active: the
+// selection frame shows the shape is live/editable (drawSelectionOutlines is
+// shared with the select controller) while the next shape can be drawn
+// immediately. Switch to Select (1/V) to grab its handles.
 //
 // Modifiers while dragging:
 //   Shift — temporarily FLIPS grid snapping for the gesture (on->off, off->on).
@@ -24,12 +29,14 @@ import type { AnyBoardObject } from "@/board/types";
 import { snapPt } from "@/board/geometry";
 import { useBoardStore } from "@/board/store";
 import { penController } from "@/canvas/interactions/brush";
+import { drawSelectionOutlines } from "@/canvas/interactions/select";
 import {
   hasAngles,
   isClosed,
   magneticDirection,
   renormalize,
   shapeFromDrag,
+  splineSegments,
 } from "@/tools/shape/geometry";
 import type { Pt, ShapeKind } from "@/tools/shape/geometry";
 import { drawShapeGeometry, NO_FILL } from "@/tools/shape";
@@ -61,16 +68,21 @@ interface LiveShape {
 
 let live: LiveShape | null = null;
 
-/** The in-progress point-by-point polygon (freepoly mode). */
-interface LivePoly {
+/** The in-progress CLICK-TO-PLACE shape: the closed point-by-point polygon
+ *  (freepoly) or the open multi-point curve. */
+interface Placing {
+  kind: "freepoly" | "curve";
   pts: Pt[];
-  /** Last hover position (world), for the elastic edge preview. */
+  /** Last hover position (world), for the elastic segment preview. */
   cursor: Pt | null;
 }
 
-let poly: LivePoly | null = null;
-/** The pressed pointer of a would-be freepoly click (committed on release). */
-let polyPress: { pid: number } | null = null;
+let placing: Placing | null = null;
+/** The pressed pointer of a would-be placement click (committed on release). */
+let placePress: { pid: number } | null = null;
+
+const placementMode = (m: string): m is Placing["kind"] =>
+  m === "freepoly" || m === "curve";
 
 /**
  * Grid snapping for a gesture: the toggle on squared paper, EXCEPT while
@@ -101,16 +113,16 @@ function shapeStyleParams(c: InputCtx, kind: ShapeKind): Omit<ShapeParams, "kind
   };
 }
 
-/** Commit a finished shape object. The draw tool STAYS active (no select
- *  hand-over) so the next shape can be drawn immediately. */
+/** Commit a finished shape object: select it (its frame shows it's live) but
+ *  KEEP the draw tool active so the next shape can be drawn immediately. */
 function commitShape(
-  c: InputCtx,
   kind: ShapeKind,
   x: number,
   y: number,
   params: ShapeParams,
+  trackedAs: string = kind,
 ): void {
-  const st = c.store.getState();
+  const st = useBoardStore.getState();
   const obj: AnyBoardObject = {
     id: newId(),
     type: "shape",
@@ -121,7 +133,8 @@ function commitShape(
     ...params,
   };
   st.addObject(obj);
-  track("tool_action", { tool: "shape", action: "created", kind });
+  st.select(obj.id);
+  track("tool_action", { tool: "shape", action: "created", kind: trackedAs });
   trackBoardActivated(st.board.id);
 }
 
@@ -146,11 +159,11 @@ function liveShape(c: InputCtx): { params: ShapeParams; x: number; y: number } |
   };
 }
 
-// --- freepoly (point-by-point polygon) --------------------------------------
+// --- click-to-place (freepoly + curve) ---------------------------------------
 
-/** Is a point-by-point polygon currently being placed? (Shortcut gating.) */
-export function freePolyActive(): boolean {
-  return poly != null;
+/** Is a click-to-place shape currently being built? (Shortcut gating.) */
+export function placementActive(): boolean {
+  return placing != null;
 }
 
 /** Nudge the canvas to redraw after module-local state changed outside an
@@ -161,21 +174,25 @@ function pokeRender(): void {
   st.setSelection({ ...st.selection });
 }
 
-/** Abandon the in-progress polygon (Escape / tool cancel). */
-export function cancelFreePoly(): void {
-  if (!poly) return;
-  poly = null;
-  polyPress = null;
+/** Abandon the in-progress placement (Escape / tool cancel). */
+export function cancelPlacement(): void {
+  if (!placing) return;
+  placing = null;
+  placePress = null;
   pokeRender();
 }
 
-/** Close the in-progress polygon into a `polygon` shape object (needs ≥ 3
- *  corners; fewer is abandoned). Exposed for the Enter shortcut. */
-export function finishFreePoly(c?: InputCtx): void {
-  if (!poly) return;
-  const pts = [...poly.pts];
-  poly = null;
-  polyPress = null;
+/**
+ * Finish the in-progress placement: freepoly closes into a `polygon` (≥ 3
+ * corners), curve commits as an open spline (≥ 2 points); fewer points is
+ * abandoned. Exposed for the Enter shortcut and double-click.
+ */
+export function finishPlacement(c?: InputCtx): void {
+  if (!placing) return;
+  const { kind, pts: raw } = placing;
+  placing = null;
+  placePress = null;
+  const pts = [...raw];
   // A double-click lands as two near-identical clicks; drop the duplicate.
   while (
     pts.length > 1 &&
@@ -186,14 +203,16 @@ export function finishFreePoly(c?: InputCtx): void {
   ) {
     pts.pop();
   }
-  if (pts.length < 3) {
+  const min = kind === "freepoly" ? 3 : 2;
+  if (pts.length < min) {
     pokeRender();
     return;
   }
   const st = useBoardStore.getState();
   const n = renormalize(pts);
+  const shapeKind: ShapeKind = kind === "freepoly" ? "polygon" : "curve";
   const params: ShapeParams = {
-    kind: "polygon",
+    kind: shapeKind,
     nw: n.nw,
     nh: n.nh,
     pts: n.pts,
@@ -202,48 +221,39 @@ export function finishFreePoly(c?: InputCtx): void {
       Math.max(st.penSize, SHAPE_WIDTH_RANGE.min),
       SHAPE_WIDTH_RANGE.max,
     ),
-    fill: st.fillColor,
+    fill: shapeKind === "polygon" ? st.fillColor : NO_FILL,
     dash: false,
-    showAngles: true,
+    showAngles: shapeKind === "polygon",
     both: false,
   };
-  const obj: AnyBoardObject = {
-    id: newId(),
-    type: "shape",
-    x: n.ox,
-    y: n.oy,
-    w: n.nw,
-    h: n.nh,
-    ...params,
-  };
-  st.addObject(obj);
-  track("tool_action", { tool: "shape", action: "created", kind: "freepoly" });
-  trackBoardActivated(st.board.id);
+  commitShape(shapeKind, n.ox, n.oy, params, kind);
   if (c) c.render();
-  else pokeRender();
 }
 
-/** One freepoly click: start the polygon, close it (near the first corner),
- *  or append a corner. */
-function freePolyClick(e: PointerEvent, c: InputCtx): void {
+/** One placement click: start the shape, close it (freepoly, near the first
+ *  corner), or append a point. */
+function placeClick(e: PointerEvent, c: InputCtx): void {
   const st = c.store.getState();
+  const mode = st.drawMode;
+  if (!placementMode(mode)) return;
   const pp = c.evPos(e);
   const raw = c.toWorld(pp.x, pp.y);
   const w = snapping(c, e) ? snapPt(raw) : raw;
-  if (poly && poly.pts.length >= 3) {
+  if (placing && placing.kind !== mode) placing = null; // mode switched mid-build
+  if (placing && placing.kind === "freepoly" && placing.pts.length >= 3) {
     // Close on the first corner: within the screen radius of it, or (with
     // snapping on) landing on exactly its grid node.
     const d0 =
-      Math.hypot(raw.x - poly.pts[0].x, raw.y - poly.pts[0].y) *
+      Math.hypot(raw.x - placing.pts[0].x, raw.y - placing.pts[0].y) *
       st.camera.scale;
-    const sameNode = w.x === poly.pts[0].x && w.y === poly.pts[0].y;
+    const sameNode = w.x === placing.pts[0].x && w.y === placing.pts[0].y;
     if (d0 <= CLOSE_PX || sameNode) {
-      finishFreePoly(c);
+      finishPlacement(c);
       return;
     }
   }
-  if (!poly) poly = { pts: [w], cursor: w };
-  else poly.pts.push(w);
+  if (!placing) placing = { kind: mode, pts: [w], cursor: w };
+  else placing.pts.push(w);
   c.render();
 }
 
@@ -257,10 +267,10 @@ export const drawController: InteractionController = {
     if (mode === "free") {
       return penController.hoverCursor!(e, c);
     }
-    if (mode === "freepoly" && poly) {
-      // Track the hover so the elastic edge follows the cursor.
+    if (placementMode(mode) && placing) {
+      // Track the hover so the elastic segment follows the cursor.
       const pp = c.evPos(e);
-      poly.cursor = c.toWorld(pp.x, pp.y);
+      placing.cursor = c.toWorld(pp.x, pp.y);
       c.render();
     }
     return "crosshair";
@@ -269,15 +279,15 @@ export const drawController: InteractionController = {
   onPointerDown(e, c) {
     const st = c.store.getState();
     if (st.drawMode === "free") {
-      poly = null;
+      placing = null;
       penController.onPointerDown(e, c);
       return;
     }
-    if (st.drawMode === "freepoly") {
-      polyPress = { pid: e.pointerId };
+    if (placementMode(st.drawMode)) {
+      placePress = { pid: e.pointerId };
       return;
     }
-    poly = null;
+    placing = null;
     const pp = c.evPos(e);
     let a = c.toWorld(pp.x, pp.y);
     if (snapping(c, e)) a = snapPt(a);
@@ -293,10 +303,10 @@ export const drawController: InteractionController = {
 
   onPointerMove(e, c) {
     if (!live) {
-      if (c.store.getState().drawMode === "freepoly") {
-        if (poly && polyPress) {
+      if (placementMode(c.store.getState().drawMode)) {
+        if (placing && placePress) {
           const pp = c.evPos(e);
-          poly.cursor = c.toWorld(pp.x, pp.y);
+          placing.cursor = c.toWorld(pp.x, pp.y);
           c.render();
         }
         return;
@@ -324,9 +334,9 @@ export const drawController: InteractionController = {
 
   onPointerUp(e, c) {
     if (!live) {
-      if (polyPress && e.pointerId === polyPress.pid) {
-        polyPress = null;
-        if (e.type !== "pointercancel") freePolyClick(e, c);
+      if (placePress && e.pointerId === placePress.pid) {
+        placePress = null;
+        if (e.type !== "pointercancel") placeClick(e, c);
         return;
       }
       penController.onPointerUp(e, c);
@@ -343,12 +353,12 @@ export const drawController: InteractionController = {
       Math.hypot(drag.b.x - drag.a.x, drag.b.y - drag.a.y) * st.camera.scale;
     if (dragPx < MIN_DRAG_PX) return;
 
-    commitShape(c, drag.kind, built.x, built.y, built.params);
+    commitShape(drag.kind, built.x, built.y, built.params);
   },
 
   onDoubleClick(_e, c) {
-    // Double-click finishes the point-by-point polygon.
-    if (c.store.getState().drawMode === "freepoly") finishFreePoly(c);
+    // Double-click finishes the click-to-place shape (freepoly / curve).
+    if (placementMode(c.store.getState().drawMode)) finishPlacement(c);
   },
 
   cancel(c) {
@@ -356,9 +366,9 @@ export const drawController: InteractionController = {
       live = null;
       c.render();
     }
-    if (poly) {
-      poly = null;
-      polyPress = null;
+    if (placing) {
+      placing = null;
+      placePress = null;
       c.render();
     }
     penController.cancel!(c);
@@ -369,15 +379,25 @@ export const drawController: InteractionController = {
   },
 
   drawOverlay(kit, c) {
-    const mode = c.store.getState().drawMode;
+    const st = c.store.getState();
+    const mode = st.drawMode;
     if (mode === "free") {
       penController.drawOverlay!(kit, c);
       return;
     }
-    if (mode === "freepoly" && poly) {
-      const style = shapeStyleParams(c, "polygon");
+    // Freshly committed shapes stay selected while the draw tool is active:
+    // their frame marks them as editable (shared with the select controller).
+    drawSelectionOutlines(kit, st);
+
+    if (placementMode(mode) && placing) {
+      const style = shapeStyleParams(
+        c,
+        placing.kind === "freepoly" ? "polygon" : "curve",
+      );
       const ink = kit.ink;
-      const { pts, cursor } = poly;
+      const { pts, cursor } = placing;
+      const path =
+        cursor && placing.pts.length > 0 ? [...pts, cursor] : [...pts];
       ink.save();
       ink.globalAlpha = 0.9;
       ink.strokeStyle = style.stroke;
@@ -385,11 +405,18 @@ export const drawController: InteractionController = {
       ink.lineCap = "round";
       ink.lineJoin = "round";
       ink.beginPath();
-      ink.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) ink.lineTo(pts[i].x, pts[i].y);
-      if (cursor) ink.lineTo(cursor.x, cursor.y);
+      ink.moveTo(path[0].x, path[0].y);
+      if (placing.kind === "curve") {
+        // Live spline through the placed points and the cursor.
+        for (const s of splineSegments(path)) {
+          ink.bezierCurveTo(s.c1.x, s.c1.y, s.c2.x, s.c2.y, s.to.x, s.to.y);
+        }
+      } else {
+        for (let i = 1; i < path.length; i++) ink.lineTo(path[i].x, path[i].y);
+      }
       ink.stroke();
-      // Corner dots; the FIRST corner grows a ring once the shape can close.
+      // Placed-point dots; a freepoly's FIRST corner grows a ring once the
+      // shape can close.
       const r = 4 / kit.camera.scale;
       ink.fillStyle = style.stroke;
       for (const p of pts) {
@@ -397,7 +424,7 @@ export const drawController: InteractionController = {
         ink.arc(p.x, p.y, r, 0, Math.PI * 2);
         ink.fill();
       }
-      if (pts.length >= 3) {
+      if (placing.kind === "freepoly" && pts.length >= 3) {
         ink.strokeStyle = kit.theme.accent;
         ink.lineWidth = 2 / kit.camera.scale;
         ink.beginPath();

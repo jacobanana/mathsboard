@@ -19,6 +19,7 @@ import {
   snapVertexAngle,
   splineMidpoint,
   splineSegments,
+  splineTangents,
 } from "@/tools/shape/geometry";
 import shapeTool from "@/tools/shape";
 import type { ShapeObject, ShapeParams } from "@/tools/shape";
@@ -257,18 +258,22 @@ describe("the vertices capability", () => {
     );
   });
 
-  it("curves offer a midpoint handle per segment; polygons one per edge", () => {
-    const curve = shapeObj({
-      kind: "curve",
-      pts: [
-        { x: 0, y: 0 },
-        { x: 50, y: 50 },
-        { x: 100, y: 0 },
-      ],
-    });
-    expect(cap.midpoints!(curve as never)).toHaveLength(2);
+  it("edge midpoint handles: polygons/triangles only (curves add via the line)", () => {
     // Triangle: three edges including the closing one.
     expect(cap.midpoints!(shapeObj() as never)).toHaveLength(3);
+    // Curves have no midpoint handles — insertOnPath covers them.
+    expect(
+      cap.midpoints!(
+        shapeObj({
+          kind: "curve",
+          pts: [
+            { x: 0, y: 0 },
+            { x: 50, y: 50 },
+            { x: 100, y: 0 },
+          ],
+        }) as never,
+      ),
+    ).toHaveLength(0);
     // Lines don't take extra points.
     expect(
       cap.midpoints!(
@@ -281,6 +286,78 @@ describe("the vertices capability", () => {
         }) as never,
       ),
     ).toHaveLength(0);
+  });
+
+  it("insertOnPath drops a point on the clicked spot of the curve", () => {
+    const curve = shapeObj({
+      kind: "curve",
+      pts: [
+        { x: 0, y: 0 },
+        { x: 100, y: 100 },
+      ],
+      nw: 100,
+      nh: 100,
+    });
+    // Click ON the (straight) spline halfway along, generous tolerance.
+    const ins = cap.insertOnPath!(curve as never, 50, 52, 12)!;
+    expect(ins).not.toBeNull();
+    expect(ins.index).toBe(1);
+    expect(ins.patch.pts).toHaveLength(3);
+    // Click far away from the line: nothing.
+    expect(cap.insertOnPath!(curve as never, 90, 10, 12)).toBeNull();
+  });
+
+  it("a focused curve point exposes Bézier arms; dragging one bends the curve", () => {
+    const curve = shapeObj({
+      kind: "curve",
+      pts: [
+        { x: 0, y: 50 },
+        { x: 50, y: 50 },
+        { x: 100, y: 50 },
+      ],
+      nw: 100,
+      nh: 100,
+    });
+    // Middle point: two mirrored arms along the auto tangent (horizontal).
+    const arms = cap.arms!(curve as never, 1);
+    expect(arms).toHaveLength(2);
+    expect(arms[0].side + arms[1].side).toBe(0);
+    expect(arms[0].y).toBeCloseTo(50, 5);
+    // Endpoints get a single arm, pointing into the curve.
+    expect(cap.arms!(curve as never, 0)).toHaveLength(1);
+    expect(cap.arms!(curve as never, 2)).toHaveLength(1);
+    // Drag the middle point's forward arm upward -> a tangent override.
+    const patch = cap.moveArm!(curve as never, 1, 1, 66, 40) as {
+      tans: ({ x: number; y: number } | null)[];
+    };
+    expect(patch.tans).toHaveLength(3);
+    expect(patch.tans[0]).toBeNull();
+    expect(patch.tans[1]!.y).toBeLessThan(0); // tangent now points up
+    // The rendered arms follow the override.
+    const bent = { ...curve, tans: patch.tans };
+    const after = cap.arms!(bent as never, 1);
+    expect(after.find((a) => a.side === 1)!.y).toBeLessThan(50);
+  });
+
+  it("removing a curve point keeps the other points' tangent overrides", () => {
+    const curve = shapeObj({
+      kind: "curve",
+      pts: [
+        { x: 0, y: 0 },
+        { x: 50, y: 50 },
+        { x: 100, y: 0 },
+      ],
+      nw: 100,
+      nh: 50,
+      tans: [null, { x: 30, y: 0 }, null],
+    });
+    const patch = cap.remove!(curve as never, 0)! as {
+      pts: unknown[];
+      tans: ({ x: number; y: number } | null)[];
+    };
+    expect(patch.pts).toHaveLength(2);
+    expect(patch.tans).toHaveLength(2);
+    expect(patch.tans[0]).toEqual({ x: 30, y: 0 }); // followed its point
   });
 
   it("insert adds a vertex on the pressed segment and reports its index", () => {
@@ -392,6 +469,23 @@ describe("splines (multi-point curves)", () => {
     expect(segs).toHaveLength(2);
     expect(segs[0].to).toEqual(pts[1]);
     expect(segs[1].to).toEqual(pts[2]);
+  });
+
+  it("a tangent override replaces the automatic Catmull-Rom tangent", () => {
+    const pts = [
+      { x: 0, y: 0 },
+      { x: 50, y: 0 },
+      { x: 100, y: 0 },
+    ];
+    const auto = splineTangents(pts);
+    expect(auto[1]).toEqual({ x: 50, y: 0 });
+    const over = splineTangents(pts, [null, { x: 0, y: 60 }, null]);
+    expect(over[1]).toEqual({ x: 0, y: 60 });
+    expect(over[0]).toEqual(auto[0]); // untouched points stay automatic
+    // The override reshapes the adjacent segments' control points.
+    const segs = splineSegments(pts, [null, { x: 0, y: 60 }, null]);
+    expect(segs[0].c2.y).toBeCloseTo(-20, 5); // P1 - m1/3
+    expect(segs[1].c1.y).toBeCloseTo(20, 5); // P1 + m1/3
   });
 
   it("splineMidpoint of a straight 2-point curve is the chord midpoint", () => {
