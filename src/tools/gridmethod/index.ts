@@ -7,7 +7,7 @@
 // Ported from maths-whiteboard.html: objSize case 'gridmethod' (line 205),
 // drawGridMethod (line 241), gridMethodDialog (lines 414-421).
 
-import { defineCanvasTool } from "@/tools/registry";
+import { defineCanvasTool, type InputFieldSpec } from "@/tools/registry";
 import { partition, fillPanel } from "@/canvas/drawHelpers";
 import { GridMethodDialog } from "@/tools/gridmethod/Dialog";
 
@@ -76,7 +76,8 @@ export const gridMethodTool = defineCanvasTool<GridMethodParams>({
         if (r === 0 && c === 0) t = "×";
         else if (r === 0) t = String(A[c - 1]);
         else if (c === 0) t = String(B[r - 1]);
-        else if (o.revealed) t = String(A[c - 1] * B[r - 1]);
+        // Inner product cells are type-in inputs (see `inputs`); the overlay
+        // shows the value, so draw() paints only the header row + column.
         if (t) {
           ctx.fillStyle = theme.lineInk;
           ctx.fillText(t, cx + cw / 2, cy + ch / 2 + 1);
@@ -86,6 +87,31 @@ export const gridMethodTool = defineCanvasTool<GridMethodParams>({
     ctx.lineWidth = 2;
     ctx.strokeRect(o.x, gy, (cols + 1) * cw, (rows + 1) * ch);
     ctx.restore();
+  },
+
+  // Type-in answer boxes for the inner product cells (headers stay on canvas).
+  // Cell variant: the grid already draws the cell borders, so the inputs fill
+  // them frameless. Grid geometry matches draw(): cw 72, ch 54, offset by HEAD.
+  inputs: {
+    fields: (o) => {
+      const A = partition(o.a),
+        B = partition(o.b),
+        cw = 72,
+        ch = 54;
+      const out: InputFieldSpec[] = [];
+      for (let j = 0; j < B.length; j++)
+        for (let i = 0; i < A.length; i++)
+          out.push({
+            key: "r" + j + "c" + i,
+            x: (i + 1) * cw, // column 0 is the B-header column
+            y: HEAD + (j + 1) * ch, // row 0 is the A-header row
+            w: cw,
+            h: ch,
+            correct: A[i] * B[j],
+            variant: "cell",
+          });
+      return out;
+    },
   },
 
   Dialog: GridMethodDialog,

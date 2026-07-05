@@ -5,7 +5,7 @@
 //   - drawArealattice + drawLattice (lines 249-250)
 //   - areaLatticeDialog            (lines 450-458)
 
-import { defineCanvasTool } from "@/tools/registry";
+import { defineCanvasTool, type InputFieldSpec } from "@/tools/registry";
 import { partition, fillPanel } from "@/canvas/drawHelpers";
 import { AreaLatticeDialog } from "@/tools/arealattice/Dialog";
 
@@ -130,14 +130,8 @@ export default defineCanvasTool<AreaLatticeParams>({
           colX[c + 1] - colX[c],
           rowY[r + 1] - rowY[r],
         );
-        if (o.revealed) {
-          ctx.fillStyle = theme.lineInk;
-          ctx.fillText(
-            String(A[c] * B[r]),
-            (colX[c] + colX[c + 1]) / 2,
-            (rowY[r] + rowY[r + 1]) / 2,
-          );
-        }
+        // Product cells are type-in inputs (see `inputs`); the overlay shows
+        // the value, so draw() paints only the grid + the ×A / B headers.
       }
     ctx.strokeStyle = theme.lineInk;
     ctx.lineWidth = 2;
@@ -164,6 +158,51 @@ export default defineCanvasTool<AreaLatticeParams>({
       o.y + HEAD / 2,
     );
     ctx.restore();
+  },
+
+  // Type-in answer boxes for the AREA model's product cells (frameless "cell"
+  // variant — the model already draws the cell borders). Geometry mirrors the
+  // area draw at natural size (430 × (210+HEAD)); the lattice model's split
+  // tens/ones cells aren't type-in yet, so it gets none.
+  inputs: {
+    fields: (o) => {
+      if (o.mode !== "area") return [];
+      const A = partition(o.a),
+        B = partition(o.b);
+      const leftW = 44,
+        topH = 26;
+      const rectX = leftW,
+        rectY = HEAD + topH,
+        rectW = 430 - leftW,
+        rectH = 210 - topH;
+      const tA = A.reduce((s, v) => s + v, 0),
+        tB = B.reduce((s, v) => s + v, 0);
+      const colX = [rectX];
+      let cx = rectX;
+      A.forEach((v) => {
+        cx += (v / tA) * rectW;
+        colX.push(cx);
+      });
+      const rowY = [rectY];
+      let cy = rectY;
+      B.forEach((v) => {
+        cy += (v / tB) * rectH;
+        rowY.push(cy);
+      });
+      const out: InputFieldSpec[] = [];
+      for (let r = 0; r < B.length; r++)
+        for (let c = 0; c < A.length; c++)
+          out.push({
+            key: "r" + r + "c" + c,
+            x: colX[c],
+            y: rowY[r],
+            w: colX[c + 1] - colX[c],
+            h: rowY[r + 1] - rowY[r],
+            correct: A[c] * B[r],
+            variant: "cell",
+          });
+      return out;
+    },
   },
 
   Dialog: AreaLatticeDialog,
