@@ -57,11 +57,28 @@ export interface Selection {
 const EMPTY_SELECTION: Selection = { objectIds: [], strokeIds: [] };
 
 /**
- * The draw tool's active mode: freehand ink or one of the shape kinds
- * (roadmap A2). One dock button, toggled in the options pill / by shortcut —
- * the pen tool "became the drawing tool".
+ * The draw tool's active mode: freehand ink, one of the shape kinds (roadmap
+ * A2), or "freepoly" — the point-by-point polygon (click to add corners,
+ * close back onto the first one; the committed object is a `polygon` shape).
+ * One dock button, toggled in the options pill / by shortcut — the pen tool
+ * "became the drawing tool".
  */
-export type DrawMode = "free" | ShapeKind;
+export type DrawMode = "free" | "freepoly" | ShapeKind;
+
+/** Every draw mode in its UI order — the options pill's row and the cycle
+ *  the draw shortcut (3 / D) steps through when pressed again. */
+export const DRAW_MODE_ORDER: DrawMode[] = [
+  "free",
+  "line",
+  "arrow",
+  "rect",
+  "ellipse",
+  "triangle",
+  "polygon",
+  "freepoly",
+  "curve",
+  "angle",
+];
 
 /**
  * How a shared board was joined, for the `board_joined` analytics event:
@@ -106,6 +123,9 @@ interface BoardState {
   fillColor: string;
   /** Side count for new regular polygons (3-12). */
   polygonSides: number;
+  /** Lock the drag box square while drawing rect/ellipse — the SQUARE and
+   *  CIRCLE modes (touch devices have no Shift key to hold). */
+  aspectLock: boolean;
   /** Grid snapping (roadmap A3): honoured only on squared paper; Alt bypasses. */
   snap: boolean;
   /** Object + stroke ids currently selected (multi-select). */
@@ -214,6 +234,7 @@ interface BoardState {
   setDrawMode(m: DrawMode): void;
   setFillColor(c: string): void;
   setPolygonSides(n: number): void;
+  setAspectLock(on: boolean): void;
   setSnap(on: boolean): void;
   setCamera(patch: Partial<Camera>): void;
   /** Select exactly one object (or clear the selection when id is null). */
@@ -416,6 +437,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
     drawMode: "free",
     fillColor: "none",
     polygonSides: 5,
+    aspectLock: false,
     snap: true,
     selection: EMPTY_SELECTION,
     editingId: null,
@@ -588,6 +610,9 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
     setPolygonSides(n) {
       set({ polygonSides: n });
+    },
+    setAspectLock(on) {
+      set({ aspectLock: on });
     },
     setSnap(on) {
       set({ snap: on });

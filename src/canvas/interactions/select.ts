@@ -43,6 +43,7 @@ import {
 } from "@/board/resize";
 import { getTool } from "@/tools/registry";
 import type { VertexCapability } from "@/tools/registry";
+import { niceAngleTarget } from "@/tools/shape/geometry";
 import type { AnyBoardObject } from "@/board/types";
 import type {
   InputCtx,
@@ -96,6 +97,21 @@ interface VertexDrag {
   moved: boolean;
 }
 
+/** A drag on the ROTATE handle of the single selected rotatable object. All
+ *  patches are derived from the object as it was at drag START (`base`), so
+ *  the accumulated turn never drifts. */
+interface Rotating {
+  pid: number;
+  id: string;
+  /** Box centre at drag start (world). */
+  cx: number;
+  cy: number;
+  /** Pointer angle at drag start (radians). */
+  startAng: number;
+  base: AnyBoardObject;
+  moved: boolean;
+}
+
 /** A rubber-band area ("lasso") selection drag, in world coords. */
 interface Lasso {
   pid: number;
@@ -110,13 +126,21 @@ interface Lasso {
 let moving: Moving | null = null;
 let resizing: Resizing | null = null;
 let vertexDrag: VertexDrag | null = null;
+let rotating: Rotating | null = null;
 let lasso: Lasso | null = null;
 
 type BoardState = ReturnType<InputCtx["store"]["getState"]>;
 
-/** Grid snapping applies on squared paper with the toggle on; Alt bypasses. */
-const snapping = (st: BoardState, e: { altKey: boolean }): boolean =>
-  st.snap && st.board.background === "squared" && !e.altKey;
+/** Grid snapping applies on squared paper with the toggle on; holding Shift
+ *  temporarily FLIPS the toggle for the gesture; Alt bypasses outright. */
+const snapping = (
+  st: BoardState,
+  e: { altKey: boolean; shiftKey: boolean },
+): boolean =>
+  st.snap !== e.shiftKey && st.board.background === "squared" && !e.altKey;
+
+/** How far (screen px) the rotate handle floats above the selection box. */
+const ROTATE_OFFSET = 26;
 
 /**
  * The single selected object whose tool exposes vertex handles, with the
@@ -148,6 +172,56 @@ function hitVertexHandle(
     }
   }
   return -1;
+}
+
+/** Index of the "add a point" midpoint handle within slop, or -1. */
+function hitMidpointHandle(
+  st: BoardState,
+  obj: AnyBoardObject,
+  cap: VertexCapability<never>,
+  sx: number,
+  sy: number,
+): number {
+  const pts = cap.midpoints?.(obj as never) ?? [];
+  for (let i = 0; i < pts.length; i++) {
+    const s = worldToScreen(st.camera, pts[i].x, pts[i].y);
+    if (Math.abs(s.x - sx) <= HANDLE_SLOP && Math.abs(s.y - sy) <= HANDLE_SLOP) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/** The single selected canvas object whose tool supports rotation. */
+function singleRotatableObject(st: BoardState): AnyBoardObject | null {
+  const o = singleResizableObject(st.board.objects, st.selection);
+  if (!o) return null;
+  const t = getTool(o.type);
+  return t && t.kind === "canvas" && t.rotate ? o : null;
+}
+
+/** World position of the rotate handle: floats below the box's bottom centre
+ *  at a constant screen offset (the top edge belongs to the float buttons). */
+function rotateHandlePos(
+  st: BoardState,
+  o: AnyBoardObject,
+): { x: number; y: number } {
+  const pad = 8 / st.camera.scale;
+  return {
+    x: o.x + o.w / 2,
+    y: o.y + o.h + pad + ROTATE_OFFSET / st.camera.scale,
+  };
+}
+
+function hitRotateHandle(
+  st: BoardState,
+  o: AnyBoardObject,
+  sx: number,
+  sy: number,
+): boolean {
+  const p = rotateHandlePos(st, o);
+  const s = worldToScreen(st.camera, p.x, p.y);
+  return Math.abs(s.x - sx) <= HANDLE_SLOP && Math.abs(s.y - sy) <= HANDLE_SLOP;
 }
 
 /** Box resize handles apply unless the tool's vertices replace them. */
@@ -204,6 +278,13 @@ export const selectController: InteractionController = {
     if (vt && hitVertexHandle(st, vt.obj, vt.cap, pp.x, pp.y) >= 0) {
       return "move";
     }
+    if (vt && hitMidpointHandle(st, vt.obj, vt.cap, pp.x, pp.y) >= 0) {
+      return "copy";
+    }
+    const rot = singleRotatableObject(st);
+    if (rot && hitRotateHandle(st, rot, pp.x, pp.y)) {
+      return "grab";
+    }
     const rz = boxResizable(st);
     const h = rz
       ? hitTestHandle(
@@ -233,6 +314,42 @@ export const selectController: InteractionController = {
         vertexDrag = { pid: e.pointerId, id: vt.obj.id, index: idx, moved: false };
         return;
       }
+      // A press on a midpoint "+" handle INSERTS a vertex there and drags it
+      // straight away (one undoable step for insert + drag together).
+      const mid = hitMidpointHandle(st, vt.obj, vt.cap, pp.x, pp.y);
+      if (mid >= 0 && vt.cap.insert) {
+        const at = vt.cap.midpoints!(vt.obj as never)[mid];
+        const ins = vt.cap.insert(vt.obj as never, mid, at.x, at.y);
+        if (ins) {
+          st.pushHistory();
+          st.dragObject(vt.obj.id, ins.patch);
+          vertexDrag = {
+            pid: e.pointerId,
+            id: vt.obj.id,
+            index: ins.index,
+            moved: true, // history already marked above
+          };
+          return;
+        }
+      }
+    }
+
+    // A press on the rotate handle starts a rotation drag.
+    const rotObj = singleRotatableObject(st);
+    if (rotObj && hitRotateHandle(st, rotObj, pp.x, pp.y)) {
+      rotating = {
+        pid: e.pointerId,
+        id: rotObj.id,
+        cx: rotObj.x + rotObj.w / 2,
+        cy: rotObj.y + rotObj.h / 2,
+        startAng: Math.atan2(
+          w.y - (rotObj.y + rotObj.h / 2),
+          w.x - (rotObj.x + rotObj.w / 2),
+        ),
+        base: structuredClone(rotObj),
+        moved: false,
+      };
+      return;
     }
 
     // A press on a resize handle of the single selected canvas object starts
@@ -348,6 +465,23 @@ export const selectController: InteractionController = {
           angleSnap: !e.altKey,
         }),
       );
+    } else if (rotating && e.pointerId === rotating.pid) {
+      const pp = c.evPos(e);
+      const w = c.toWorld(pp.x, pp.y);
+      const obj = st.board.objects.find((o) => o.id === rotating!.id);
+      const t = obj && getTool(obj.type);
+      if (!obj || !t || t.kind !== "canvas" || !t.rotate) return;
+      const ang = Math.atan2(w.y - rotating.cy, w.x - rotating.cx);
+      let delta = ((ang - rotating.startAng) * 180) / Math.PI;
+      delta = ((delta % 360) + 360) % 360;
+      // Magnetic 15° multiples (stronger on 90°), else whole degrees; Alt
+      // keeps it free (still whole degrees — fractional turn reads as noise).
+      delta = (!e.altKey && niceAngleTarget(delta)) || Math.round(delta);
+      if (!rotating.moved) {
+        st.pushHistory(); // one undo step per rotation drag
+        rotating.moved = true;
+      }
+      st.dragObject(obj.id, t.rotate(rotating.base as never, delta));
     } else if (resizing && e.pointerId === resizing.pid) {
       const pp = c.evPos(e);
       const w = c.toWorld(pp.x, pp.y);
@@ -416,6 +550,9 @@ export const selectController: InteractionController = {
     if (vertexDrag && e.pointerId === vertexDrag.pid) {
       vertexDrag = null;
     }
+    if (rotating && e.pointerId === rotating.pid) {
+      rotating = null;
+    }
     if (resizing && e.pointerId === resizing.pid) {
       // History already pushed on the first move; just end the drag.
       resizing = null;
@@ -467,13 +604,29 @@ export const selectController: InteractionController = {
     moving = null;
     resizing = null;
     vertexDrag = null;
+    rotating = null;
     if (lasso) {
       lasso = null;
       c.render();
     }
   },
 
-  onDoubleClick: editObjectAt,
+  onDoubleClick(e, c) {
+    // Double-click on a vertex handle REMOVES that point (curves, polygons);
+    // anywhere else it is the usual edit-in-place / settings-dialog route.
+    const st = c.store.getState();
+    const pp = c.evPos(e);
+    const vt = singleVertexObject(st);
+    if (vt && vt.cap.remove) {
+      const idx = hitVertexHandle(st, vt.obj, vt.cap, pp.x, pp.y);
+      if (idx >= 0) {
+        const patch = vt.cap.remove(vt.obj as never, idx);
+        if (patch) st.updateObject(vt.obj.id, patch);
+        return;
+      }
+    }
+    editObjectAt(e, c);
+  },
 
   // Selection outlines + resize handles + vertex handles + live lasso, on the
   // template layer (under the committed ink), exactly as renderBack drew them.
@@ -550,6 +703,50 @@ export const selectController: InteractionController = {
         tctx.fill();
         tctx.stroke();
       }
+      // "Add a point" handles: smaller, hollow, with a + mark — pressing one
+      // inserts a vertex there (curves, polygons).
+      const mids = vt.cap.midpoints?.(vt.obj as never) ?? [];
+      if (mids.length > 0) {
+        const mr = 5 / camera.scale;
+        tctx.fillStyle = theme.paper;
+        tctx.strokeStyle = theme.accent;
+        tctx.lineWidth = 1.5 / camera.scale;
+        for (const p of mids) {
+          tctx.beginPath();
+          tctx.arc(p.x, p.y, mr, 0, Math.PI * 2);
+          tctx.fill();
+          tctx.stroke();
+          tctx.beginPath();
+          tctx.moveTo(p.x - mr * 0.5, p.y);
+          tctx.lineTo(p.x + mr * 0.5, p.y);
+          tctx.moveTo(p.x, p.y - mr * 0.5);
+          tctx.lineTo(p.x, p.y + mr * 0.5);
+          tctx.stroke();
+        }
+      }
+      tctx.restore();
+    }
+
+    // Rotate handle: a lollipop below the selection's bottom centre. Round
+    // like the vertex handles but hollow, joined to the box by a short stem.
+    const rot = singleRotatableObject(st);
+    if (rot) {
+      const p = rotateHandlePos(st, rot);
+      const r = 6 / camera.scale;
+      tctx.save();
+      tctx.strokeStyle = theme.accent;
+      tctx.lineWidth = 1.5 / camera.scale;
+      tctx.setLineDash([]);
+      tctx.beginPath();
+      tctx.moveTo(rot.x + rot.w / 2, rot.y + rot.h + pad);
+      tctx.lineTo(p.x, p.y - r);
+      tctx.stroke();
+      tctx.fillStyle = theme.paper;
+      tctx.lineWidth = 2 / camera.scale;
+      tctx.beginPath();
+      tctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      tctx.fill();
+      tctx.stroke();
       tctx.restore();
     }
 

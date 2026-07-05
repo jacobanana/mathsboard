@@ -201,7 +201,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
           <button
             className={"btn small" + (isMode("pen") ? " active" : "")}
             id="drawBtn"
-            title={`Draw (${keyHint("tool-draw")})`}
+            title={`Draw (${keyHint("tool-draw")} — press again to cycle the modes)`}
             aria-label="Draw"
             onClick={() => setTool("pen")}
           >

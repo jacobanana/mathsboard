@@ -162,6 +162,7 @@ describe("shapes, arrange & grouping", () => {
       ["o", "ellipse"],
       ["y", "triangle"],
       ["n", "polygon"],
+      ["q", "freepoly"],
       ["b", "curve"],
       ["g", "angle"],
       ["f", "free"],
@@ -172,6 +173,21 @@ describe("shapes, arrange & grouping", () => {
       expect(st().tool, `key ${key}`).toBe("pen");
       expect(st().drawMode, `key ${key}`).toBe(mode);
     }
+  });
+
+  it("the draw key activates the tool first, then cycles the modes", () => {
+    st().setTool("select");
+    st().setDrawMode("free");
+    expect(fire(keydown("3"))).toBe(true);
+    expect(st().tool).toBe("pen");
+    expect(st().drawMode).toBe("free"); // first press: no cycle
+    expect(fire(keydown("3"))).toBe(true);
+    expect(st().drawMode).toBe("line"); // second press: next mode
+    expect(fire(keydown("d"))).toBe(true);
+    expect(st().drawMode).toBe("arrow"); // D shares the cycle
+    // ... and the cycle wraps around the full mode list.
+    for (let i = 0; i < 8; i++) fire(keydown("3"));
+    expect(st().drawMode).toBe("free");
   });
 
   it("V and H are the industry-standard select / pan alternates", () => {

@@ -53,13 +53,16 @@ import type { ShapeKind } from "@/tools/shape/geometry";
 import {
   AngleIcon,
   ArrowIcon,
+  CircleIcon,
   CurveIcon,
   EllipseIcon,
+  FreePolyIcon,
   LineIcon,
   PolygonIcon,
   RectIcon,
   ScribbleIcon,
   SnapIcon,
+  SquareIcon,
   TriangleIcon,
 } from "@/ui/icons";
 
@@ -77,6 +80,12 @@ const DRAW_MODES: {
   { mode: "ellipse", label: "Ellipse", hintId: "mode-ellipse", Icon: EllipseIcon },
   { mode: "triangle", label: "Triangle", hintId: "mode-triangle", Icon: TriangleIcon },
   { mode: "polygon", label: "Polygon", hintId: "mode-polygon", Icon: PolygonIcon },
+  {
+    mode: "freepoly",
+    label: "Point-by-point polygon",
+    hintId: "mode-freepoly",
+    Icon: FreePolyIcon,
+  },
   { mode: "curve", label: "Curve", hintId: "mode-curve", Icon: CurveIcon },
   { mode: "angle", label: "Angle", hintId: "mode-angle", Icon: AngleIcon },
 ];
@@ -178,6 +187,8 @@ export function OptionsStrip(): JSX.Element | null {
   const eraserSize = useBoardStore((s) => s.eraserSize);
   const fillColor = useBoardStore((s) => s.fillColor);
   const polygonSides = useBoardStore((s) => s.polygonSides);
+  const aspectLock = useBoardStore((s) => s.aspectLock);
+  const setAspectLock = useBoardStore((s) => s.setAspectLock);
   const color = useBoardStore((s) => s.color);
   const setColor = useBoardStore((s) => s.setColor);
   const setPenSize = useBoardStore((s) => s.setPenSize);
@@ -350,6 +361,29 @@ export function OptionsStrip(): JSX.Element | null {
         </>
       )}
 
+      {tool === "pen" && (drawMode === "rect" || drawMode === "ellipse") && (
+        <>
+          {/* SQUARE / CIRCLE mode: lock the drag box square. A toggle (not a
+              held key) so it works on touch; Shift still flips grid snapping. */}
+          <button
+            className={"btn small" + (aspectLock ? " active" : "")}
+            id="aspectBtn"
+            title={
+              drawMode === "rect"
+                ? "Square — keep both sides equal"
+                : "Circle — keep both radii equal"
+            }
+            aria-pressed={aspectLock}
+            onClick={() => setAspectLock(!aspectLock)}
+          >
+            <span className="ico">
+              {drawMode === "rect" ? <SquareIcon /> : <CircleIcon />}
+            </span>
+          </button>
+          <span className="opt-sep" />
+        </>
+      )}
+
       {tool === "pen" && drawMode === "polygon" && (
         <>
           <div className="sides-stepper" title="Number of sides">
@@ -437,7 +471,8 @@ export function OptionsStrip(): JSX.Element | null {
         />
       )}
 
-      {shapeMode && isClosed(drawMode as ShapeKind) && (
+      {shapeMode &&
+        (drawMode === "freepoly" || isClosed(drawMode as ShapeKind)) && (
         <SwatchPicker
           id="fillBtn"
           title="Background colour"

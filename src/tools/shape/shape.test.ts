@@ -9,12 +9,16 @@ import {
   apexFromBaseAngles,
   armForAngle,
   interiorAngles,
+  magneticDirection,
   niceAngleTarget,
   regularPolygonPts,
   renormalize,
+  rotateAround,
   shapeFromDrag,
   snapDirection,
   snapVertexAngle,
+  splineMidpoint,
+  splineSegments,
 } from "@/tools/shape/geometry";
 import shapeTool from "@/tools/shape";
 import type { ShapeObject, ShapeParams } from "@/tools/shape";
@@ -253,20 +257,160 @@ describe("the vertices capability", () => {
     );
   });
 
-  it("curves expose their control arms as guides", () => {
-    const o = shapeObj({
+  it("curves offer a midpoint handle per segment; polygons one per edge", () => {
+    const curve = shapeObj({
       kind: "curve",
       pts: [
         { x: 0, y: 0 },
-        { x: 30, y: -20 },
-        { x: 70, y: -20 },
+        { x: 50, y: 50 },
         { x: 100, y: 0 },
       ],
     });
-    const guides = cap.guides!(o as never);
-    expect(guides).toHaveLength(2);
-    expect(guides[0][0]).toEqual({ x: 0, y: 0 });
-    expect(guides[0][1]).toEqual({ x: 30, y: -20 });
+    expect(cap.midpoints!(curve as never)).toHaveLength(2);
+    // Triangle: three edges including the closing one.
+    expect(cap.midpoints!(shapeObj() as never)).toHaveLength(3);
+    // Lines don't take extra points.
+    expect(
+      cap.midpoints!(
+        shapeObj({
+          kind: "line",
+          pts: [
+            { x: 0, y: 0 },
+            { x: 100, y: 100 },
+          ],
+        }) as never,
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("insert adds a vertex on the pressed segment and reports its index", () => {
+    const curve = shapeObj({
+      kind: "curve",
+      pts: [
+        { x: 0, y: 0 },
+        { x: 100, y: 100 },
+      ],
+      nw: 100,
+      nh: 100,
+    });
+    const ins = cap.insert!(curve as never, 0, 50, 80)!;
+    expect(ins.index).toBe(1);
+    const pts = ins.patch.pts as { x: number; y: number }[];
+    expect(pts).toHaveLength(3);
+  });
+
+  it("inserting a corner into a triangle turns it into a polygon", () => {
+    const ins = cap.insert!(shapeObj() as never, 0, 75, 50)!;
+    expect(ins.patch.kind).toBe("polygon");
+    expect(ins.patch.pts).toHaveLength(4);
+  });
+
+  it("remove drops a vertex but never below the kind's minimum", () => {
+    const curve = shapeObj({
+      kind: "curve",
+      pts: [
+        { x: 0, y: 0 },
+        { x: 50, y: 50 },
+        { x: 100, y: 0 },
+      ],
+    });
+    const patch = cap.remove!(curve as never, 1)!;
+    expect(patch.pts).toHaveLength(2);
+    // A 2-point curve and a 3-corner polygon are already minimal.
+    const minimal = shapeObj({
+      kind: "curve",
+      pts: [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+      ],
+    });
+    expect(cap.remove!(minimal as never, 0)).toBeNull();
+    expect(cap.remove!(shapeObj() as never, 0)).toBeNull(); // triangle
+  });
+});
+
+describe("rotation", () => {
+  const rotate = shapeTool.rotate!;
+
+  it("turns a triangle's points about the box centre (angles preserved)", () => {
+    const o = shapeObj();
+    const before = interiorAngles(o.pts);
+    const patch = rotate(o as never, 30) as Partial<ShapeObject>;
+    const after = interiorAngles(patch.pts as ShapeParams["pts"]);
+    // Same angles at the same corners — rotation is rigid.
+    after.forEach((a, i) => expect(a).toBeCloseTo(before[i], 4));
+    // Every world point is EXACTLY its original rotated 30° about (50, 50).
+    const world = (patch.pts as ShapeParams["pts"]).map((p) => ({
+      x: p.x + (patch.x as number),
+      y: p.y + (patch.y as number),
+    }));
+    o.pts.forEach((p, i) => {
+      const expected = rotateAround(p, { x: 50, y: 50 }, 30);
+      expect(world[i].x).toBeCloseTo(expected.x, 4);
+      expect(world[i].y).toBeCloseTo(expected.y, 4);
+    });
+  });
+
+  it("a rotated rectangle becomes the 4-gon it visually is", () => {
+    const o = shapeObj({ kind: "rect", pts: [], nw: 100, nh: 50, w: 100, h: 50 });
+    const patch = rotate(o as never, 45) as Partial<ShapeObject>;
+    expect(patch.kind).toBe("polygon");
+    const pts = patch.pts as ShapeParams["pts"];
+    expect(pts).toHaveLength(4);
+    // Still a rectangle: all four interior angles stay right angles.
+    for (const a of interiorAngles(pts)) expect(a).toBeCloseTo(90, 4);
+  });
+
+  it("an ellipse keeps its radii and re-derives its box as the rotated AABB", () => {
+    const o = shapeObj({ kind: "ellipse", pts: [], nw: 100, nh: 50, w: 100, h: 50 });
+    const patch = rotate(o as never, 90) as Partial<ShapeObject>;
+    expect(patch.rot).toBe(90);
+    expect(patch.erx).toBe(50);
+    expect(patch.ery).toBe(25);
+    // At 90° the AABB swaps.
+    expect(patch.nw).toBeCloseTo(50, 4);
+    expect(patch.nh).toBeCloseTo(100, 4);
+    // Two quarter turns come back around (180° ≡ 0 for an ellipse).
+    const back = rotate(
+      { ...o, ...patch } as never,
+      90,
+    ) as Partial<ShapeObject>;
+    expect(back.rot).toBe(0);
+    expect(back.nw).toBeCloseTo(100, 4);
+    expect(back.nh).toBeCloseTo(50, 4);
+  });
+});
+
+describe("splines (multi-point curves)", () => {
+  it("splineSegments interpolates THROUGH every stored point", () => {
+    const pts = [
+      { x: 0, y: 0 },
+      { x: 50, y: 60 },
+      { x: 100, y: 0 },
+    ];
+    const segs = splineSegments(pts);
+    expect(segs).toHaveLength(2);
+    expect(segs[0].to).toEqual(pts[1]);
+    expect(segs[1].to).toEqual(pts[2]);
+  });
+
+  it("splineMidpoint of a straight 2-point curve is the chord midpoint", () => {
+    const m = splineMidpoint(
+      [
+        { x: 0, y: 0 },
+        { x: 100, y: 40 },
+      ],
+      0,
+    );
+    expect(m.x).toBeCloseTo(50, 5);
+    expect(m.y).toBeCloseTo(20, 5);
+  });
+
+  it("magneticDirection clicks near-15° drags exact and lets others be", () => {
+    const snapped = magneticDirection({ x: 0, y: 0 }, { x: 100, y: 4 });
+    expect(snapped).not.toBeNull();
+    expect(snapped!.y).toBeCloseTo(0, 5);
+    expect(magneticDirection({ x: 0, y: 0 }, { x: 100, y: 14 })).toBeNull();
   });
 });
 

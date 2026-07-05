@@ -13,6 +13,7 @@ import { useBoardStore } from "@/board/store";
 import { screenToWorld } from "@/board/geometry";
 import { id as makeId } from "@/board/types";
 import { naturalSize, scaleOf, sizedBox } from "@/board/sizing";
+import { getTool } from "@/tools/registry";
 import type { Params } from "@/board/sizing";
 import type { AnyBoardObject, Stroke } from "@/board/types";
 import { track, trackBoardActivated } from "@/analytics";
@@ -171,6 +172,32 @@ export function arrangeSelection(action: ArrangeAction): void {
     return; // already there — no empty undo step
   }
   st.setShapeOrders(objectOrders, strokeOrders);
+}
+
+// --- rotation ----------------------------------------------------------------
+// Turn the single selected object by a fixed step (the selection's rotate
+// buttons). The by-hand path is the select controller's rotate handle; both
+// route through the tool's `rotate` capability.
+
+/** The single selected object whose tool can rotate it, or null. */
+export function rotatableSelection(): AnyBoardObject | null {
+  const st = useBoardStore.getState();
+  const sel = st.selection;
+  if (sel.objectIds.length !== 1 || sel.strokeIds.length !== 0) return null;
+  const o = st.board.objects.find((x) => x.id === sel.objectIds[0]);
+  if (!o) return null;
+  const t = getTool(o.type);
+  return t && t.kind === "canvas" && t.rotate ? o : null;
+}
+
+/** Rotate the single selected rotatable object by `degrees` (one undo step). */
+export function rotateSelection(degrees: number): void {
+  const o = rotatableSelection();
+  if (!o) return;
+  const t = getTool(o.type);
+  if (!t || t.kind !== "canvas" || !t.rotate) return;
+  useBoardStore.getState().updateObject(o.id, t.rotate(o as never, degrees));
+  track("tool_action", { tool: o.type, action: "rotated" });
 }
 
 // --- grouping (Ctrl+G / Ctrl+Shift+G) ----------------------------------------

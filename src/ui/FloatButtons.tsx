@@ -1,18 +1,16 @@
-// The floating edit / delete buttons over the current selection (.floatbtn).
-// Ported from the prototype (markup lines 118-119, updateOverlays line 335),
-// extended to multi-select: these are the ONLY on-screen selection actions
-// (the toolbar deliberately carries none), so Delete shows for any selection
-// — single or multi — positioned at the combined bounding box. The Edit
-// button appears only when exactly one OBJECT is selected (a stroke or a
-// multi-select has no settings dialog). The Delete key works too.
+// The floating action bar over the current selection (#floatbar). These are
+// the ONLY on-screen selection actions (the toolbar deliberately carries
+// none): delete always; edit + rotate for a single object; z-order and
+// group/ungroup for everything — so grouping IS reachable on touch devices,
+// where Ctrl+G doesn't exist.
 //
-// Positioned by projecting the selection's top-right corner to screen space
-// via worldToScreen and clamping to the stage, like the prototype:
-//   delete: left = clamp(tr.x - 6, 42, W - 36)
-//   edit:   left = clamp(tr.x - 44, 2, W - 76)
-//   both:   top  = clamp(tr.y - 34, 2, H - 36)
+// One flex CONTAINER positioned at the selection's top-right corner and
+// clamped into the stage as a whole — individually clamped buttons used to
+// pile up on top of each other at the screen edge on phones, hiding the
+// leftmost actions. Every button shares the .floatbtn look (same dark disc,
+// same icon size — styled once in CSS).
 //
-// The .floatbtn rule is position:absolute, so these must live INSIDE #stage to
+// The .floatbar rule is position:absolute, so this must live INSIDE #stage to
 // be positioned in canvas-relative space. BoardCanvas owns #stage and doesn't
 // accept children, so we portal into it (the host passes the stage element).
 //
@@ -25,6 +23,8 @@ import { worldToScreen, clamp, strokeBounds } from "@/board/geometry";
 import {
   arrangeSelection,
   groupSelection,
+  rotatableSelection,
+  rotateSelection,
   ungroupSelection,
 } from "@/board/commands";
 import { keyHint } from "@/ui/shortcuts";
@@ -32,6 +32,8 @@ import {
   BringToFrontIcon,
   DrawIcon,
   GroupIcon,
+  RotateLeftIcon,
+  RotateRightIcon,
   SendToBackIcon,
   UngroupIcon,
   GLYPH,
@@ -42,6 +44,9 @@ interface FloatButtonsProps {
   container: HTMLElement | null;
   onEditSelected: () => void;
 }
+
+/** Button slot width: 34px disc + 4px gap (must match the CSS). */
+const SLOT = 38;
 
 export function FloatButtons({
   container,
@@ -82,6 +87,7 @@ export function FloatButtons({
   // Editing settings only makes sense for a single placed object.
   const canEdit =
     selection.objectIds.length === 1 && selection.strokeIds.length === 0;
+  const canRotate = rotatableSelection() != null;
   const count = selection.objectIds.length + selection.strokeIds.length;
   // Group when 2+ shapes are selected; ungroup when any selected shape is
   // grouped (the two swap — a selected group offers ungroup).
@@ -89,50 +95,13 @@ export function FloatButtons({
     selection.objectIds.some((id) => objects.find((o) => o.id === id)?.groupId) ||
     selection.strokeIds.some((id) => strokes.find((s) => s.id === id)?.groupId);
 
-  const r = container.getBoundingClientRect();
-  const W = r.width;
-  const H = r.height;
-  const tr = worldToScreen(camera, x2, y1);
-  const top = clamp(tr.y - 34, 2, H - 36);
-
-  // Right-to-left stack from the selection's top-right corner: delete, edit,
-  // front, back, group/ungroup. Each slot is 38px wide (matches the old
-  // delete/edit spacing); positions clamp into the stage individually.
+  // Left-to-right; delete stays rightmost (its old spot).
   const buttons: {
     id: string;
     title: string;
     body: JSX.Element | string;
     onClick: () => void;
-  }[] = [
-    {
-      id: "floatDel",
-      title: "Delete selection",
-      body: GLYPH.delete,
-      onClick: () => deleteSelection(),
-    },
-  ];
-  if (canEdit) {
-    buttons.push({
-      id: "floatEdit",
-      title: "Edit this object",
-      body: <DrawIcon />,
-      onClick: onEditSelected,
-    });
-  }
-  buttons.push(
-    {
-      id: "floatFront",
-      title: `Bring to front (${keyHint("toFront")})`,
-      body: <BringToFrontIcon />,
-      onClick: () => arrangeSelection("front"),
-    },
-    {
-      id: "floatBack",
-      title: `Send to back (${keyHint("toBack")})`,
-      body: <SendToBackIcon />,
-      onClick: () => arrangeSelection("back"),
-    },
-  );
+  }[] = [];
   if (anyGrouped) {
     buttons.push({
       id: "floatGroup",
@@ -148,25 +117,75 @@ export function FloatButtons({
       onClick: () => groupSelection(),
     });
   }
+  buttons.push(
+    {
+      id: "floatBack",
+      title: `Send to back (${keyHint("toBack")})`,
+      body: <SendToBackIcon />,
+      onClick: () => arrangeSelection("back"),
+    },
+    {
+      id: "floatFront",
+      title: `Bring to front (${keyHint("toFront")})`,
+      body: <BringToFrontIcon />,
+      onClick: () => arrangeSelection("front"),
+    },
+  );
+  if (canRotate) {
+    buttons.push(
+      {
+        id: "floatRotL",
+        title: "Rotate 15° anticlockwise",
+        body: <RotateLeftIcon />,
+        onClick: () => rotateSelection(-15),
+      },
+      {
+        id: "floatRotR",
+        title: "Rotate 15° clockwise",
+        body: <RotateRightIcon />,
+        onClick: () => rotateSelection(15),
+      },
+    );
+  }
+  if (canEdit) {
+    buttons.push({
+      id: "floatEdit",
+      title: "Edit this object",
+      body: <DrawIcon />,
+      onClick: onEditSelected,
+    });
+  }
+  buttons.push({
+    id: "floatDel",
+    title: "Delete selection",
+    body: GLYPH.delete,
+    onClick: () => deleteSelection(),
+  });
+
+  const r = container.getBoundingClientRect();
+  const W = r.width;
+  const H = r.height;
+  const tr = worldToScreen(camera, x2, y1);
+  const width = buttons.length * SLOT - 4; // last button carries no gap
+  // Right edge of the bar sits at the old delete-button spot (tr.x + 28),
+  // then the WHOLE bar clamps into the stage so nothing overlaps or hides.
+  const left = clamp(tr.x + 28 - width, 2, Math.max(2, W - width - 2));
+  const top = clamp(tr.y - 34, 2, H - 36);
 
   return createPortal(
-    <>
-      {buttons.map((b, i) => (
+    <div id="floatbar" style={{ left, top }}>
+      {buttons.map((b) => (
         <button
           key={b.id}
-          className="floatbtn show"
+          className="floatbtn"
           id={b.id}
           title={b.title}
-          style={{
-            left: clamp(tr.x - 6 - i * 38, 2, W - 36),
-            top,
-          }}
           onClick={b.onClick}
         >
           {b.body}
         </button>
       ))}
-    </>,
+    </div>,
     container,
   );
 }
