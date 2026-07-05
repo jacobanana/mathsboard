@@ -43,6 +43,7 @@ export function freshBoard(partial: Partial<BoardDocument> = {}): BoardDocument 
     penSize: 6,
     highlighterSize: 20,
     textSize: 26,
+    textAlign: "left",
     mathSize: 26,
     eraserSize: 45,
     drawMode: "free",

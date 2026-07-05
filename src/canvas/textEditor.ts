@@ -20,6 +20,8 @@ interface Editor {
   objId: string;
   isNew: boolean;
   scale: number;
+  /** Fixed wrap width (natural px) for a text BOX; null = auto-size the width. */
+  boxW: number | null;
 }
 
 export interface TextEditor extends InPlaceEditorHandle {
@@ -40,9 +42,13 @@ export function createTextEditor(opts: {
   const autoSize = (): void => {
     const ta = textarea();
     if (!ta) return;
-    ta.style.width = "10px";
+    // A text BOX keeps the width its drag set (wrap width fixed in open); only
+    // the height tracks the content. Auto text grows in both directions.
+    if (editor?.boxW == null) {
+      ta.style.width = "10px";
+      ta.style.width = ta.scrollWidth + 6 + "px";
+    }
     ta.style.height = "10px";
-    ta.style.width = ta.scrollWidth + 6 + "px";
     ta.style.height = ta.scrollHeight + "px";
   };
 
@@ -53,7 +59,8 @@ export function createTextEditor(opts: {
     // Recover the uniform resize scale (stored box vs. natural text box) so the
     // textarea renders at the same size as the committed text on the canvas.
     const s = scaleOf(obj);
-    editor = { objId: obj.id, isNew, scale: s };
+    const boxW = (obj.boxW as number | undefined) ?? null;
+    editor = { objId: obj.id, isNew, scale: s, boxW };
     setEditingId(obj.id); // hides obj from the scene's draw pass
     render();
     const sx = obj.x * camera.scale + camera.x;
@@ -65,6 +72,15 @@ export function createTextEditor(opts: {
     // editor's line spacing matches the canvas render (drawText uses size*1.3).
     ta.style.lineHeight = "1.3";
     ta.style.color = obj.color as string;
+    ta.style.textAlign = ((obj.align as string) ?? "left") as CanvasTextAlign;
+    // A box wraps at a fixed screen width (+6 for the 1px border + 2px padding
+    // each side, so the wrap column matches the canvas); auto text does not wrap.
+    if (boxW != null) {
+      ta.style.whiteSpace = "pre-wrap";
+      ta.style.width = boxW * s * camera.scale + 6 + "px";
+    } else {
+      ta.style.whiteSpace = "pre";
+    }
     // Place the textarea so its glyphs land exactly where the committed text
     // renders. The canvas draws with textBaseline "top" flush at (obj.x, obj.y)
     // — no leading, no inset. The textarea instead pushes its first line down by
@@ -107,10 +123,13 @@ export function createTextEditor(opts: {
       return;
     }
     const size = (obj.size as number) ?? 26;
+    const boxW = obj.boxW as number | undefined;
     // Keep any resize scale across the edit; the box is the new natural size
-    // at that same scale (board/sizing.ts is the one authority for this).
+    // at that same scale (board/sizing.ts is the one authority for this). boxW
+    // keeps the text wrapping to the dragged width instead of hugging the text.
     const box =
-      sizedBox("text", { text, size }, ed.scale ?? 1) ?? textSizeOf(text, size);
+      sizedBox("text", { text, size, boxW }, ed.scale ?? 1) ??
+      textSizeOf(text, size, boxW);
     st.updateObject(obj.id, { text, w: box.w, h: box.h });
     render();
   };

@@ -115,6 +115,8 @@ interface BoardState {
   /** Highlighter nib width (screen px, like penSize) — its own wider setting. */
   highlighterSize: number;
   textSize: number;
+  /** Default horizontal alignment for new text (and the live edit target). */
+  textAlign: "left" | "center" | "right";
   /** Base font size new maths notation is placed at (maps onto the uniform
    *  resize scale: 26 = the layout size, i.e. scale 1 — see tools/mathtext). */
   mathSize: number;
@@ -262,6 +264,7 @@ interface BoardState {
   setPenSize(n: number): void;
   setHighlighterSize(n: number): void;
   setTextSize(n: number): void;
+  setTextAlign(a: "left" | "center" | "right"): void;
   setMathSize(n: number): void;
   setEraserSize(n: number): void;
   setDrawMode(m: DrawMode): void;
@@ -495,6 +498,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
     penSize: 6,
     highlighterSize: 20,
     textSize: 26,
+    textAlign: "left",
     mathSize: 26,
     eraserSize: 45,
     drawMode: "free",
@@ -675,6 +679,9 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
     setTextSize(n) {
       set({ textSize: n });
+    },
+    setTextAlign(a) {
+      set({ textAlign: a });
     },
     setMathSize(n) {
       set({ mathSize: n });

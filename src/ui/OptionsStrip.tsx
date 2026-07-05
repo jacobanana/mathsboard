@@ -59,6 +59,9 @@ import { MATH_BASE_PX } from "@/tools/mathtext";
 import { isClosed } from "@/tools/shape/geometry";
 import type { ShapeKind } from "@/tools/shape/geometry";
 import {
+  AlignCenterIcon,
+  AlignLeftIcon,
+  AlignRightIcon,
   AngleIcon,
   ArrowIcon,
   CircleIcon,
@@ -263,6 +266,8 @@ export function OptionsStrip(): JSX.Element | null {
   const penSize = useBoardStore((s) => s.penSize);
   const highlighterSize = useBoardStore((s) => s.highlighterSize);
   const textSize = useBoardStore((s) => s.textSize);
+  const textAlign = useBoardStore((s) => s.textAlign);
+  const setTextAlign = useBoardStore((s) => s.setTextAlign);
   const mathSize = useBoardStore((s) => s.mathSize);
   const eraserSize = useBoardStore((s) => s.eraserSize);
   const fillColor = useBoardStore((s) => s.fillColor);
@@ -343,14 +348,22 @@ export function OptionsStrip(): JSX.Element | null {
   function pickTextSize(px: number): void {
     setTextSize(px);
     if (activeTextId != null) {
-      // Re-measure so the bounding box stays correct (prototype autoSize).
+      // Re-measure so the bounding box stays correct (prototype autoSize),
+      // keeping any box wrap width so a text box doesn't revert to auto-size.
       const obj = useBoardStore
         .getState()
         .board.objects.find((o) => o.id === activeTextId);
       const text = (obj?.text as string) ?? "";
-      const { w, h } = textSizeOf(text, px);
+      const boxW = obj?.boxW as number | undefined;
+      const { w, h } = textSizeOf(text, px, boxW);
       updateObject(activeTextId, { size: px, w, h });
     }
+  }
+
+  function pickAlign(a: "left" | "center" | "right"): void {
+    setTextAlign(a);
+    // Alignment shifts lines within the box; it doesn't change w/h.
+    if (activeTextId != null) updateObject(activeTextId, { align: a });
   }
 
   function pickMathSize(px: number): void {
@@ -580,6 +593,39 @@ export function OptionsStrip(): JSX.Element | null {
           palette={FILL_PALETTE}
           onPick={pickFill}
         />
+      )}
+
+      {tool === "text" && (
+        <>
+          <span className="opt-sep" />
+          <div className="align-group" role="group" aria-label="Text alignment">
+            {(
+              [
+                ["left", "Align left", AlignLeftIcon],
+                ["center", "Align centre", AlignCenterIcon],
+                ["right", "Align right", AlignRightIcon],
+              ] as const
+            ).map(([a, label, Icon]) => {
+              const on =
+                ((activeText?.align as string | undefined) ?? textAlign) === a;
+              return (
+                <button
+                  key={a}
+                  className={"btn small" + (on ? " active" : "")}
+                  id={"align-" + a}
+                  title={label}
+                  aria-label={label}
+                  aria-pressed={on}
+                  onClick={() => pickAlign(a)}
+                >
+                  <span className="ico">
+                    <Icon />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {tool === "pen" && <SnapToggle />}

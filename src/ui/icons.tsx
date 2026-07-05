@@ -45,6 +45,37 @@ export function EraserIcon(): JSX.Element {
   );
 }
 
+/** Text-alignment glyphs (left / centre / right) for the text options. */
+export function AlignLeftIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="4" y1="12" x2="14" y2="12" />
+      <line x1="4" y1="18" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+export function AlignCenterIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="7" y1="12" x2="17" y2="12" />
+      <line x1="5" y1="18" x2="19" y2="18" />
+    </svg>
+  );
+}
+
+export function AlignRightIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="10" y1="12" x2="20" y2="12" />
+      <line x1="6" y1="18" x2="20" y2="18" />
+    </svg>
+  );
+}
+
 /** A highlighter / marker — the draw tool's translucent-ink mode. */
 export function HighlighterIcon(): JSX.Element {
   return (

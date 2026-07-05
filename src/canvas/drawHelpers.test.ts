@@ -4,7 +4,11 @@
 // source-over), so we drive a recording 2D-context stub and assert that state.
 
 import { describe, expect, it } from "vitest";
-import { drawStrokeFull, HIGHLIGHTER_ALPHA } from "@/canvas/drawHelpers";
+import {
+  drawStrokeFull,
+  HIGHLIGHTER_ALPHA,
+  textSizeOf,
+} from "@/canvas/drawHelpers";
 
 /** A minimal CanvasRenderingContext2D stub that snapshots its own drawing state
  *  every time a paint call (stroke/fill) runs, so tests can inspect the alpha /
@@ -78,5 +82,25 @@ describe("drawStrokeFull rendering config", () => {
     drawStrokeFull(ctx as never, { mode: "highlighter", color: "#ffdd00", size: 20, points: line });
     expect(ctx.globalAlpha).toBe(1);
     expect(ctx.globalCompositeOperation).toBe("source-over");
+  });
+});
+
+describe("textSizeOf", () => {
+  it("auto (no boxW): width hugs the longest line", () => {
+    const one = textSizeOf("hi", 20);
+    const wide = textSizeOf("a much much longer single line", 20);
+    expect(wide.w).toBeGreaterThan(one.w);
+  });
+
+  it("box mode: width is fixed at boxW and height grows with wrapping", () => {
+    const short = textSizeOf("one two", 20, 120);
+    const long = textSizeOf(
+      "one two three four five six seven eight nine ten eleven twelve",
+      20,
+      120,
+    );
+    expect(short.w).toBe(120);
+    expect(long.w).toBe(120); // width never exceeds the box
+    expect(long.h).toBeGreaterThan(short.h); // more wrapped lines = taller
   });
 });
