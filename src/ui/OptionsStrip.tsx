@@ -54,6 +54,7 @@ import {
   ERASER_SIZE_RANGE,
 } from "@/ui/constants";
 import { textSizeOf } from "@/canvas/drawHelpers";
+import { focusActiveTextEdit } from "@/canvas/textEditor";
 import { paramsOf, sizedBox } from "@/board/sizing";
 import { MATH_BASE_PX } from "@/tools/mathtext";
 import { isClosed } from "@/tools/shape/geometry";
@@ -110,6 +111,13 @@ const DRAW_MODES: {
   { mode: "angle", label: "Angle", hintId: "mode-angle", Icon: AngleIcon },
 ];
 
+/** Keep the in-place text editor focused when clicking an options control:
+ *  preventing the mousedown default stops the textarea from blurring (which
+ *  would commit and end the edit), so restyling text stays inside the edit
+ *  session. Harmless for every other tool (toolbar buttons don't want focus). */
+const preventBlur = (e: { preventDefault: () => void }): void =>
+  e.preventDefault();
+
 /** One swatch button showing `value`; clicking opens a palette popover.
  *  Supports the "none" (transparent) swatch for shape backgrounds. */
 function SwatchPicker({
@@ -136,6 +144,7 @@ function SwatchPicker({
         className="btn small"
         id={id}
         title={title + " — " + name}
+        onMouseDown={preventBlur}
         onClick={() => setOpen((o) => !o)}
       >
         <span
@@ -162,6 +171,7 @@ function SwatchPicker({
             }
             style={hex === "none" ? undefined : { background: hex }}
             title={label}
+            onMouseDown={preventBlur}
             onClick={() => {
               onPick(hex);
               setOpen(false);
@@ -545,6 +555,11 @@ export function OptionsStrip(): JSX.Element | null {
           step={range.step}
           value={value}
           onChange={(e) => setValue(Number(e.target.value))}
+          // The slider must take focus to drag, which blurs the textarea; hand
+          // focus back when the gesture ends so a text edit stays open (no-op
+          // unless editing text). onChange has already restyled it live.
+          onPointerUp={() => focusActiveTextEdit()}
+          onKeyUp={() => focusActiveTextEdit()}
         />
         {tool === "text" || tool === "math" ? (
           <span
@@ -616,6 +631,7 @@ export function OptionsStrip(): JSX.Element | null {
                   title={label}
                   aria-label={label}
                   aria-pressed={on}
+                  onMouseDown={preventBlur}
                   onClick={() => pickAlign(a)}
                 >
                   <span className="ico">

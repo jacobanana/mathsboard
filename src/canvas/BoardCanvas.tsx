@@ -395,7 +395,16 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
         ref={taRef}
         spellCheck={false}
         onInput={() => editor.autoSize()}
-        onBlur={() => editor.commit()}
+        onBlur={(e) => {
+          // Adjusting this text's own options (size / colour / alignment) must
+          // not end the edit: skip the commit when focus lands in the options
+          // pill or a colour popover. Leaving the zone (canvas, other UI) commits
+          // as before. The size slider takes focus, so it re-focuses the
+          // textarea on release (focusActiveTextEdit) to re-arm this.
+          const to = e.relatedTarget as Element | null;
+          if (to && to.closest("#options,.swatch-menu")) return;
+          editor.commit();
+        }}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();
