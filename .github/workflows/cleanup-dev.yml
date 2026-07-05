@@ -20,27 +20,28 @@ jobs:
     permissions:
       packages: write
     steps:
-      - name: Delete pr-${{ github.event.number }} image tags from GHCR
+      - name: Delete every pr-${{ github.event.number }} image build from GHCR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           PR: ${{ github.event.number }}
         run: |
           set -euo pipefail
-          tag="pr-${PR}"
+          # deploy-dev.yml publishes an immutable tag per push: pr-<n>-<short
+          # sha>. Match EVERY version of the package carrying such a tag (plus
+          # the legacy moving `pr-<n>` tag, for older PRs) so no build from this
+          # PR is left behind.
           for pkg in mathboard-web mathboard-api; do
-            echo "Looking for ${pkg}:${tag}"
-            # A container package version can carry several tags; match the one
-            # whose tag list contains our pr-<n> tag and delete that version.
+            echo "Cleaning ${pkg} builds for PR #${PR}"
             ids=$(gh api --paginate \
               "/users/${OWNER}/packages/container/${pkg}/versions" \
-              --jq ".[] | select(.metadata.container.tags[]? == \"${tag}\") | .id" || true)
+              --jq "[.[] | select(any(.metadata.container.tags[]?; . == \"pr-${PR}\" or startswith(\"pr-${PR}-\"))) | .id] | .[]" || true)
             if [ -z "$ids" ]; then
-              echo "  no ${pkg}:${tag} found (already gone) - skipping"
+              echo "  none found (already gone) - skipping"
               continue
             fi
             for id in $ids; do
-              echo "  deleting ${pkg} version ${id} (${tag})"
+              echo "  deleting ${pkg} version ${id}"
               gh api --method DELETE \
                 "/users/${OWNER}/packages/container/${pkg}/versions/${id}"
             done

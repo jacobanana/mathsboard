@@ -66,6 +66,16 @@ jobs:
         id: version
         uses: ./.github/actions/app-version
 
+      - name: Short SHA
+        id: sha
+        # Immutable per-commit tag component. Using the head SHA (not a moving
+        # tag) means each push publishes a NEW tag rather than overwriting one,
+        # so no dangling untagged manifests pile up - and cleanup-dev.yml can
+        # then delete every pr-<n>-* build for the PR on close.
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: echo "short=${HEAD_SHA::7}" >> "$GITHUB_OUTPUT"
+
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -76,16 +86,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & push (pr-${{ github.event.number }})
+      - name: Build & push (pr-${{ github.event.number }}-${{ steps.sha.outputs.short }})
         uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: true
-          # The single moving per-PR tag. No `latest`, no sha tag - nothing that
-          # could be mistaken for a release artifact. Overwritten on each push
-          # to the PR and deleted when the PR closes.
-          tags: ghcr.io/${{ github.repository }}-${{ matrix.image }}:pr-${{ github.event.number }}
+          # Immutable per-PR, per-commit tag: pr-<number>-<short sha>. No
+          # `latest`, no bare sha tag - nothing that could be mistaken for a
+          # release artifact. Every build gets its own tag (so nothing is left
+          # dangling), and cleanup-dev.yml removes them all when the PR closes.
+          tags: ghcr.io/${{ github.repository }}-${{ matrix.image }}:pr-${{ github.event.number }}-${{ steps.sha.outputs.short }}
           build-args: |
             APP_VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
@@ -113,11 +124,13 @@ jobs:
             # not baked into the images) and check out its exact head commit.
             git fetch origin "pull/${PR}/head"
             git checkout -f "$SHA"
+            # Same immutable tag the build job pushed: pr-<number>-<short sha>.
+            TAG="pr-${PR}-$(echo "$SHA" | cut -c1-7)"
             # Persist the image tag so a reboot brings the same PR build back up.
             if grep -q '^IMAGE_TAG=' .env 2>/dev/null; then
-              sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=pr-${PR}/" .env
+              sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${TAG}/" .env
             else
-              echo "IMAGE_TAG=pr-${PR}" >> .env
+              echo "IMAGE_TAG=${TAG}" >> .env
             fi
             docker compose pull
             # Bind-mounted Caddyfile: reload so routing edits in the PR take
