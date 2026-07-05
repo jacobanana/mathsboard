@@ -53,6 +53,13 @@ export interface DrawKit {
   ctx: CanvasRenderingContext2D;
   theme: Theme;
   font: string;
+  /**
+   * The uniform box-resize scale already baked into the ctx transform (the
+   * object's box divided by its natural size; 1 at natural size). A tool that
+   * wants a part to keep a constant on-canvas size despite resize — e.g. a
+   * shape's border thickness — divides that measurement by this scale.
+   */
+  scale: number;
 }
 
 /**

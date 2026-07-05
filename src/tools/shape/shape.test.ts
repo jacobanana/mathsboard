@@ -21,7 +21,7 @@ import {
   splineSegments,
   splineTangents,
 } from "@/tools/shape/geometry";
-import shapeTool from "@/tools/shape";
+import shapeTool, { drawShapeGeometry } from "@/tools/shape";
 import type { ShapeObject, ShapeParams } from "@/tools/shape";
 
 const shapeObj = (over: Partial<ShapeObject> = {}): ShapeObject => ({
@@ -172,6 +172,45 @@ describe("magnetic angle snapping", () => {
     if (niceAngleTarget(before) == null) {
       expect(snapVertexAngle(pts, 0)).toBeNull();
     }
+  });
+});
+
+describe("border thickness under box resize", () => {
+  // A recording stub: methods no-op, property writes stick. The scene applies
+  // the box scale to the ctx transform, so the on-canvas border thickness is
+  // the lineWidth the shape sets multiplied by that scale.
+  const recordingCtx = () =>
+    new Proxy(
+      { lineWidth: 0 } as { lineWidth: number },
+      { get: (t, k) => (k in t ? (t as never)[k] : () => {}) },
+    ) as unknown as CanvasRenderingContext2D & { lineWidth: number };
+
+  const rect = (): ShapeParams => ({
+    kind: "rect",
+    nw: 100,
+    nh: 100,
+    pts: [],
+    stroke: "#000",
+    strokeWidth: 3,
+    fill: "none",
+    dash: false,
+    showAngles: false,
+    both: false,
+  });
+
+  it("keeps a constant on-canvas thickness regardless of the resize scale", () => {
+    for (const scale of [1, 2, 5, 0.5]) {
+      const ctx = recordingCtx();
+      drawShapeGeometry(ctx, rect(), 0, 0, scale);
+      // lineWidth * scale is the effective on-canvas thickness — always 3.
+      expect(ctx.lineWidth * scale).toBeCloseTo(3, 6);
+    }
+  });
+
+  it("defaults to natural scale (1) when no scale is given", () => {
+    const ctx = recordingCtx();
+    drawShapeGeometry(ctx, rect(), 0, 0);
+    expect(ctx.lineWidth).toBe(3);
   });
 });
 
