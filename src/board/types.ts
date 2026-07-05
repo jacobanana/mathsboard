@@ -61,14 +61,7 @@ export interface Camera {
   scale: number;
 }
 
-export type ToolName =
-  | "pen"
-  | "text"
-  | "math"
-  | "eraser"
-  | "select"
-  | "pan"
-  | "laser";
+export type ToolName = "pen" | "text" | "math" | "eraser" | "select" | "pan";
 
 /** The syncable document. This is what a BoardRepository persists. */
 export interface BoardDocument {

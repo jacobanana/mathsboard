@@ -33,10 +33,12 @@ import {
   activeShapeObjectId,
 } from "@/board/store";
 import type { DrawMode } from "@/board/store";
+import { COLLAB_ENABLED } from "@/config";
 import { Popover } from "@/ui/Popover";
 import { keyHint } from "@/ui/shortcuts";
 import {
   FILL_PALETTE,
+  LASER_PALETTE,
   PALETTE,
   PEN_SIZE_RANGE,
   POLYGON_SIDES_RANGE,
@@ -56,7 +58,9 @@ import {
   CircleIcon,
   CurveIcon,
   EllipseIcon,
+  FrameIcon,
   FreePolyIcon,
+  LaserIcon,
   LineIcon,
   PolygonIcon,
   RectIcon,
@@ -177,8 +181,70 @@ function SnapToggle(): JSX.Element {
   );
 }
 
+/** The laser-pointer toggle: lives on the pointer (Select) tool. While on, the
+ *  pointer becomes an aiming laser — point over a call, click to bring the
+ *  other users to a spot, Shift-drag an area to zoom them to it. */
+function LaserToggle(): JSX.Element {
+  const on = useBoardStore((s) => s.laserMode);
+  const toggle = useBoardStore((s) => s.toggleLaserMode);
+  return (
+    <button
+      className={"btn small" + (on ? " active" : "")}
+      id="laserBtn"
+      title={
+        `Laser pointer (${keyHint("tool-select")} again) — point over a call; ` +
+        "click to bring others to a spot, Shift-drag an area to zoom them to it"
+      }
+      aria-pressed={on}
+      aria-label="Laser pointer"
+      onClick={() => toggle()}
+    >
+      <span className="ico">
+        <LaserIcon />
+      </span>
+    </button>
+  );
+}
+
+/** Arm "frame an area" for the laser — the Shift-less way to frame on a tablet.
+ *  Draw a box and everyone zooms to it, then it reverts to pointing. */
+function LaserFrameToggle(): JSX.Element {
+  const on = useBoardStore((s) => s.laserFrame);
+  const toggle = useBoardStore((s) => s.toggleLaserFrame);
+  return (
+    <button
+      className={"btn small" + (on ? " active" : "")}
+      id="laserFrameBtn"
+      title="Frame an area to zoom everyone to it — draw a box (reverts to pointing after). On a laptop, hold Shift instead."
+      aria-pressed={on}
+      aria-label="Frame an area"
+      onClick={() => toggle()}
+    >
+      <span className="ico">
+        <FrameIcon />
+      </span>
+    </button>
+  );
+}
+
+/** The laser colour swatch (its own vivid palette, broadcast with the trail). */
+function LaserColorPicker(): JSX.Element {
+  const color = useBoardStore((s) => s.laserColor);
+  const setLaserColor = useBoardStore((s) => s.setLaserColor);
+  return (
+    <SwatchPicker
+      id="laserColorBtn"
+      title={`Laser colour (${keyHint("cycleColor")})`}
+      value={color}
+      palette={LASER_PALETTE}
+      onPick={setLaserColor}
+    />
+  );
+}
+
 export function OptionsStrip(): JSX.Element | null {
   const tool = useBoardStore((s) => s.tool);
+  const laserMode = useBoardStore((s) => s.laserMode);
   const drawMode = useBoardStore((s) => s.drawMode);
   const setDrawMode = useBoardStore((s) => s.setDrawMode);
   const penSize = useBoardStore((s) => s.penSize);
@@ -213,7 +279,7 @@ export function OptionsStrip(): JSX.Element | null {
     tool !== "text" &&
     tool !== "math" &&
     tool !== "eraser" &&
-    !shapeSelected
+    tool !== "select" // the pointer always shows at least the laser toggle
   ) {
     // No options for this tool — the pill simply isn't there. It's a separate
     // floating layer, so nothing else moves when it comes and goes.
@@ -264,6 +330,19 @@ export function OptionsStrip(): JSX.Element | null {
     if (activeShapeId != null) updateObject(activeShapeId, { strokeWidth: px });
   }
 
+  // --- SELECT tool in LASER mode: the laser toggle + the area-frame toggle.
+  // Takes priority over shape styling — you can't edit a shape while aiming.
+  // (laserMode is only reachable in collab builds; see the gating below.)
+  if (tool === "select" && laserMode) {
+    return (
+      <div className="island" id="options">
+        <LaserToggle />
+        <LaserFrameToggle />
+        <LaserColorPicker />
+      </div>
+    );
+  }
+
   // --- SELECT tool: live styling for the selected shape --------------------
   if (shapeSelected) {
     const kind = activeShape.kind as ShapeKind;
@@ -304,13 +383,27 @@ export function OptionsStrip(): JSX.Element | null {
         {isClosed(kind) && (
           <SwatchPicker
             id="fillBtn"
-            title="Background colour"
+            title={`Background colour (${keyHint("cycleFill")})`}
             value={(activeShape.fill as string) ?? "none"}
             palette={FILL_PALETTE}
             onPick={pickFill}
           />
         )}
         <SnapToggle />
+        {/* Laser is a collaboration feature — collab builds only. */}
+        {COLLAB_ENABLED && <LaserToggle />}
+      </div>
+    );
+  }
+
+  // The pointer with nothing selected: just the laser toggle. The laser is a
+  // collaboration feature (like sharing), so the static single-user build has
+  // no options here at all.
+  if (tool === "select") {
+    if (!COLLAB_ENABLED) return null;
+    return (
+      <div className="island" id="options">
+        <LaserToggle />
       </div>
     );
   }
@@ -347,7 +440,7 @@ export function OptionsStrip(): JSX.Element | null {
                 key={mode}
                 className={"btn small mode" + (drawMode === mode ? " active" : "")}
                 id={"mode-" + mode}
-                title={`${label} (${keyHint(hintId)})`}
+                title={keyHint(hintId) ? `${label} (${keyHint(hintId)})` : label}
                 aria-label={label}
                 onClick={() => setDrawMode(mode)}
               >

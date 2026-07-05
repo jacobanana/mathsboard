@@ -44,6 +44,13 @@ import {
 import { getTool } from "@/tools/registry";
 import type { VertexCapability } from "@/tools/registry";
 import { niceAngleTarget } from "@/tools/shape/geometry";
+import {
+  laserDown,
+  laserMove,
+  laserUp,
+  laserCancel,
+  drawLaserOverlay,
+} from "@/canvas/interactions/laser";
 import type { AnyBoardObject } from "@/board/types";
 import type {
   InputCtx,
@@ -337,9 +344,11 @@ export const selectController: InteractionController = {
   cursor: "default",
 
   // Hover feedback: a move cursor over vertex handles, a resize cursor over
-  // the selected object's box handles.
+  // the selected object's box handles. In laser mode the whole tool is an
+  // aiming pointer, so the cursor is a crosshair everywhere.
   hoverCursor(e, c) {
     const st = c.store.getState();
+    if (st.laserMode) return "crosshair";
     const pp = c.evPos(e);
     const vt = singleVertexObject(st);
     if (vt && hitArmHandle(st, vt.obj, vt.cap, pp.x, pp.y)) {
@@ -371,6 +380,8 @@ export const selectController: InteractionController = {
 
   onPointerDown(e, c) {
     const st = c.store.getState();
+    // Laser mode replaces every selection gesture with the pointer laser.
+    if (st.laserMode) return laserDown(e, c);
     const { camera } = st;
     const pp = c.evPos(e);
     const w = c.toWorld(pp.x, pp.y);
@@ -529,6 +540,7 @@ export const selectController: InteractionController = {
 
   onPointerMove(e, c) {
     const st = c.store.getState();
+    if (st.laserMode) return laserMove(e, c);
     if (armDrag && e.pointerId === armDrag.pid) {
       const pp = c.evPos(e);
       const w = c.toWorld(pp.x, pp.y);
@@ -657,6 +669,7 @@ export const selectController: InteractionController = {
 
   onPointerUp(e, c) {
     const st = c.store.getState();
+    if (st.laserMode) return laserUp(e, c);
     if (vertexDrag && e.pointerId === vertexDrag.pid) {
       vertexDrag = null;
     }
@@ -719,6 +732,7 @@ export const selectController: InteractionController = {
     vertexDrag = null;
     armDrag = null;
     rotating = null;
+    laserCancel(c); // no-op unless a laser gesture is live
     if (lasso) {
       lasso = null;
       c.render();
@@ -766,6 +780,9 @@ export const selectController: InteractionController = {
   // template layer (under the committed ink), exactly as renderBack drew them.
   drawOverlay(kit, c) {
     const st = c.store.getState();
+    // Laser mode: draw the aiming comet / framed area instead of the selection
+    // chrome (the underlying selection is preserved, just hidden while aiming).
+    if (st.laserMode) return drawLaserOverlay(kit);
     const { camera, theme } = kit;
     const tctx = kit.back;
     const pad = 8 / camera.scale;

@@ -72,6 +72,15 @@ export function LaserIcon(): JSX.Element {
   );
 }
 
+/** A dashed marquee box — the laser's "frame an area to zoom everyone" toggle. */
+export function FrameIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="4 3.5" />
+    </svg>
+  );
+}
+
 export function ImageIcon(): JSX.Element {
   return (
     <svg {...svgProps}>

@@ -9,17 +9,17 @@ import { selectController } from "@/canvas/interactions/select";
 import { panController } from "@/canvas/interactions/pan";
 import { textController } from "@/canvas/interactions/text";
 import { mathController } from "@/canvas/interactions/math";
-import { laserController } from "@/canvas/interactions/laser";
 
 // The draw controller owns the "pen" tool: freehand delegates to the brush
-// controller, the shape modes drag-create shape objects (roadmap A2).
+// controller, the shape modes drag-create shape objects (roadmap A2). The laser
+// is NOT registered here — it's a toggle on the select tool (store.laserMode),
+// handled inside selectController (canvas/interactions/laser.ts).
 registerInteraction(drawController);
 registerInteraction(eraserController);
 registerInteraction(selectController);
 registerInteraction(panController);
 registerInteraction(textController);
 registerInteraction(mathController);
-registerInteraction(laserController);
 
 export {
   getInteraction,

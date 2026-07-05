@@ -36,7 +36,12 @@ import {
   seedDoc,
   toYShape,
 } from "@/collab/docModel";
-import { useCollabStore, type PeerPresence } from "@/collab/collabStore";
+import {
+  useCollabStore,
+  type PeerPresence,
+  type LaserFocus,
+  type LaserTrail,
+} from "@/collab/collabStore";
 import { colorForClient } from "@/collab/profile";
 import { COLLAB_ENABLED } from "@/config";
 import { ANALYTICS_ENABLED } from "@/analytics";
@@ -224,7 +229,12 @@ export function joinShared(
   // what someone has selected stays local to them. Peers are read back out of
   // awareness.getStates() on every change and mirrored into the collab store.
   const awareness = provider.awareness;
-  awareness.setLocalState({ user: { name, color }, cursor: null, laser: null });
+  awareness.setLocalState({
+    user: { name, color },
+    cursor: null,
+    laser: null,
+    laserFocus: null,
+  });
   const onAwareness = () => {
     useCollabStore.setState({ peers: readPeers(awareness, doc.clientID) });
   };
@@ -281,6 +291,7 @@ function readPeers(awareness: Awareness, ownId: number): PeerPresence[] {
       color: user.color || colorForClient(clientId),
       cursor: (state.cursor as PeerPresence["cursor"]) ?? null,
       laser: (state.laser as PeerPresence["laser"]) ?? null,
+      laserFocus: (state.laserFocus as PeerPresence["laserFocus"]) ?? null,
     });
   });
   peers.sort((a, b) => a.clientId - b.clientId);
@@ -302,10 +313,15 @@ export function publishCursor(pos: { x: number; y: number } | null): void {
 /** Broadcast the local laser-pointer trail (WORLD coords, oldest→newest), or
  *  null to clear it. Ephemeral awareness, exactly like the cursor — never
  *  written into the document. Throttling is the caller's job. No-op when solo. */
-export function publishLaser(
-  points: { x: number; y: number }[] | null,
-): void {
-  session?.provider?.awareness.setLocalStateField("laser", points);
+export function publishLaser(trail: LaserTrail | null): void {
+  session?.provider?.awareness.setLocalStateField("laser", trail);
+}
+
+/** Broadcast a one-shot laser "guide my view" command (recentre / zoom), or
+ *  null to clear it. Receivers apply it to THEIR camera (director model);
+ *  ephemeral awareness, never written into the document. No-op when solo. */
+export function publishLaserFocus(focus: LaserFocus | null): void {
+  session?.provider?.awareness.setLocalStateField("laserFocus", focus);
 }
 
 // --- undo/redo ----------------------------------------------------------------
