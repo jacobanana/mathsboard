@@ -24,6 +24,12 @@ export interface PeerPresence {
   color: string;
   /** Cursor position in WORLD coordinates (each user has their own camera). */
   cursor: { x: number; y: number } | null;
+  /**
+   * Live laser-pointer trail (WORLD coordinates, oldest→newest), or null when
+   * the peer isn't pointing. Ephemeral like the cursor — a "look here" gesture
+   * that is never written into the document. Rendered by the PresenceLayer.
+   */
+  laser: { x: number; y: number }[] | null;
 }
 
 interface CollabState {

@@ -413,7 +413,8 @@ export const SHORTCUTS: ShortcutSpec[] = [
 
   // Tools — bare keys. Digits mirror the toolbar order (1..6); the letters are
   // mnemonic alternates (V/H match Figma & Excalidraw; Draw / Eraser / Text /
-  // Maths keep their initials).
+  // Maths keep their initials). Laser uses K (L is the line draw-mode below),
+  // also matching Excalidraw.
   {
     id: "tool-select",
     group: "tools",
@@ -429,6 +430,14 @@ export const SHORTCUTS: ShortcutSpec[] = [
     label: "Pan the view",
     test: (c) => bare(c) && (c.key === "2" || c.key === "h"),
     run: (c) => c.st.setTool("pan"),
+  },
+  {
+    id: "tool-laser",
+    group: "tools",
+    keys: [["K"]],
+    label: "Laser pointer",
+    test: (c) => bare(c) && c.key === "k",
+    run: (c) => c.st.setTool("laser"),
   },
   {
     id: "tool-draw",

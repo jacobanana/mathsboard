@@ -9,6 +9,7 @@ import { selectController } from "@/canvas/interactions/select";
 import { panController } from "@/canvas/interactions/pan";
 import { textController } from "@/canvas/interactions/text";
 import { mathController } from "@/canvas/interactions/math";
+import { laserController } from "@/canvas/interactions/laser";
 
 // The draw controller owns the "pen" tool: freehand delegates to the brush
 // controller, the shape modes drag-create shape objects (roadmap A2).
@@ -18,6 +19,7 @@ registerInteraction(selectController);
 registerInteraction(panController);
 registerInteraction(textController);
 registerInteraction(mathController);
+registerInteraction(laserController);
 
 export {
   getInteraction,

@@ -224,7 +224,7 @@ export function joinShared(
   // what someone has selected stays local to them. Peers are read back out of
   // awareness.getStates() on every change and mirrored into the collab store.
   const awareness = provider.awareness;
-  awareness.setLocalState({ user: { name, color }, cursor: null });
+  awareness.setLocalState({ user: { name, color }, cursor: null, laser: null });
   const onAwareness = () => {
     useCollabStore.setState({ peers: readPeers(awareness, doc.clientID) });
   };
@@ -280,6 +280,7 @@ function readPeers(awareness: Awareness, ownId: number): PeerPresence[] {
       name: user.name || "Guest",
       color: user.color || colorForClient(clientId),
       cursor: (state.cursor as PeerPresence["cursor"]) ?? null,
+      laser: (state.laser as PeerPresence["laser"]) ?? null,
     });
   });
   peers.sort((a, b) => a.clientId - b.clientId);
@@ -296,6 +297,15 @@ export function currentBoard(): BoardDocument {
 
 export function publishCursor(pos: { x: number; y: number } | null): void {
   session?.provider?.awareness.setLocalStateField("cursor", pos);
+}
+
+/** Broadcast the local laser-pointer trail (WORLD coords, oldest→newest), or
+ *  null to clear it. Ephemeral awareness, exactly like the cursor — never
+ *  written into the document. Throttling is the caller's job. No-op when solo. */
+export function publishLaser(
+  points: { x: number; y: number }[] | null,
+): void {
+  session?.provider?.awareness.setLocalStateField("laser", points);
 }
 
 // --- undo/redo ----------------------------------------------------------------

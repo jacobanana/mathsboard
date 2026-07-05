@@ -15,6 +15,7 @@ import { useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
 import { publishCursor } from "@/collab/session";
 import { screenToWorld, worldToScreen } from "@/board/geometry";
+import { LASER_COLOR, LASER_CORE } from "@/canvas/interactions/laser";
 
 export function PresenceLayer(): JSX.Element | null {
   const mode = useCollabStore((s) => s.mode);
@@ -58,8 +59,46 @@ export function PresenceLayer(): JSX.Element | null {
 
   if (mode !== "shared" || peers.length === 0) return null;
 
+  const lasers = peers.filter((p) => p.laser && p.laser.length > 0);
+
   return (
     <div className="presence-layer" aria-hidden>
+      {/* Remote laser trails: a peer's ephemeral "look here" comet, drawn to
+          match the local laser (canvas/interactions/laser.ts). World points are
+          mapped to screen with the LOCAL camera, exactly like the cursors. */}
+      {lasers.length > 0 && (
+        <svg className="laser-layer">
+          {lasers.map((p) => {
+            const pts = p.laser!.map((w) => worldToScreen(camera, w.x, w.y));
+            const head = pts[pts.length - 1];
+            return (
+              <g key={p.clientId}>
+                {pts.length > 1 && (
+                  <polyline
+                    points={pts.map((s) => `${s.x},${s.y}`).join(" ")}
+                    fill="none"
+                    stroke={LASER_COLOR}
+                    strokeOpacity={0.35}
+                    strokeWidth={4}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+                <circle
+                  className="laser-head"
+                  cx={head.x}
+                  cy={head.y}
+                  r={6}
+                  fill={LASER_COLOR}
+                />
+                <circle cx={head.x} cy={head.y} r={3.5} fill={LASER_CORE} />
+                <circle cx={head.x} cy={head.y} r={1.4} fill="#fff" />
+              </g>
+            );
+          })}
+        </svg>
+      )}
+
       {/* Remote cursors with name tags. */}
       {peers.map((p) => {
         if (!p.cursor) return null;

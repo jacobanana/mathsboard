@@ -9,12 +9,13 @@
 //            Paper, Boards, Save image, Shortcuts.
 //
 //   #dock — a bottom-centre pill, thumb-reachable on touch devices, holding
-//     the six mode buttons (Select, Pan, Draw, Eraser, Text, Maths; keys 1-6
-//     wired in App) plus Picture (7) and, past the divider, Insert (I / 0).
-//     Select/Pan lead, matching the Miro / Excalidraw convention (1 = select);
-//     Eraser sits next to Draw since the two alternate constantly; Maths sits
-//     next to Text as its notation-aware sibling. The startup tool is still
-//     the pen (order ≠ default).
+//     the mode buttons (Select, Pan, Laser, Draw, Eraser, Text, Maths; the six
+//     drawing/select tools keep digit keys 1-6, Laser is the letter K) plus
+//     Picture (7) and, past the divider, Insert (I / 0). Select/Pan lead,
+//     matching the Miro / Excalidraw convention (1 = select); Laser joins them
+//     as the third non-marking tool; Eraser sits next to Draw since the two
+//     alternate constantly; Maths sits next to Text as its notation-aware
+//     sibling. The startup tool is still the pen (order ≠ default).
 //
 //   The contextual options pill (OptionsStrip, #options) floats ABOVE the
 //   dock when the active tool has options and disappears otherwise. It's a
@@ -42,6 +43,7 @@ import {
   ImageIcon,
   SelectIcon,
   HandIcon,
+  LaserIcon,
   UndoIcon,
   RedoIcon,
   PlusIcon,
@@ -196,6 +198,17 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
           >
             <span className="ico">
               <HandIcon />
+            </span>
+          </button>
+          <button
+            className={"btn small" + (isMode("laser") ? " active" : "")}
+            id="laserBtn"
+            title={`Laser pointer (${keyHint("tool-laser")}) — point things out over a call; nothing is drawn`}
+            aria-label="Laser pointer"
+            onClick={() => setTool("laser")}
+          >
+            <span className="ico">
+              <LaserIcon />
             </span>
           </button>
           <button
