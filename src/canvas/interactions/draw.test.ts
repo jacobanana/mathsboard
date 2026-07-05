@@ -186,40 +186,62 @@ describe("point-by-point polygon (freepoly)", () => {
     st().setDrawMode("freepoly");
   });
 
-  it("clicks drop corners; clicking the first corner closes the polygon", () => {
+  it("the polygon goes LIVE at the third corner; clicking the first corner ends", () => {
     click(0, 0);
     click(120, 0);
+    expect(st().board.objects).toHaveLength(0); // below the minimum
     click(120, 90);
-    click(0, 90);
-    expect(st().board.objects).toHaveLength(0); // still building
-    click(2, 2); // within the close radius of the first corner
-    const o = lastShape();
+    // Three corners: the object exists in the document already.
+    let o = lastShape();
     expect(o.type).toBe("shape");
     expect(o.kind).toBe("polygon");
-    expect(o.pts).toHaveLength(4);
+    expect(o.pts).toHaveLength(3);
     expect(o.showAngles).toBe(true);
+    expect(st().selection.objectIds).toEqual([o.id]);
+    click(0, 90); // fourth corner appends to the live object
+    o = lastShape();
+    expect(o.pts).toHaveLength(4);
+    click(2, 2); // within the close radius of the first corner: just ENDS
+    expect(st().board.objects).toHaveLength(1);
+    expect(lastShape().pts).toHaveLength(4); // the closing click added nothing
     expect(st().tool).toBe("pen"); // keeps drawing
   });
 
-  it("needs at least three corners to close", () => {
+  it("fewer than three corners is discarded on finish", () => {
     click(0, 0);
     click(100, 0);
     drawController.onDoubleClick!(pointer(100, 0) as unknown as MouseEvent, ctx);
     expect(st().board.objects).toHaveLength(0);
   });
 
-  it("double-click finishes; the duplicated final click is dropped", () => {
+  it("the double-click's second click FINISHES instead of adding a point", () => {
     click(0, 0);
     click(100, 0);
     click(100, 80);
-    click(100, 80); // the double-click's second click lands on the same spot
+    click(100, 80); // same spot, quick: the double-click's second half
     drawController.onDoubleClick!(
       pointer(100, 80) as unknown as MouseEvent,
       ctx,
     );
+    expect(st().board.objects).toHaveLength(1);
     const o = lastShape();
     expect(o.kind).toBe("polygon");
-    expect(o.pts).toHaveLength(3);
+    expect(o.pts).toHaveLength(3); // no stray point from finishing
+  });
+
+  it("every corner past the third is its OWN undo step", () => {
+    click(0, 0);
+    click(120, 0);
+    click(120, 90);
+    click(0, 90);
+    click(-30, 45);
+    expect(lastShape().pts).toHaveLength(5);
+    st().undo();
+    expect(lastShape().pts).toHaveLength(4);
+    st().undo();
+    expect(lastShape().pts).toHaveLength(3);
+    st().undo();
+    expect(st().board.objects).toHaveLength(0); // creation undone
   });
 
   it("corners snap to the grid when snapping is on", () => {
@@ -253,23 +275,48 @@ describe("click-to-place curve (CAD style)", () => {
     st().setDrawMode("curve");
   });
 
-  it("each click adds a point; double-click finishes an OPEN curve", () => {
+  it("the curve goes LIVE at the second click; each further click appends", () => {
+    click(0, 100);
+    expect(st().board.objects).toHaveLength(0);
+    click(80, 20);
+    let o = lastShape();
+    expect(o.type).toBe("shape");
+    expect(o.kind).toBe("curve");
+    expect(o.pts).toHaveLength(2);
+    expect(o.fill).toBe("none");
+    expect(st().selection.objectIds).toEqual([o.id]); // frame shows
+    click(160, 100);
+    click(240, 20);
+    o = lastShape();
+    expect(o.pts).toHaveLength(4);
+    expect(st().tool).toBe("pen"); // keeps drawing
+  });
+
+  it("finishing never adds a point: the double-click's second half just ends", () => {
+    click(0, 100);
+    click(80, 20);
+    click(160, 100);
+    click(160, 100); // same spot, quick: finish
+    drawController.onDoubleClick!(
+      pointer(160, 100) as unknown as MouseEvent,
+      ctx,
+    );
+    expect(st().board.objects).toHaveLength(1);
+    expect(lastShape().pts).toHaveLength(3); // NO extra trailing point
+  });
+
+  it("each added point is its own undo step, back to nothing", () => {
     click(0, 100);
     click(80, 20);
     click(160, 100);
     click(240, 20);
-    click(240, 20); // the double-click's second click, same spot
-    drawController.onDoubleClick!(
-      pointer(240, 20) as unknown as MouseEvent,
-      ctx,
-    );
-    const o = lastShape();
-    expect(o.type).toBe("shape");
-    expect(o.kind).toBe("curve");
-    expect(o.pts).toHaveLength(4); // duplicate final click dropped
-    expect(o.fill).toBe("none");
-    expect(st().tool).toBe("pen"); // keeps drawing
-    expect(st().selection.objectIds).toEqual([o.id]); // frame shows
+    expect(lastShape().pts).toHaveLength(4);
+    st().undo();
+    expect(lastShape().pts).toHaveLength(3);
+    st().undo();
+    expect(lastShape().pts).toHaveLength(2);
+    st().undo();
+    expect(st().board.objects).toHaveLength(0);
   });
 
   it("needs at least two points; a lone click is abandoned", () => {
@@ -282,9 +329,8 @@ describe("click-to-place curve (CAD style)", () => {
     click(0, 0);
     click(100, 0);
     click(50, 80);
-    click(2, 2); // near the first point: just another point, no close
-    expect(st().board.objects).toHaveLength(0); // still building
-    drawController.onDoubleClick!(pointer(2, 2) as unknown as MouseEvent, ctx);
-    expect(lastShape().pts).toHaveLength(4);
+    click(2, 30); // near-ish the first point: just another point, no close
+    const o = lastShape();
+    expect(o.pts).toHaveLength(4);
   });
 });
