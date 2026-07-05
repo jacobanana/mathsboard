@@ -81,20 +81,22 @@ describe.each(DICE_FACES)("d%i", (faces) => {
     }
   });
 
-  it("shows the chosen face near-flat, clearest and most-facing", () => {
+  it("shows the chosen face clearest, most-facing, and never flat", () => {
     for (const f of solid.faces) {
       const q = faceUpQuat(solid, f.value);
       expect(near(quatLen(q), 1, 1e-6)).toBe(true);
       // The chosen face is the MOST camera-facing (it's what you read)...
       const nz = rotateVec(q, f.normal)[2];
-      const maxNz = Math.max(...solid.faces.map((g) => rotateVec(q, g.normal)[2]));
-      expect(nz).toBe(maxNz);
-      // ...almost flat to the camera (very readable), but not perfectly dead-on
-      // (a sliver of depth remains).
-      expect(nz).toBeGreaterThan(0.95);
+      const facing = solid.faces.map((g) => rotateVec(q, g.normal)[2]);
+      expect(nz).toBe(Math.max(...facing));
+      // ...clearly toward the camera and readable, but not perfectly dead-on.
+      expect(nz).toBeGreaterThan(0.7);
       expect(nz).toBeLessThan(0.9999);
-      // Its number stays upright (up-axis points up on screen).
-      expect(rotateVec(q, f.v)[1]).toBeGreaterThan(0.8);
+      // Its number stays roughly upright (up-axis points up on screen).
+      expect(rotateVec(q, f.v)[1]).toBeGreaterThan(0.4);
+      // At least one other face shows, so no die renders as a flat polygon
+      // (the d4-as-a-triangle regression).
+      expect(facing.filter((z) => z > 0.02).length).toBeGreaterThanOrEqual(2);
     }
   });
 

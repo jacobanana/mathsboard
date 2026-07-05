@@ -350,7 +350,17 @@ function assemble(vertices: Vec3[], raw: Omit<DieFace, "value">[]): Solid {
       if (a < minAngle) minAngle = a;
     }
   }
-  const tilt = Math.min(PRESENTATION_TILT, 0.42 * minAngle);
+  // Adjacent faces only come into view once the die is tipped past (minAngle −
+  // 90°). For d6..d20 that's ≤ 0 (their faces are within 90°, so several already
+  // show near-flat) → keep the small, near-flat PRESENTATION_TILT. The d4's
+  // faces are 109° apart, so flat it's just a triangle; give it exactly enough
+  // tilt (plus a margin) to read as a tetrahedron, capped so the result face
+  // still stays the most-facing.
+  const peekNeed = minAngle - Math.PI / 2;
+  const tilt =
+    peekNeed > 0.01
+      ? Math.min(0.45 * minAngle, peekNeed + 0.22)
+      : Math.min(PRESENTATION_TILT, 0.42 * minAngle);
   return { vertices: verts, faces, byValue, tilt };
 }
 
