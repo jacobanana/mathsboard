@@ -54,8 +54,10 @@ export function renderTemplate(
 
   // Each object is drawn in its tool's NATURAL coordinate space and uniformly
   // scaled to fit its (resizable) box, so every part of the widget -- text,
-  // lines, tick marks, stroke widths -- grows and shrinks together rather than
-  // only the bounding box. At scale 1 this is identical to drawing in place.
+  // lines, tick marks -- grows and shrinks together rather than only the
+  // bounding box. The scale is handed to draw() too, so a tool can exempt a
+  // part (e.g. a shape's border) and keep it a constant on-canvas size. At
+  // scale 1 this is identical to drawing in place.
   for (const o of board.objects) {
     if (o.id === editingId) continue; // hidden while its textarea is open
     const t = getTool(o.type);
@@ -66,7 +68,7 @@ export function renderTemplate(
     tctx.translate(o.x, o.y);
     tctx.scale(s, s);
     t.draw(
-      { ctx: tctx, theme, font: FONT },
+      { ctx: tctx, theme, font: FONT, scale: s },
       { ...o, x: 0, y: 0, w: nat.w, h: nat.h } as never,
     );
     tctx.restore();

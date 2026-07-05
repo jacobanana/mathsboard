@@ -95,12 +95,19 @@ function drawLabel(
 
 // --- drawing --------------------------------------------------------------
 
-function applyStrokeStyle(ctx: CanvasRenderingContext2D, p: ShapeParams): void {
+function applyStrokeStyle(
+  ctx: CanvasRenderingContext2D,
+  p: ShapeParams,
+  scale: number,
+): void {
+  // The border keeps a constant on-canvas thickness regardless of box resize:
+  // the ctx transform already multiplies by `scale`, so divide it back out.
+  const w = p.strokeWidth / scale;
   ctx.strokeStyle = p.stroke;
-  ctx.lineWidth = p.strokeWidth;
+  ctx.lineWidth = w;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.setLineDash(p.dash ? [p.strokeWidth * 3, p.strokeWidth * 2.5] : []);
+  ctx.setLineDash(p.dash ? [w * 3, w * 2.5] : []);
 }
 
 function fillIfAny(ctx: CanvasRenderingContext2D, p: ShapeParams): void {
@@ -272,9 +279,10 @@ export function drawShapeGeometry(
   p: ShapeParams,
   ox: number,
   oy: number,
+  scale = 1,
 ): void {
   ctx.save();
-  applyStrokeStyle(ctx, p);
+  applyStrokeStyle(ctx, p, scale);
 
   switch (p.kind) {
     case "rect": {
@@ -429,9 +437,9 @@ export const shapeTool = defineCanvasTool<ShapeParams>({
 
   size: (p) => ({ w: Math.max(p.nw, 1), h: Math.max(p.nh, 1) }),
 
-  draw: ({ ctx, font }, o) => {
+  draw: ({ ctx, font, scale }, o) => {
     setShapeLabelFont(font);
-    drawShapeGeometry(ctx, o, o.x, o.y);
+    drawShapeGeometry(ctx, o, o.x, o.y, scale);
   },
 
   Dialog: ShapeDialog,
