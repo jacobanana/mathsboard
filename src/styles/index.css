@@ -77,7 +77,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .swatch-row .swatch{width:34px;height:34px;border-color:rgba(0,0,0,.12);}
 .swatch-row .swatch.active{border-color:#fff;box-shadow:0 0 0 3px var(--accent);}
 #stage{flex:1 1 auto;position:relative;background:var(--paper);overflow:hidden;touch-action:none;}
-#template,#ink{position:absolute;inset:0;width:100%;height:100%;display:block;} #ink{touch-action:none;}
+#template,#ink{position:absolute;inset:0;width:100%;height:100%;display:block;}
+/* #template is the base layer AND the pointer surface; #ink is a click-through
+   overlay ABOVE the type-in input layer so strokes paint over the answer boxes. */
+#template{z-index:1;touch-action:none;} #ink{z-index:3;pointer-events:none;}
 #textEditor{position:absolute;z-index:7;display:none;border:1px dashed var(--accent);background:rgba(255,255,255,.72);padding:0 2px;margin:0;resize:none;overflow:hidden;white-space:pre;line-height:1.3;min-width:14px;min-height:1em;font-family:var(--font);font-weight:500;}
 
 /* --- In-place maths editor (canvas/mathEditor.ts). The host div is positioned
@@ -194,6 +197,20 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
   .divider{margin:6px 3px;}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+/* Type-in answer boxes overlaid on canvas tools (InputOverlayLayer). Sits
+   between #template (z1) and #ink (z3) so strokes draw over the inputs. The
+   layer is click-through; each field re-enables pointer events for itself, and
+   `.locked` (any non-select tool) drops them so the pen draws straight through. */
+.inputlayer{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;}
+/* The input IS the box (the tool draws no cell under it, so there's one frame).
+   Neutral by default; the focused "current" box is amber; on answer reveal a
+   typed box goes green/red and a blank one shows the answer muted. */
+.iofield{position:absolute;pointer-events:auto;box-sizing:border-box;text-align:center;font-family:var(--font);font-weight:700;color:var(--ink);background:rgba(255,255,255,.65);border:2px solid #C3D4D2;border-radius:6px;padding:0;line-height:1;}
+.inputlayer.locked .iofield{pointer-events:none;}
+.iofield.ok{border-color:#2E9E5B;background:#EAF7EE;color:#2E9E5B;}
+.iofield.no{border-color:#D64545;background:#FBECEC;color:#D64545;}
+.iofield.revealed{color:var(--muted);}
+.iofield:focus{outline:none;border-color:var(--accent);background:#fff;}
 .ilayer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
 /* --- Systemic "show answer" toggle (AnswerButtonLayer) --- */
 .answer-layer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}

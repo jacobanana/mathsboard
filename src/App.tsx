@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BoardCanvas } from "@/canvas/BoardCanvas";
 import { WidgetLayer } from "@/canvas/WidgetLayer";
+import { InputOverlayLayer } from "@/canvas/InputOverlayLayer";
 import { AnswerButtonLayer } from "@/canvas/AnswerButtonLayer";
 import { PresenceLayer } from "@/ui/PresenceLayer";
 import { boardIdFromUrl } from "@/collab/session";
@@ -175,6 +176,7 @@ export default function App(): JSX.Element {
         {...(COLLAB_ENABLED ? imageDrop.handlers : {})}
       >
         <BoardCanvas onEditObject={openEditFor} />
+        <InputOverlayLayer />
         <WidgetLayer onEditObject={openEditFor} />
         <AnswerButtonLayer container={stageEl} />
         {COLLAB_ENABLED && <PresenceLayer />}

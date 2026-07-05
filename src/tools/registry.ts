@@ -175,6 +175,32 @@ export interface VertexCapability<P> {
   ): Record<string, unknown>;
 }
 
+/**
+ * Optional TYPE-IN INPUTS for a canvas tool: HTML <input> boxes overlaid on the
+ * object (InputOverlayLayer) so pupils can type answers into e.g. a times-table
+ * or grid-method cell. The tool stays a CanvasTool — it keeps resize, z-order
+ * and draw-over — and just declares WHERE the boxes go; the overlay owns the DOM
+ * inputs, stores typed values on the object as live widget state ("ans:<key>":
+ * synced, persisted and undo-invisible, exactly like the worksheet), and marks
+ * them against `correct`. draw() must NOT paint the value a field covers — the
+ * input shows it.
+ */
+export interface InputFieldSpec {
+  /** Stable id; the typed value is stored as the object field "ans:<key>". */
+  key: string;
+  /** Box in the tool's NATURAL coords (the object-relative space draw() uses). */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Expected answer for live marking; omit for un-marked free entry. */
+  correct?: number;
+}
+
+export interface InputCapability<P> {
+  fields(obj: BoardObjectBase & P): InputFieldSpec[];
+}
+
 /** A tool drawn onto the board canvas. */
 export interface CanvasTool<P = Record<string, unknown>> extends ToolMeta {
   kind: "canvas";
@@ -186,6 +212,8 @@ export interface CanvasTool<P = Record<string, unknown>> extends ToolMeta {
   draw: (kit: DrawKit, obj: BoardObjectBase & P) => void;
   /** Optional settings dialog. Omit for click-to-place tools (e.g. text). */
   Dialog?: React.FC<ToolDialogProps<P>>;
+  /** Optional type-in answer boxes overlaid on the object (see InputCapability). */
+  inputs?: InputCapability<P>;
   /** Optional draggable-vertex editing (see VertexCapability). */
   vertices?: VertexCapability<P>;
   /**

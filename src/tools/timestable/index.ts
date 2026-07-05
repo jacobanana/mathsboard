@@ -49,17 +49,9 @@ export const timesTableTool = defineCanvasTool<TimesTableParams>({
         ctx.textAlign = "right";
         ctx.fillStyle = theme.lineInk;
         ctx.fillText(i + " × " + k + " =", o.x + w * 0.6, y + rowH / 2);
-        const bx = o.x + w * 0.64,
-          bw = w * 0.32,
-          by = y + 5,
-          bh = rowH - 10;
-        ctx.strokeStyle = "#C3D4D2";
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(bx, by, bw, bh);
-        if (o.revealed) {
-          ctx.textAlign = "center";
-          ctx.fillText(String(i * k), bx + bw / 2, y + rowH / 2);
-        }
+        // The answer box AND its value are an overlaid <input> (see `inputs`
+        // below) — it owns the framed box, so draw() only paints the prompt.
+        // (One frame: no canvas strokeRect under the input's own border.)
       }
       ctx.restore();
       return;
@@ -93,6 +85,29 @@ export const timesTableTool = defineCanvasTool<TimesTableParams>({
     ctx.lineWidth = 2;
     ctx.strokeRect(o.x, o.y, (n + 1) * cell, (n + 1) * cell);
     ctx.restore();
+  },
+
+  // Type-in answer boxes for the "single table" mode (the spike for the
+  // canvas-tool input capability). One input per row, matching the box drawn in
+  // draw()'s single branch (bx/bw/by/bh at natural width 240, rowH 34); `correct`
+  // gives live green/red marking. Grid mode has no inputs yet.
+  inputs: {
+    fields: (o) => {
+      if (o.mode !== "single") return [];
+      const w = 240,
+        rowH = 34;
+      return Array.from({ length: o.rows }, (_, idx) => {
+        const i = idx + 1;
+        return {
+          key: "r" + i,
+          x: w * 0.64,
+          y: (i - 1) * rowH + 5,
+          w: w * 0.32,
+          h: rowH - 10,
+          correct: i * o.k,
+        };
+      });
+    },
   },
 
   Dialog: TimesTableDialog,

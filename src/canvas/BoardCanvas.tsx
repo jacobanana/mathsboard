@@ -120,13 +120,15 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       camera: () => store.getState().camera,
       toWorld: (sx, sy) => screenToWorld(store.getState().camera, sx, sy),
       evPos: (e) => {
-        const c = iCanvasRef.current!;
+        // #template is the pointer surface (#ink is a pointer-events:none
+        // overlay above it, so ink paints over the input boxes).
+        const c = tCanvasRef.current!;
         const r = c.getBoundingClientRect();
         return { x: e.clientX - r.left, y: e.clientY - r.top };
       },
       render: requestRender,
       get canvas() {
-        return iCanvasRef.current!;
+        return tCanvasRef.current!;
       },
       editor,
       mathEditor,
@@ -179,10 +181,14 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
 
   // --- pointer + gesture dispatch --------------------------------------------
   useEffect(() => {
-    const iCanvas = iCanvasRef.current;
+    // The pointer surface is #template (base layer). #ink sits above it as a
+    // pointer-events:none overlay so committed strokes paint over the type-in
+    // input boxes, and the input layer between them is click-through except in
+    // select mode.
+    const surface = tCanvasRef.current;
     // Wheel zoom/pan is bound on the host #stage (the canvas's parent).
-    const stage = iCanvas?.parentElement;
-    if (!iCanvas || !stage) return;
+    const stage = surface?.parentElement;
+    if (!surface || !stage) return;
 
     const twoPoints = () => {
       const a = [...pointers.current.values()];
@@ -200,7 +206,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       }
       pointers.current.set(e.pointerId, inputCtx.evPos(e));
       try {
-        iCanvas.setPointerCapture(e.pointerId);
+        surface.setPointerCapture(e.pointerId);
       } catch {
         /* ignore */
       }
@@ -232,7 +238,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
         const ctrl = getInteraction(store.getState().tool);
         if (ctrl?.hoverCursor) {
           const cur = ctrl.hoverCursor(e, inputCtx);
-          iCanvas.style.cursor = cur ?? ctrl.cursor ?? "default";
+          surface.style.cursor = cur ?? ctrl.cursor ?? "default";
         }
         return;
       }
@@ -287,20 +293,20 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       routed()?.onPointerLeave?.(inputCtx);
     };
 
-    iCanvas.addEventListener("pointerdown", onPointerDown);
-    iCanvas.addEventListener("pointermove", onPointerMove);
-    iCanvas.addEventListener("pointerup", release);
-    iCanvas.addEventListener("pointercancel", release);
-    iCanvas.addEventListener("pointerleave", onPointerLeave);
-    iCanvas.addEventListener("dblclick", onDblClick);
+    surface.addEventListener("pointerdown", onPointerDown);
+    surface.addEventListener("pointermove", onPointerMove);
+    surface.addEventListener("pointerup", release);
+    surface.addEventListener("pointercancel", release);
+    surface.addEventListener("pointerleave", onPointerLeave);
+    surface.addEventListener("dblclick", onDblClick);
     stage.addEventListener("wheel", onWheel, { passive: false });
     return () => {
-      iCanvas.removeEventListener("pointerdown", onPointerDown);
-      iCanvas.removeEventListener("pointermove", onPointerMove);
-      iCanvas.removeEventListener("pointerup", release);
-      iCanvas.removeEventListener("pointercancel", release);
-      iCanvas.removeEventListener("pointerleave", onPointerLeave);
-      iCanvas.removeEventListener("dblclick", onDblClick);
+      surface.removeEventListener("pointerdown", onPointerDown);
+      surface.removeEventListener("pointermove", onPointerMove);
+      surface.removeEventListener("pointerup", release);
+      surface.removeEventListener("pointercancel", release);
+      surface.removeEventListener("pointerleave", onPointerLeave);
+      surface.removeEventListener("dblclick", onDblClick);
       stage.removeEventListener("wheel", onWheel);
     };
   }, [editor, mathEditor, inputCtx, store]);
@@ -360,7 +366,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
   // Cursor reflects the active tool (its controller's static cursor).
   const tool = useBoardStore((s) => s.tool);
   useEffect(() => {
-    const c = iCanvasRef.current;
+    const c = tCanvasRef.current; // #template is the pointer surface now
     if (!c) return;
     c.style.cursor = getInteraction(tool)?.cursor ?? "default";
   }, [tool]);
