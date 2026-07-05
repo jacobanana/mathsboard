@@ -6,7 +6,13 @@
 //   - areaLatticeDialog            (lines 450-458)
 
 import { defineCanvasTool, type InputFieldSpec } from "@/tools/registry";
-import { partition, fillPanel } from "@/canvas/drawHelpers";
+import {
+  partition,
+  fillPanel,
+  RESULT_FOOT,
+  resultField,
+  drawResultEquals,
+} from "@/canvas/drawHelpers";
 import { AreaLatticeDialog } from "@/tools/arealattice/Dialog";
 
 export interface AreaLatticeParams {
@@ -37,9 +43,9 @@ export default defineCanvasTool<AreaLatticeParams>({
       const n = String(p.a).length,
         m = String(p.b).length,
         cell = 46;
-      return { w: cell + n * cell + 30, h: 26 + m * cell + 30 };
+      return { w: cell + n * cell + 30, h: 26 + m * cell + RESULT_FOOT };
     }
-    return { w: 430, h: 210 + HEAD };
+    return { w: 430, h: 210 + HEAD + RESULT_FOOT };
   },
 
   draw: ({ ctx, theme, font }, o) => {
@@ -87,6 +93,8 @@ export default defineCanvasTool<AreaLatticeParams>({
       ctx.strokeStyle = theme.lineInk;
       ctx.lineWidth = 2;
       ctx.strokeRect(gx, gy, n * cell, m * cell);
+      // Footer: "= [result]" box for the final answer (see `inputs`).
+      drawResultEquals(ctx, theme.lineInk, font, o.x, gy + m * cell, o.w);
       ctx.restore();
       return;
     }
@@ -99,7 +107,7 @@ export default defineCanvasTool<AreaLatticeParams>({
       rectX = o.x + leftW,
       rectY = o.y + HEAD + topH,
       rectW = o.w - leftW,
-      rectH = o.h - HEAD - topH;
+      rectH = o.h - HEAD - topH - RESULT_FOOT;
     const tA = A.reduce((s, v) => s + v, 0),
       tB = B.reduce((s, v) => s + v, 0);
     const colX = [rectX];
@@ -150,23 +158,25 @@ export default defineCanvasTool<AreaLatticeParams>({
     ctx.fillStyle = theme.muted;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.fillText(
-      o.revealed
-        ? o.a + " × " + o.b + " = " + o.a * o.b
-        : o.a + " × " + o.b,
-      o.x,
-      o.y + HEAD / 2,
-    );
+    // Operation is the header; the answer goes in the footer result box.
+    ctx.fillText(o.a + " × " + o.b, o.x, o.y + HEAD / 2);
+    // Footer: "= [result]" box for the final answer (see `inputs`).
+    drawResultEquals(ctx, theme.lineInk, font, o.x, rectY + rectH, o.w);
     ctx.restore();
   },
 
-  // Type-in answer boxes for the AREA model's product cells (frameless "cell"
-  // variant — the model already draws the cell borders). Geometry mirrors the
-  // area draw at natural size (430 × (210+HEAD)); the lattice model's split
-  // tens/ones cells aren't type-in yet, so it gets none.
+  // Type-in answer boxes. AREA model: one frameless "cell" input per product
+  // cell (the model draws the cell borders) plus the footer result box. LATTICE
+  // model: just the footer result box — its diagonal tens/ones cells stay
+  // reveal-only. Geometry mirrors draw() at natural size.
   inputs: {
     fields: (o) => {
-      if (o.mode !== "area") return [];
+      if (o.mode === "lattice") {
+        const n = String(o.a).length,
+          m = String(o.b).length,
+          cell = 46;
+        return [resultField(26 + m * cell, cell + n * cell + 30, o.a * o.b)];
+      }
       const A = partition(o.a),
         B = partition(o.b);
       const leftW = 44,
@@ -201,6 +211,8 @@ export default defineCanvasTool<AreaLatticeParams>({
             correct: A[c] * B[r],
             variant: "cell",
           });
+      // Result box in the footer (the final product), matching draw().
+      out.push(resultField(rectY + rectH, 430, o.a * o.b));
       return out;
     },
   },

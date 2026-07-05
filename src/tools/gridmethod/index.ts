@@ -8,7 +8,13 @@
 // drawGridMethod (line 241), gridMethodDialog (lines 414-421).
 
 import { defineCanvasTool, type InputFieldSpec } from "@/tools/registry";
-import { partition, fillPanel } from "@/canvas/drawHelpers";
+import {
+  partition,
+  fillPanel,
+  RESULT_FOOT,
+  resultField,
+  drawResultEquals,
+} from "@/canvas/drawHelpers";
 import { GridMethodDialog } from "@/tools/gridmethod/Dialog";
 
 export interface GridMethodParams {
@@ -21,6 +27,8 @@ export interface GridMethodParams {
 // it part of the selection area and clears the systemic "show answer" button,
 // which AnswerButtonLayer floats just ABOVE the box's top-left corner.
 const HEAD = 26;
+// Bottom band houses the "= [result]" box — the sum of the products, which the
+// grid cells only break down (shared result-footer helper in drawHelpers).
 
 export const gridMethodTool = defineCanvasTool<GridMethodParams>({
   kind: "canvas",
@@ -34,7 +42,7 @@ export const gridMethodTool = defineCanvasTool<GridMethodParams>({
 
   size: (p) => ({
     w: (partition(p.a).length + 1) * 72,
-    h: (partition(p.b).length + 1) * 54 + HEAD,
+    h: (partition(p.b).length + 1) * 54 + HEAD + RESULT_FOOT,
   }),
 
   draw: ({ ctx, theme, font }, o) => {
@@ -52,13 +60,8 @@ export const gridMethodTool = defineCanvasTool<GridMethodParams>({
     ctx.font = "600 14px " + font;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.fillText(
-      o.revealed
-        ? o.a + " × " + o.b + " = " + o.a * o.b
-        : o.a + " × " + o.b,
-      o.x,
-      o.y + HEAD / 2,
-    );
+    // The operation is the header; the answer goes in the footer result box.
+    ctx.fillText(o.a + " × " + o.b, o.x, o.y + HEAD / 2);
     ctx.font = "600 18px " + font;
     ctx.textAlign = "center";
     for (let r = 0; r <= rows; r++)
@@ -86,6 +89,16 @@ export const gridMethodTool = defineCanvasTool<GridMethodParams>({
     ctx.strokeStyle = theme.lineInk;
     ctx.lineWidth = 2;
     ctx.strokeRect(o.x, gy, (cols + 1) * cw, (rows + 1) * ch);
+    // Footer: "=" then the result box (drawn by the input overlay), the sum of
+    // the grid's products.
+    drawResultEquals(
+      ctx,
+      theme.lineInk,
+      font,
+      o.x,
+      gy + (rows + 1) * ch,
+      (cols + 1) * cw,
+    );
     ctx.restore();
   },
 
@@ -110,6 +123,14 @@ export const gridMethodTool = defineCanvasTool<GridMethodParams>({
             correct: A[i] * B[j],
             variant: "cell",
           });
+      // The result box in the footer (the sum of the products), matching draw().
+      out.push(
+        resultField(
+          HEAD + (B.length + 1) * ch,
+          (A.length + 1) * cw,
+          o.a * o.b,
+        ),
+      );
       return out;
     },
   },

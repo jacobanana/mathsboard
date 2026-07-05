@@ -8,6 +8,7 @@
 import type { Theme } from "@/styles/theme";
 import { fontFamily, theme } from "@/styles/theme";
 import type { Camera, Background } from "@/board/types";
+import type { InputFieldSpec } from "@/tools/registry";
 
 /** Convenience re-export so draw code can `import { FONT }`. */
 export const FONT = fontFamily;
@@ -111,6 +112,56 @@ const measureCtx: CanvasRenderingContext2D = measureCanvas.getContext("2d")!;
 export function measureTextWidth(text: string, font: string): number {
   measureCtx.font = font;
   return measureCtx.measureText(text).width;
+}
+
+// --- result footer -------------------------------------------------------
+// Several method tools (grid method, area / lattice) work the sub-products in a
+// grid and need one more box for the final answer. This is the shared "= [box]"
+// footer: a tool reserves RESULT_FOOT at the bottom of its box, draws the "="
+// (drawResultEquals) and declares the box (resultField) — both centred the same
+// way, so they always line up.
+
+/** Footer band height a tool adds to its natural height for the result box. */
+export const RESULT_FOOT = 48;
+const EQ_SLOT = 22; // width reserved for the "=" before the box
+const RESULT_W = 100;
+const RESULT_H = 34;
+
+/** The framed result box, centred in `width`, in the footer band at natural
+ *  `footTop`. `correct` is the final answer for live marking. */
+export function resultField(
+  footTop: number,
+  width: number,
+  correct: number,
+): InputFieldSpec {
+  return {
+    key: "result",
+    x: (width - (EQ_SLOT + RESULT_W)) / 2 + EQ_SLOT,
+    y: footTop + (RESULT_FOOT - RESULT_H) / 2,
+    w: RESULT_W,
+    h: RESULT_H,
+    correct,
+  };
+}
+
+/** Draw the "=" that precedes the result box (world coords: `ox` = o.x). */
+export function drawResultEquals(
+  ctx: CanvasRenderingContext2D,
+  color: string,
+  font: string,
+  ox: number,
+  footTop: number,
+  width: number,
+): void {
+  ctx.fillStyle = color;
+  ctx.font = "700 22px " + font;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    "=",
+    ox + (width - (EQ_SLOT + RESULT_W)) / 2 + EQ_SLOT - 6,
+    footTop + RESULT_FOOT / 2,
+  );
 }
 
 /** Box size for a "note" / problem card containing `text`. */
