@@ -69,7 +69,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 #colorBtn{gap:5px;}
 .color-cur{width:24px;height:24px;border-radius:50%;border:2px solid rgba(28,40,38,.18);flex:0 0 auto;}
 .color-caret{font-size:11px;opacity:.75;}
-.swatch-menu{position:fixed;display:flex;gap:8px;background:#fff;border-radius:16px;padding:9px;z-index:45;border:1px solid var(--island-border);box-shadow:0 12px 34px rgba(0,0,0,.22);}
+.swatch-menu{position:fixed;display:flex;flex-wrap:wrap;max-width:288px;gap:8px;background:#fff;border-radius:16px;padding:9px;z-index:45;border:1px solid var(--island-border);box-shadow:0 12px 34px rgba(0,0,0,.22);}
 .swatch-menu .swatch{border-color:rgba(0,0,0,.12);}
 .swatch-menu .swatch.active{border-color:#fff;box-shadow:0 0 0 3px var(--accent);}
 /* Swatch rows inside dialogs (the shape settings' fill / border pickers). */
