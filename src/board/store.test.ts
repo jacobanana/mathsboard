@@ -231,3 +231,12 @@ describe("draft dirtiness", () => {
     expect(st().dirty).toBe(true);
   });
 });
+
+describe("draw edit mode", () => {
+  it("any tool switch ends a draw edit session", () => {
+    st().setDrawEditMode(true);
+    expect(st().drawEditMode).toBe(true);
+    st().setTool("select");
+    expect(st().drawEditMode).toBe(false);
+  });
+});

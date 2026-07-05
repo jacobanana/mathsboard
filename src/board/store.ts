@@ -119,6 +119,14 @@ interface BoardState {
   eraserSize: number;
   /** The draw tool's mode: freehand ink or a shape kind (roadmap A2). */
   drawMode: DrawMode;
+  /**
+   * The draw tool was entered to EDIT an existing object (double-clicking a
+   * shape / stroke in the pointer tool switches here — see select.ts
+   * editObjectAt). While set, a double-click anywhere returns to the pointer
+   * ("double-click to enter, double-click to exit"), and stray stationary taps
+   * don't drop dots. Cleared by any tool switch. Ephemeral.
+   */
+  drawEditMode: boolean;
   /** Background colour for new closed shapes ("none" = transparent). */
   fillColor: string;
   /** Side count for new regular polygons (3-12). */
@@ -245,6 +253,8 @@ interface BoardState {
 
   // ---- EPHEMERAL actions ----
   setTool(t: ToolName): void;
+  /** Set (or clear) the draw tool's edit-a-target mode. */
+  setDrawEditMode(on: boolean): void;
   setColor(c: string): void;
   setPenSize(n: number): void;
   setTextSize(n: number): void;
@@ -481,6 +491,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
     mathSize: 26,
     eraserSize: 45,
     drawMode: "free",
+    drawEditMode: false,
     laserMode: false,
     laserFrame: false,
     laserColor: "#ff2b2b", // LASER_PALETTE[0] (red)
@@ -639,7 +650,12 @@ export const useBoardStore = create<BoardState>((set, get) => {
 
     // ---- EPHEMERAL actions ----
     setTool(t) {
-      set({ tool: t });
+      // Any deliberate tool switch ends an edit session: picking the draw tool
+      // fresh (dock / shortcut) must not inherit a stale double-click-to-exit.
+      set({ tool: t, drawEditMode: false });
+    },
+    setDrawEditMode(on) {
+      set({ drawEditMode: on });
     },
     setColor(c) {
       set({ color: c });

@@ -45,6 +45,7 @@ export function freshBoard(partial: Partial<BoardDocument> = {}): BoardDocument 
     mathSize: 26,
     eraserSize: 45,
     drawMode: "free",
+    drawEditMode: false,
     fillColor: "none",
     polygonSides: 5,
     aspectLock: false,

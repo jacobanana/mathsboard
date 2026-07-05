@@ -314,6 +314,7 @@ export function editObjectAt(e: MouseEvent, c: InputCtx): void {
     st.setSelection({ objectIds: [], strokeIds: [stroke.id] });
     st.setDrawMode("free");
     st.setTool("pen");
+    st.setDrawEditMode(true); // double-click again (anywhere) to exit
     return;
   }
 
@@ -331,6 +332,7 @@ export function editObjectAt(e: MouseEvent, c: InputCtx): void {
     // controls (fill for closed shapes, sides for polygons, ...).
     st.setDrawMode(hit.kind as DrawMode);
     st.setTool("pen");
+    st.setDrawEditMode(true); // double-click again (anywhere) to exit
   } else {
     c.editObject(hit);
   }

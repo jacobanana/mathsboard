@@ -287,11 +287,13 @@ describe("double-click edit routing", () => {
     editObjectAt(pointer(410, 310), spyCtx); // the text object
     expect(st().tool).toBe("text");
     expect(st().selection.objectIds).toEqual([T.id]);
+    expect(st().drawEditMode).toBe(false); // text isn't a draw-tool edit session
 
     editObjectAt(pointer(520, 415), spyCtx); // the rectangle shape
     expect(st().tool).toBe("pen");
     expect(st().drawMode).toBe("rect");
     expect(st().selection.objectIds).toEqual([Sh.id]);
+    expect(st().drawEditMode).toBe(true); // double-click again to exit
   });
 
   it("edits a pencil stroke in the freehand pen tool", () => {
@@ -303,5 +305,6 @@ describe("double-click edit routing", () => {
     expect(st().tool).toBe("pen");
     expect(st().drawMode).toBe("free");
     expect(st().selection).toEqual({ objectIds: [], strokeIds: [S2.id] });
+    expect(st().drawEditMode).toBe(true);
   });
 });

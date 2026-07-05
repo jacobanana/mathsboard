@@ -414,8 +414,17 @@ export const drawController: InteractionController = {
   },
 
   onDoubleClick(_e, c) {
-    // Double-click finishes the click-to-place shape (freepoly / curve).
-    if (placementMode(c.store.getState().drawMode)) finishPlacement(c);
+    const st = c.store.getState();
+    // A click-to-place shape in progress: the double-click finishes it and
+    // stays in the tool to draw the next.
+    if (placementMode(st.drawMode) && placementActive()) {
+      finishPlacement(c);
+      return;
+    }
+    // In an edit session (entered by double-clicking an object) a double-click
+    // ANYWHERE returns to the pointer — "double-click to enter, double-click to
+    // exit". setTool clears drawEditMode.
+    if (st.drawEditMode) st.setTool("select");
   },
 
   cancel(c) {

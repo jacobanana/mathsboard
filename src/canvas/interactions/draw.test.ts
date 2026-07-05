@@ -334,3 +334,35 @@ describe("click-to-place curve (CAD style)", () => {
     expect(o.pts).toHaveLength(4);
   });
 });
+
+describe("double-click exits an edit session", () => {
+  const dbl = (x: number, y: number) =>
+    drawController.onDoubleClick!(pointer(x, y) as unknown as MouseEvent, ctx);
+
+  it("returns to the pointer from an edit session — anywhere on screen", () => {
+    st().setDrawMode("rect");
+    st().setDrawEditMode(true); // as if entered by double-clicking a rectangle
+    dbl(500, 500); // empty space, not over any object
+    expect(st().tool).toBe("select");
+    expect(st().drawEditMode).toBe(false); // setTool cleared it
+  });
+
+  it("does nothing on a plain draw double-click (no edit session)", () => {
+    st().setDrawMode("rect");
+    dbl(500, 500);
+    expect(st().tool).toBe("pen");
+  });
+
+  it("a stray stationary tap in an edit session leaves no dot", () => {
+    st().setDrawMode("free");
+    st().setDrawEditMode(true);
+    down(200, 200);
+    up(200, 200); // a lone tap would normally drop a 1-point dot stroke
+    expect(st().board.strokes).toHaveLength(0);
+    // A real freehand drag still commits, edit session or not.
+    down(200, 200);
+    move(260, 240);
+    up(260, 240);
+    expect(st().board.strokes).toHaveLength(1);
+  });
+});

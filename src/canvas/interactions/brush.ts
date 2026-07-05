@@ -77,6 +77,10 @@ function makeBrushController(mode: "pen" | "eraser"): InteractionController {
         // below runs unconditionally to clear the live eraser preview even
         // when nothing was erased.
         st.eraseStrokes({ points: s.points, size: s.size });
+      } else if (s.points.length < 2 && st.drawEditMode) {
+        // In an edit session a stray stationary tap (e.g. one half of the
+        // double-click that exits back to the pointer) must not drop a dot on
+        // the canvas. A real freehand drag has >1 point and still commits.
       } else {
         const finished: Stroke = {
           id: newId(),
