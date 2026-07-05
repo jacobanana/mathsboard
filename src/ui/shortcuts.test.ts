@@ -412,6 +412,65 @@ describe("active-tool options", () => {
     expect(st().board.objects[0].color).toBe(PALETTE[1][1]);
   });
 
+  it("C cycles FROM the edit target's own colour, not the stale default", () => {
+    // The shape is red while the drawing default is still black: C must step
+    // red -> orange (the target's context), with the default following — the
+    // same rule as +/- stepping from the target's size.
+    const s = {
+      id: newId(),
+      type: "shape",
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 60,
+      kind: "rect",
+      nw: 100,
+      nh: 60,
+      pts: [],
+      stroke: PALETTE[3][1], // red
+      strokeWidth: 3,
+      fill: "none",
+      dash: false,
+      showAngles: false,
+      both: false,
+    };
+    freshBoard({ objects: [s] });
+    st().setColor(PALETTE[0][1]); // default: black
+    st().select(s.id);
+
+    fire(keydown("c"));
+    expect(st().board.objects[0].stroke).toBe(PALETTE[4][1]); // red -> orange
+    expect(st().color).toBe(PALETTE[4][1]); // default follows the target
+  });
+
+  it("B cycles FROM the selected shape's own fill, not the default", () => {
+    const s = {
+      id: newId(),
+      type: "shape",
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 60,
+      kind: "rect",
+      nw: 100,
+      nh: 60,
+      pts: [],
+      stroke: PALETTE[0][1],
+      strokeWidth: 3,
+      fill: FILL_PALETTE[4][1], // soft red
+      dash: false,
+      showAngles: false,
+      both: false,
+    };
+    freshBoard({ objects: [s] });
+    st().setFillColor(FILL_PALETTE[0][1]); // default: "none"
+    st().select(s.id);
+
+    fire(keydown("b"));
+    expect(st().board.objects[0].fill).toBe(FILL_PALETTE[5][1]); // soft red -> soft orange
+    expect(st().fillColor).toBe(FILL_PALETTE[5][1]);
+  });
+
   it("C recolours a selected pencil stroke, exactly like the pill swatch", () => {
     const s = aStroke({ color: PALETTE[0][1] });
     freshBoard({ strokes: [s] });

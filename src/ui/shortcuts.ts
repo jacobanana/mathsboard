@@ -20,7 +20,12 @@
 
 import { useBoardStore, DRAW_MODES } from "@/board/store";
 import type { DrawMode } from "@/board/store";
-import { applyStyle, sizeBinding, sizeValue } from "@/board/styling";
+import {
+  applyStyle,
+  sizeBinding,
+  sizeValue,
+  styleValue,
+} from "@/board/styling";
 import { TOOL_UI } from "@/ui/toolSpecs";
 import type { ToolUiSpec } from "@/ui/toolSpecs";
 import {
@@ -99,9 +104,14 @@ const bare = (c: ShortcutCtx): boolean => !c.mod && !c.e.altKey && !c.inField;
 
 // --- colour + size (active-tool options) ----------------------------------
 
-/** Cycle the colour of whatever palette is active (C). In laser mode that's
- *  the laser's own palette; otherwise the draw palette — the styling service
- *  recolours the live edit target too, exactly like a pill swatch click. */
+/**
+ * Cycle the colour of whatever palette is active (C). In laser mode that's
+ * the laser's own palette; otherwise the draw palette — starting FROM THE
+ * VALUE THE CONTROL SHOWS (styleValue: the edit target's own colour when one
+ * is live, else the drawing default), exactly like +/- steps from the
+ * target's size. A colour off the palette (legacy content) restarts at the
+ * first entry. applyStyle recolours the target and moves the default along.
+ */
 function cycleColor(): void {
   const st = useBoardStore.getState();
   // Laser mode shows its own vivid palette; C cycles that instead.
@@ -110,16 +120,18 @@ function cycleColor(): void {
     st.setLaserColor(LASER_PALETTE[(li + 1) % LASER_PALETTE.length][1]);
     return;
   }
-  const idx = PALETTE.findIndex(([, hex]) => hex === st.color);
+  const idx = PALETTE.findIndex(([, hex]) => hex === styleValue(st, "color"));
   applyStyle("color", PALETTE[(idx + 1) % PALETTE.length][1]);
 }
 
-/** Cycle the BACKGROUND (fill) palette (B): the default fill for new shapes,
- *  plus a selected shape's background via the styling service. Includes the
- *  "none" (transparent) entry. */
+/** Cycle the BACKGROUND (fill) palette (B), from the value the fill swatch
+ *  shows (a selected shape's own background, else the default — same context
+ *  rule as C and +/-). Includes the "none" (transparent) entry. */
 function cycleFillColor(): void {
   const st = useBoardStore.getState();
-  const idx = FILL_PALETTE.findIndex(([, hex]) => hex === st.fillColor);
+  const idx = FILL_PALETTE.findIndex(
+    ([, hex]) => hex === styleValue(st, "fill"),
+  );
   applyStyle("fill", FILL_PALETTE[(idx + 1) % FILL_PALETTE.length][1]);
 }
 
