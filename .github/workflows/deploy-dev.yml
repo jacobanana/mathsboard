@@ -1,0 +1,141 @@
+# Deploy an open pull request onto the shared dev/staging VPS.
+#
+# Unlike publish.yml (which builds on push to main, tags images `latest`, rolls
+# the production box, and cuts a GitHub Release), this workflow is deliberately
+# throwaway:
+#   * images are tagged `pr-<number>` ONLY - never `latest`, so the production
+#     pointer and the release history are never touched;
+#   * NO GitHub Release is created;
+#   * the `pr-<number>` image tags are deleted again when the PR closes
+#     (see cleanup-dev.yml), so development builds don't accumulate in GHCR.
+#
+# The latest PR to deploy "wins" the single dev box - it's a staging server, not
+# an isolated per-PR environment.
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   DEV_DEPLOY_HOST     the dev box's floating IP (or dev.board.<domain>)
+#   DEV_DEPLOY_USER     the dev instance login user (Infomaniak Ubuntu: "ubuntu")
+#   DEV_DEPLOY_SSH_KEY  private key whose public half Terraform put on the dev box
+
+name: Deploy PR to dev
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# One deploy per PR; a new push supersedes an in-flight one.
+concurrency:
+  group: deploy-dev-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast logic gate: don't waste a build + deploy on a known-broken PR. e2e is
+  # intentionally skipped here (it already runs in e2e.yml on the same PR) to
+  # keep the dev rollout quick.
+  unit:
+    uses: ./.github/workflows/unit-run.yml
+
+  # Build both images fresh and tag them pr-<number>. Both are always built (not
+  # path-filtered like publish.yml) so `docker compose pull` on the box always
+  # finds a matching tag for web AND api.
+  build:
+    needs: unit
+    # Same-repo PRs only: forks can't read the deploy secrets, and we don't want
+    # to publish images or touch the box for untrusted branches.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - image: web
+            context: .
+            dockerfile: deploy/Dockerfile.web
+          - image: api
+            context: server
+            dockerfile: server/Dockerfile
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Build the PR's actual head, matching what we check out on the box.
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Compute version
+        id: version
+        uses: ./.github/actions/app-version
+
+      - name: Short SHA
+        id: sha
+        # Immutable per-commit tag component. Using the head SHA (not a moving
+        # tag) means each push publishes a NEW tag rather than overwriting one,
+        # so no dangling untagged manifests pile up - and cleanup-dev.yml can
+        # then delete every pr-<n>-* build for the PR on close.
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: echo "short=${HEAD_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push (pr-${{ github.event.number }}-${{ steps.sha.outputs.short }})
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          # Immutable per-PR, per-commit tag: pr-<number>-<short sha>. No
+          # `latest`, no bare sha tag - nothing that could be mistaken for a
+          # release artifact. Every build gets its own tag (so nothing is left
+          # dangling), and cleanup-dev.yml removes them all when the PR closes.
+          tags: ghcr.io/${{ github.repository }}-${{ matrix.image }}:pr-${{ github.event.number }}-${{ steps.sha.outputs.short }}
+          build-args: |
+            APP_VERSION=${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Roll the dev box onto this PR's images
+        uses: appleboy/ssh-action@v1
+        env:
+          PR: ${{ github.event.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          host: ${{ secrets.DEV_DEPLOY_HOST }}
+          username: ${{ secrets.DEV_DEPLOY_USER }}
+          key: ${{ secrets.DEV_DEPLOY_SSH_KEY }}
+          envs: PR,SHA
+          script: |
+            set -e
+            cd /opt/mathboard
+            # Pull the PR's code (compose file + Caddyfile are read from the repo,
+            # not baked into the images) and check out its exact head commit.
+            git fetch origin "pull/${PR}/head"
+            git checkout -f "$SHA"
+            # Same immutable tag the build job pushed: pr-<number>-<short sha>.
+            TAG="pr-${PR}-$(echo "$SHA" | cut -c1-7)"
+            # Persist the image tag so a reboot brings the same PR build back up.
+            if grep -q '^IMAGE_TAG=' .env 2>/dev/null; then
+              sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${TAG}/" .env
+            else
+              echo "IMAGE_TAG=${TAG}" >> .env
+            fi
+            docker compose pull
+            # Bind-mounted Caddyfile: reload so routing edits in the PR take
+            # effect even when the web container isn't recreated. Near no-op when
+            # unchanged; fails loudly on an invalid Caddyfile.
+            docker compose exec -T web caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+            docker compose up -d
+            docker image prune -f

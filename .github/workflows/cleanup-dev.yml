@@ -1,0 +1,72 @@
+# Delete a PR's throwaway dev artifacts when the PR closes (merged or not).
+#
+# This is what keeps development builds from polluting GHCR: deploy-dev.yml
+# publishes ghcr.io/<repo>-web:pr-<n> and -api:pr-<n> while the PR is open, and
+# this workflow deletes exactly those tags once it closes. Production images
+# (`latest` + sha) and GitHub Releases are never touched - this only ever
+# removes the `pr-<n>` tags it owns.
+
+name: Clean up dev PR artifacts
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  delete-images:
+    # Same-repo PRs only (fork PRs never published pr-<n> images).
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Delete every pr-${{ github.event.number }} image build from GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          PR: ${{ github.event.number }}
+        run: |
+          set -euo pipefail
+          # deploy-dev.yml publishes an immutable tag per push: pr-<n>-<short
+          # sha>. Match EVERY version of the package carrying such a tag (plus
+          # the legacy moving `pr-<n>` tag, for older PRs) so no build from this
+          # PR is left behind.
+          for pkg in mathboard-web mathboard-api; do
+            echo "Cleaning ${pkg} builds for PR #${PR}"
+            ids=$(gh api --paginate \
+              "/users/${OWNER}/packages/container/${pkg}/versions" \
+              --jq "[.[] | select(any(.metadata.container.tags[]?; . == \"pr-${PR}\" or startswith(\"pr-${PR}-\"))) | .id] | .[]" || true)
+            if [ -z "$ids" ]; then
+              echo "  none found (already gone) - skipping"
+              continue
+            fi
+            for id in $ids; do
+              echo "  deleting ${pkg} version ${id}"
+              gh api --method DELETE \
+                "/users/${OWNER}/packages/container/${pkg}/versions/${id}"
+            done
+          done
+
+  # Return the shared dev box to the production `latest` images so a closed PR
+  # doesn't leave a stale build serving on dev.board.<domain> until the next PR.
+  reset-dev-box:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reset the dev box to latest
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEV_DEPLOY_HOST }}
+          username: ${{ secrets.DEV_DEPLOY_USER }}
+          key: ${{ secrets.DEV_DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/mathboard
+            # Drop back to main + the `latest` images (clear the PR's IMAGE_TAG).
+            git fetch origin main
+            git checkout -f origin/main
+            sed -i '/^IMAGE_TAG=/d' .env 2>/dev/null || true
+            docker compose pull
+            docker compose exec -T web caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+            docker compose up -d
+            docker image prune -f

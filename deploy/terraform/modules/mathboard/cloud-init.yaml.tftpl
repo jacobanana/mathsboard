@@ -1,7 +1,8 @@
 #cloud-config
 # Runs once on first boot: install Docker, clone the repo, drop in .env, start
-# the stack. Everything after this is handled by the publish.yml deploy job
-# (git pull && docker compose pull && up).
+# the stack. Everything after this is handled by CI (the publish.yml deploy job
+# for production, deploy-dev.yml for the dev/staging box): git pull/checkout &&
+# docker compose pull && up.
 package_update: true
 packages:
   - ca-certificates
@@ -10,12 +11,16 @@ packages:
 
 write_files:
   # Staged here first because `git clone` needs an empty target directory;
-  # runcmd copies it into the repo after cloning.
+  # runcmd copies it into the repo after cloning. The analytics block is only
+  # emitted for environments with enable_analytics = true (production); the
+  # dev/staging box omits it entirely, so it runs only web + api + ysweet.
   - path: /root/mathboard.env
     permissions: "0600"
     content: |
       SITE_ADDRESS=${site_address}
+%{ if enable_analytics ~}
       ANALYTICS_ADDRESS=${analytics_address}
+%{ endif ~}
       Y_SWEET_AUTH=${y_sweet_auth}
       YSWEET_CONNECTION_STRING=ys://${y_sweet_server_token}@ysweet:8080
       S3_BUCKET=${s3_bucket}
@@ -26,10 +31,12 @@ write_files:
       AWS_REGION=${aws_region}
       AWS_ENDPOINT_URL_S3=${s3_endpoint}
       AWS_S3_USE_PATH_STYLE=true
+%{ if enable_analytics ~}
       COMPOSE_PROFILES=analytics
       POSTGRES_PASSWORD=${postgres_password}
       UMAMI_APP_SECRET=${umami_app_secret}
       BACKUP_KEEP_DAYS=${backup_keep_days}
+%{ endif ~}
 
 runcmd:
   - curl -fsSL https://get.docker.com | sh

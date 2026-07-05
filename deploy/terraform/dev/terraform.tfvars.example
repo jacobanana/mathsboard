@@ -1,0 +1,36 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored - it
+# holds secrets and (like all Terraform state here) they end up in plaintext in
+# *.tfstate too, so keep this whole directory off any public backend.
+#
+# This provisions the DEV / STAGING box. Run terraform from THIS directory so
+# its state stays separate from production's.
+
+# Auth. Either name a clouds.yaml entry here, OR leave it "" and source your
+# OpenStack RC file (sets OS_* env vars) before running terraform. Use the SAME
+# OpenStack project as production - the dev box just gets distinct resource
+# names and its own bucket.
+os_cloud = ""
+
+# The dev FQDN. Add its A record (-> the `floating_ip` output) in the Infomaniak
+# Manager. Caddy provisions the TLS cert on the first HTTPS request after DNS
+# resolves. Analytics is disabled on dev, so there is NO analytics subdomain.
+site_address = "dev.board.example.com"
+
+# Public SSH key to install on the dev box. Store the matching PRIVATE key as
+# the DEV_DEPLOY_SSH_KEY GitHub secret. May be the same key as production.
+ssh_public_key = "ssh-ed25519 AAAA... you@host"
+# Lock this down to your own IP + GitHub's ranges once deploys work if you like:
+# ssh_cidr = "203.0.113.7/32"
+
+# Generate a SEPARATE keypair for dev (so dev tokens can't hit production):
+#   docker run --rm ghcr.io/jamsocket/y-sweet:latest y-sweet gen-auth --json
+y_sweet_auth         = "REPLACE_WITH_dev_private_key"
+y_sweet_server_token = "REPLACE_WITH_dev_server_token"
+
+# Distinct bucket so dev never touches production data (this is the default,
+# shown here for visibility). Override the flavor/endpoint only if your region
+# needs it - everything else inherits the same defaults as the production box.
+# name        = "mathboard-dev"
+# s3_bucket   = "mathboard-dev"
+# flavor_name = "a1-ram2-disk20-perf1"
+# s3_endpoint = "https://s3.pub2.infomaniak.cloud"
