@@ -194,6 +194,40 @@ describe("resize", () => {
     expect(st().board.objects[0]).toMatchObject({ w: 540, h: 64 });
   });
 
+  it("snaps the dragged handle to the grid on squared paper", () => {
+    st().select(O.id); // snap defaults on, background squared; SE handle at (648,172)
+    down(648, 172);
+    move(700, 158); // raw SE ~ (700,158) -> snapped to grid (690, 150)
+    up(700, 158);
+
+    const o = st().board.objects[0];
+    expect(o.x).toBe(100); // NW corner anchored
+    expect(o.y).toBe(100);
+    // Width drove and landed on a grid multiple relative to the anchored left.
+    expect(o.x + o.w).toBe(690);
+  });
+
+  it("holding Alt bypasses the resize snap", () => {
+    st().select(O.id);
+    down(648, 172);
+    selectController.onPointerMove(
+      pointer(700, 158, { type: "pointermove", altKey: true }),
+      ctx,
+    );
+    up(700, 158);
+    // Raw SE corner: right edge at the un-snapped pointer x.
+    expect(st().board.objects[0].x + st().board.objects[0].w).toBe(700);
+  });
+
+  it("does not snap resize on non-squared paper", () => {
+    st().setBackground("lined");
+    st().select(O.id);
+    down(648, 172);
+    move(700, 158);
+    up(700, 158);
+    expect(st().board.objects[0].x + st().board.objects[0].w).toBe(700);
+  });
+
   it("hovering a handle of the selected object shows its resize cursor", () => {
     st().select(O.id);
     expect(
