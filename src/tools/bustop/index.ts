@@ -10,6 +10,7 @@
 // offsets and branching are identical to the original.
 
 import { defineCanvasTool } from "@/tools/registry";
+import { fillPanel } from "@/canvas/drawHelpers";
 import { BusStopDialog } from "@/tools/bustop/Dialog";
 
 export interface BusStopParams {
@@ -38,6 +39,7 @@ export default defineCanvasTool<BusStopParams>({
     const dd = String(o.dividend);
     const digitW = 34;
     ctx.save();
+    fillPanel(ctx, o);
     ctx.font = "600 26px " + font;
     ctx.textBaseline = "middle";
     ctx.fillStyle = theme.lineInk;

@@ -12,7 +12,7 @@
 
 import { defineCanvasTool } from "@/tools/registry";
 import { clamp } from "@/board/geometry";
-import { fmtNum } from "@/canvas/drawHelpers";
+import { fmtNum, fillPanel } from "@/canvas/drawHelpers";
 import { NumberLineDialog } from "@/tools/numberline/Dialog";
 
 export interface NumberLineParams {
@@ -40,6 +40,7 @@ export const numberLineTool = defineCanvasTool<NumberLineParams>({
     const x1 = o.x + o.w - pad;
     const span = x1 - x0;
     ctx.save();
+    fillPanel(ctx, o);
     ctx.strokeStyle = theme.lineInk;
     ctx.fillStyle = theme.lineInk;
     ctx.lineWidth = 2.5;

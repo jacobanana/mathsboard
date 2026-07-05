@@ -123,8 +123,7 @@ export default defineCanvasTool<AreaLatticeParams>({
       rowY.push(cy);
     });
     ctx.save();
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(rectX, rectY, rectW, rectH);
+    fillPanel(ctx, o); // the card, matching the lattice model (was transparent)
     ctx.font = "600 16px " + font;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";

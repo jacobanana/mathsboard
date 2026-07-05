@@ -7,7 +7,7 @@
 //   dialog -> clockDialog         (lines 560-569, see ./Dialog.tsx)
 
 import { defineCanvasTool } from "@/tools/registry";
-import { to12, to24 } from "@/canvas/drawHelpers";
+import { to12, to24, fillPanel } from "@/canvas/drawHelpers";
 import { ClockDialog } from "@/tools/clock/Dialog";
 
 export interface ClockParams {
@@ -43,6 +43,7 @@ export const clockTool = defineCanvasTool<ClockParams>({
       cx = o.x + r,
       cy = o.y + r;
     ctx.save();
+    fillPanel(ctx, o);
     ctx.fillStyle = "#fff";
     ctx.strokeStyle = theme.lineInk;
     ctx.lineWidth = 3;

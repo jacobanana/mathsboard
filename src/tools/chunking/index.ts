@@ -4,7 +4,7 @@
 // drawChunking (line 256), chunkingDialog (lines 504-511).
 
 import { defineCanvasTool, type InputFieldSpec } from "@/tools/registry";
-import { measureTextWidth, FONT } from "@/canvas/drawHelpers";
+import { measureTextWidth, FONT, fillPanel } from "@/canvas/drawHelpers";
 import { ChunkingDialog } from "@/tools/chunking/Dialog";
 
 export interface ChunkingParams {
@@ -61,6 +61,7 @@ export const chunkingTool = defineCanvasTool<ChunkingParams>({
   draw: ({ ctx, theme, font }, o) => {
     const { chunks, answer, remainder } = chunkSteps(o.dividend, o.divisor);
     ctx.save();
+    fillPanel(ctx, o);
     ctx.textBaseline = "middle";
     ctx.fillStyle = theme.lineInk;
     const rx = o.x + o.w - 96;

@@ -9,8 +9,19 @@
 // from the prototype stays literal; css('--x') tokens map to theme tokens.
 
 import { defineCanvasTool } from "@/tools/registry";
-import { roundRect, wrapText, noteSize } from "@/canvas/drawHelpers";
+import {
+  roundRect,
+  wrapText,
+  noteSize,
+  fillPanel,
+  CARD_PAD,
+  CARD_RADIUS,
+} from "@/canvas/drawHelpers";
 import { NoteDialog } from "@/tools/note/Dialog";
+
+/** The problem card's warm paper — its word-problem identity, distinct from the
+ *  white maths panels but sharing the same card shape / border / lift. */
+const NOTE_PAPER = "#FFFDF6";
 
 export interface NoteParams {
   text: string;
@@ -35,15 +46,19 @@ export default defineCanvasTool<NoteParams>({
     const maxW = o.w - padX * 2 - 10;
     const lines = wrapText(ctx, o.text || "", maxW, noteFont);
     ctx.save();
-    ctx.fillStyle = "#FFFDF6";
-    ctx.strokeStyle = "#E4D9B8";
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, o.x, o.y, o.w, o.h, 12);
-    ctx.fill();
-    ctx.stroke();
+    // Same card shape / border / soft lift as the maths panels, on warm paper.
+    fillPanel(ctx, o, NOTE_PAPER);
+    // Accent spine down the left edge, clipped to the card's rounded corners.
+    const cx = o.x - CARD_PAD,
+      cy = o.y - CARD_PAD,
+      cw = o.w + CARD_PAD * 2,
+      ch = o.h + CARD_PAD * 2;
+    ctx.save();
+    roundRect(ctx, cx, cy, cw, ch, CARD_RADIUS);
+    ctx.clip();
     ctx.fillStyle = theme.accent;
-    roundRect(ctx, o.x, o.y, 7, o.h, { tl: 12, bl: 12, tr: 0, br: 0 });
-    ctx.fill();
+    ctx.fillRect(cx, cy, 8, ch);
+    ctx.restore();
     ctx.fillStyle = theme.muted;
     ctx.font = "700 11px " + font;
     ctx.textAlign = "left";

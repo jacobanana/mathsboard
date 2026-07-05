@@ -4,7 +4,7 @@
 // drawLongDiv (line 254), longDivDialog (lines 495-502).
 
 import { defineCanvasTool } from "@/tools/registry";
-import { drawRightNum } from "@/canvas/drawHelpers";
+import { drawRightNum, fillPanel } from "@/canvas/drawHelpers";
 import { LongDivDialog } from "@/tools/longdiv/Dialog";
 
 export interface LongDivParams {
@@ -64,6 +64,7 @@ export const longDivTool = defineCanvasTool<LongDivParams>({
     const DW = 30;
     const RH = 38;
     ctx.save();
+    fillPanel(ctx, o);
     ctx.font = "600 24px " + font;
     ctx.textBaseline = "middle";
     ctx.fillStyle = theme.lineInk;

@@ -198,18 +198,51 @@ export function textSizeOf(
 
 // --- panel / digit helpers ------------------------------------------------
 
+// The standard maths-tool "card": corner radius + padding around the content
+// box + the border/shadow that lift it off the squared paper (matching the
+// README header). Tuned once here so every framed tool reads as one system.
+export const CARD_RADIUS = 16;
+export const CARD_PAD = 9; // ≈ the selection frame's own 8px inset, so they align
+const CARD_SHADOW = "rgba(28,40,38,0.16)";
+const CARD_BORDER = "rgba(28,40,38,0.12)";
+
 /**
- * Fill an object's bounding box with a flat panel colour.
- * Defaults to theme.panel (#FFFFFF). fillPanel does not receive the theme, so
- * the default is the literal equal to theme.panel; pass a colour to override.
+ * Draw the standard maths-tool CARD behind an object's content: a rounded white
+ * panel — padded a little beyond the content box — with a hairline border and a
+ * soft drop shadow, so the widget reads as a physical card floating on the
+ * paper (the look the README header uses). A tool opts in simply by calling
+ * this at the TOP of its draw(); tools that are free marks (text, maths,
+ * shapes, ink) or bring their own surface (the sticky note) don't. Pass a
+ * colour to tint the card instead of white.
+ *
+ * `o` is the content box in the tool's natural coords. The card is inflated by
+ * CARD_PAD so even edge-to-edge grids float inside it (no corner clash with the
+ * rounding). Self-contained: the shadow is confined to the fill via save/restore,
+ * so content drawn afterwards casts none.
  */
 export function fillPanel(
   ctx: CanvasRenderingContext2D,
   o: { x: number; y: number; w: number; h: number },
-  color = theme.panel,
+  color: string = theme.panel,
 ): void {
+  const x = o.x - CARD_PAD;
+  const y = o.y - CARD_PAD;
+  const w = o.w + CARD_PAD * 2;
+  const h = o.h + CARD_PAD * 2;
+  ctx.save();
+  ctx.shadowColor = CARD_SHADOW;
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 6;
   ctx.fillStyle = color;
-  ctx.fillRect(o.x, o.y, o.w, o.h);
+  roundRect(ctx, x, y, w, h, CARD_RADIUS);
+  ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.strokeStyle = CARD_BORDER;
+  ctx.lineWidth = 1;
+  roundRect(ctx, x, y, w, h, CARD_RADIUS);
+  ctx.stroke();
+  ctx.restore();
 }
 
 /** Draw digits of `s` right-aligned at rightX, each `dw` wide, centred at cy. */

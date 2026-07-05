@@ -14,6 +14,7 @@
 // etc.; FONT -> kit.font. All numeric constants, offsets and branches kept identical.
 
 import { defineCanvasTool } from "@/tools/registry";
+import { fillPanel } from "@/canvas/drawHelpers";
 import { FractionDialog } from "@/tools/fraction/Dialog";
 
 export interface FractionBar {
@@ -51,6 +52,7 @@ export const fractionTool = defineCanvasTool<FractionParams>({
   },
 
   draw: ({ ctx, theme, font }, o) => {
+    fillPanel(ctx, o);
     if (o.mode === "circle") return drawFractionCircle(ctx, theme, font, o);
     const labelW = 58,
       barX = o.x + labelW,

@@ -9,6 +9,7 @@
 // FONT -> kit.font); all numeric constants, offsets and branches kept identical.
 
 import { defineCanvasTool } from "@/tools/registry";
+import { fillPanel } from "@/canvas/drawHelpers";
 import { FractionWallDialog } from "@/tools/fractionwall/Dialog";
 
 export interface FractionWallParams {
@@ -31,6 +32,7 @@ export const fractionWallTool = defineCanvasTool<FractionWallParams>({
       rowH = 34;
     const max = o.max;
     ctx.save();
+    fillPanel(ctx, o);
     ctx.font = "600 14px " + font;
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
