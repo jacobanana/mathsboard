@@ -149,7 +149,9 @@ export default defineWidgetTool<WorksheetParams>({
   blurb: "type answers, get marked",
   category: "practice",
   defaults,
-  defaultSize: { w: 300, h: 200 },
+  // Rough initial box; the Worksheet component measures its rendered card and
+  // syncs the real w/h back so the selection frame covers the whole widget.
+  defaultSize: { w: 300, h: 540 },
   Component: Worksheet,
   Dialog: WorksheetDialog,
 });

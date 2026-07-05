@@ -1,23 +1,27 @@
 // WIDGET COMPONENT — the .iworksheet overlay card.
 //
-// Renders the header (title, New, Check, settings ✎, ×) and the body rows
-// (question label · input · mark). Typed answers and marks are SHARED STATE:
-// they live on the object as per-question fields ("ans:<qid>" / "mark:<qid>")
-// written under INPUT_ORIGIN via updateWidgetState, so every collaborator sees
-// them live and they persist with the document — but Ctrl+Z never reverts
-// them. Keying by question id (not index) means a fresh question set (New /
-// settings edit) starts blank everywhere without any clearing pass. The score
-// line is derived from the marks, so it can never go stale.
+// Renders a light title row (title, New, Check) and the body rows (question
+// label · input · mark). There is NO chrome bar: editing settings and deleting
+// are the systemic selection actions every object now has (the FloatButtons
+// over the selection, double-click, the Delete key), so a per-widget ✎/×
+// would be redundant. The whole card is the drag handle (any press that isn't
+// on a control moves the object).
+//
+// Typed answers and marks are SHARED STATE: they live on the object as
+// per-question fields ("ans:<qid>" / "mark:<qid>") written under INPUT_ORIGIN
+// via updateWidgetState, so every collaborator sees them live and they persist
+// with the document — but Ctrl+Z never reverts them. Keying by question id (not
+// index) means a fresh question set (New / settings edit) starts blank
+// everywhere without any clearing pass. The score line is derived from the
+// marks, so it can never go stale.
 //
 // The WidgetLayer positions and scales this element, so we never set
-// left/top/transform here. Header drag moves the object through the store
-// (pushHistory once at drag start, then moveObject per pointer move), mirroring
-// the prototype's attachDrag.
-//
-// Ported from buildBody, checkWidget, createWidgetEl and attachDrag
-// (maths-whiteboard.html lines 580-593).
+// left/top/transform here. The card's rendered size is synced back onto the
+// object's box (updateWidgetState — shared + persisted, undo-invisible) so the
+// selection frame and FloatButtons cover the whole widget, whose height depends
+// on the question count.
 
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import {
@@ -31,11 +35,10 @@ import {
   type WorksheetParams,
 } from "@/tools/worksheet";
 
-export function Worksheet({ obj, onEdit }: WidgetProps<WorksheetParams>) {
+export function Worksheet({ obj }: WidgetProps<WorksheetParams>) {
   const updateObject = useBoardStore((s) => s.updateObject);
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
-  const removeObject = useBoardStore((s) => s.removeObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
 
   // Shared state, read straight off the object (no local copies to reset).
@@ -53,32 +56,67 @@ export function Worksheet({ obj, onEdit }: WidgetProps<WorksheetParams>) {
     : "";
 
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
+  const cardRef = useRef<HTMLDivElement | null>(null);
 
-  // --- header drag (pointer events on the head only) ----------------------
-  function onHeadPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if ((e.target as HTMLElement).closest("button")) return;
+  // Keep the object's box matched to the rendered card so the selection frame
+  // and float buttons cover the whole widget. offset sizes are the unscaled
+  // layout size (the camera scale is a CSS transform, which doesn't affect
+  // them), and at scale 1 one CSS px is one world unit — so they ARE the box.
+  // Written as live widget state: shared + persisted, never an undo step.
+  const lastSize = useRef({ w: obj.w, h: obj.h });
+  useLayoutEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const sync = () => {
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      if (
+        Math.abs(w - lastSize.current.w) > 0.5 ||
+        Math.abs(h - lastSize.current.h) > 0.5
+      ) {
+        lastSize.current = { w, h };
+        updateWidgetState(obj.id, { w, h });
+      }
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [obj.id, updateWidgetState]);
+
+  // --- card drag (any press that isn't on a control moves the object) ------
+  function onCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if ((e.target as HTMLElement).closest("button, input, select, textarea"))
+      return;
     e.stopPropagation();
-    const head = e.currentTarget;
+    const card = e.currentTarget;
     const scale = useBoardStore.getState().camera.scale;
     const sx = e.clientX;
     const sy = e.clientY;
     const ox = obj.x;
     const oy = obj.y;
-    pushHistory(); // once at drag start; moveObject pushes no history.
+    let moved = false;
     try {
-      head.setPointerCapture(e.pointerId);
+      card.setPointerCapture(e.pointerId);
     } catch {
       /* ignore */
     }
     const mv = (ev: PointerEvent) => {
+      // Push one history entry at the REAL drag start (past a small jitter
+      // threshold) so a plain click-to-select never logs an empty undo step.
+      if (!moved) {
+        if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 3) return;
+        moved = true;
+        pushHistory();
+      }
       moveObject(obj.id, ox + (ev.clientX - sx) / scale, oy + (ev.clientY - sy) / scale);
     };
     const up = () => {
-      head.removeEventListener("pointermove", mv);
-      head.removeEventListener("pointerup", up);
+      card.removeEventListener("pointermove", mv);
+      card.removeEventListener("pointerup", up);
     };
-    head.addEventListener("pointermove", mv);
-    head.addEventListener("pointerup", up);
+    card.addEventListener("pointermove", mv);
+    card.addEventListener("pointerup", up);
   }
 
   // --- check (marks are shared state, the score derives from them) ---------
@@ -112,33 +150,24 @@ export function Worksheet({ obj, onEdit }: WidgetProps<WorksheetParams>) {
   }
 
   return (
-    <div className="iworksheet" data-id={obj.id}>
-      <div className="iw-head" onPointerDown={onHeadPointerDown}>
-        <span className="iw-title">{widgetTitle(obj)}</span>
-        <span className="iw-sp" />
-        <button className="iw-btn" title="New questions" onClick={regen}>
-          New
-        </button>
-        <button className="iw-btn check" onClick={check}>
-          Check
-        </button>
-        <button
-          className="iw-btn"
-          title="Settings"
-          onClick={() => onEdit?.()}
-        >
-          ✎
-        </button>
-        <button
-          className="iw-x"
-          title="Remove"
-          onClick={() => removeObject(obj.id)}
-        >
-          ×
-        </button>
-      </div>
-
+    <div
+      className="iworksheet"
+      data-id={obj.id}
+      ref={cardRef}
+      onPointerDown={onCardPointerDown}
+    >
       <div className="iw-body">
+        <div className="iw-top">
+          <span className="iw-title">{widgetTitle(obj)}</span>
+          <span className="iw-sp" />
+          <button className="iw-btn" title="New questions" onClick={regen}>
+            New
+          </button>
+          <button className="iw-btn check" onClick={check}>
+            Check
+          </button>
+        </div>
+
         {obj.questions.map((q, i) => {
           const mark = marks[i];
           const inOk = mark?.kind === "ok";
