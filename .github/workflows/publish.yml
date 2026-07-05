@@ -195,13 +195,15 @@ jobs:
             cd /opt/mathsboard
             git pull --ff-only
             docker compose pull
+            docker compose up -d
             # The Caddyfile is bind-mounted, so `up -d` won't recreate the web
             # container for a routing-only change - reload it explicitly so
-            # Caddyfile edits take effect. Graceful and a near no-op when the
-            # config is unchanged; fails the deploy loudly if the new Caddyfile
-            # is invalid (Caddy keeps serving the old config in that case).
+            # Caddyfile edits take effect. Runs AFTER `up -d` so web is
+            # guaranteed running (a cold start would otherwise die here with
+            # "service web is not running"). Near no-op when the config is
+            # unchanged; fails the deploy loudly if the new Caddyfile is invalid
+            # (Caddy keeps serving the old config in that case).
             docker compose exec -T web caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
-            docker compose up -d
             docker image prune -f
 
   # Record every successful deploy as a GitHub Release, tagged with the same
