@@ -592,11 +592,14 @@ export const selectController: InteractionController = {
     } else if (resizing && e.pointerId === resizing.pid) {
       const pp = c.evPos(e);
       const w = c.toWorld(pp.x, pp.y);
+      // Snap the dragged handle to the grid like moves and vertex drags do;
+      // resizeRect then derives the other axis from the locked aspect ratio.
+      const p = snapping(st, e) ? snapPt(w) : w;
       const rect = resizeRect(
         { x: resizing.ox, y: resizing.oy, w: resizing.ow, h: resizing.oh },
         resizing.handle,
-        w.x,
-        w.y,
+        p.x,
+        p.y,
       );
       const cur = st.board.objects.find((o) => o.id === resizing!.id);
       if (
