@@ -42,7 +42,7 @@ import type { Pt, ShapeKind } from "@/tools/shape/geometry";
 import { drawShapeGeometry, NO_FILL, shapeTool } from "@/tools/shape";
 import type { ShapeParams } from "@/tools/shape";
 import { SHAPE_WIDTH_RANGE } from "@/ui/constants";
-import { track, trackBoardActivated } from "@/analytics";
+import { createObject } from "@/board/commands";
 import type {
   InputCtx,
   InteractionController,
@@ -136,8 +136,9 @@ function shapeStyleParams(c: InputCtx, kind: ShapeKind): Omit<ShapeParams, "kind
   };
 }
 
-/** Commit a finished shape object: select it (its frame shows it's live) but
- *  KEEP the draw tool active so the next shape can be drawn immediately. */
+/** Commit a finished shape object through the shared creation ritual
+ *  (board/commands.ts): selected, but the draw tool STAYS active so the next
+ *  shape can be drawn immediately. */
 function commitShape(
   kind: ShapeKind,
   x: number,
@@ -145,7 +146,6 @@ function commitShape(
   params: ShapeParams,
   trackedAs: string = kind,
 ): string {
-  const st = useBoardStore.getState();
   const obj: AnyBoardObject = {
     id: newId(),
     type: "shape",
@@ -155,10 +155,7 @@ function commitShape(
     h: params.nh,
     ...params,
   };
-  st.addObject(obj);
-  st.select(obj.id);
-  track("tool_action", { tool: "shape", action: "created", kind: trackedAs });
-  trackBoardActivated(st.board.id);
+  createObject(obj, { keepTool: true, trackExtra: { kind: trackedAs } });
   return obj.id;
 }
 

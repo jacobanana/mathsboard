@@ -16,6 +16,7 @@ import { hitTest } from "@/board/geometry";
 import { textSizeOf } from "@/canvas/drawHelpers";
 import { id as newId } from "@/board/types";
 import type { AnyBoardObject } from "@/board/types";
+import { createObject } from "@/board/commands";
 import { drawSelectionOutlines } from "@/canvas/interactions/select";
 import type {
   InputCtx,
@@ -46,11 +47,11 @@ let pending: Pending | null = null;
 
 const isDrag = (p: Pending): boolean => p.cur != null;
 
-/** Create + open a fresh text object; select it so its frame reads as live. */
+/** Create + open a fresh text object via the shared creation ritual: selected
+ *  (its frame reads as live), text tool kept, tracking deferred to the
+ *  editor's first non-empty commit (an abandoned empty never counts). */
 function createAndEdit(c: InputCtx, obj: AnyBoardObject): void {
-  const st = c.store.getState();
-  st.addObject(obj);
-  st.select(obj.id);
+  createObject(obj, { keepTool: true, deferTracking: true });
   c.editor.open(obj, true);
 }
 

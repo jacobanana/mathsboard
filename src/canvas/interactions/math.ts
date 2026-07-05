@@ -6,6 +6,7 @@
 
 import { hitTest } from "@/board/geometry";
 import { id as newId } from "@/board/types";
+import { createObject } from "@/board/commands";
 import { mathTextTool, MATH_BASE_PX } from "@/tools/mathtext";
 import { prewarmMathEditor } from "@/canvas/mathEditor";
 import { drawSelectionOutlines } from "@/canvas/interactions/select";
@@ -73,8 +74,9 @@ export const mathController: InteractionController = {
         h: sz.h * k,
         ...params,
       };
-      st.addObject(obj);
-      st.select(obj.id);
+      // The shared creation ritual, maths tool kept; tracking is deferred to
+      // the editor's first non-empty commit (canvas/mathEditor.ts).
+      createObject(obj, { keepTool: true, deferTracking: true });
       c.mathEditor.open(obj, true);
     }
   },

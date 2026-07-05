@@ -15,7 +15,8 @@
 import { textSizeOf } from "@/canvas/drawHelpers";
 import { FONT } from "@/canvas/drawHelpers";
 import { scaleOf, sizedBox } from "@/board/sizing";
-import { track, trackBoardActivated } from "@/analytics";
+import { trackCreated } from "@/board/commands";
+import { track } from "@/analytics";
 import type { useBoardStore } from "@/board/store";
 import type { AnyBoardObject } from "@/board/types";
 import type { InPlaceEditorHandle } from "@/canvas/interactions/types";
@@ -210,13 +211,11 @@ export function createTextEditor(opts: {
       sizedBox("text", { text, size, boxW }, ed.scale ?? 1) ??
       textSizeOf(text, size, boxW);
     st.updateObject(obj.id, { text, w: box.w, h: box.h });
-    // Analytics follow the maths editor's policy: a tool creation counts on
-    // its first non-empty commit (abandoned empties stay invisible), an edit
-    // only when the text actually changed.
-    if (ed.isNew) {
-      track("tool_action", { tool: "text", action: "created" });
-      trackBoardActivated(st.board.id);
-    } else if (text !== ed.initialText) {
+    // The deferred half of the creation ritual (board/commands.ts): a tool
+    // creation counts on its first non-empty commit (abandoned empties stay
+    // invisible), an edit only when the text actually changed.
+    if (ed.isNew) trackCreated("text");
+    else if (text !== ed.initialText) {
       track("tool_action", { tool: "text", action: "edited" });
     }
     render();

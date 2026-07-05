@@ -25,7 +25,8 @@
 import { scaleOf, sizedBox } from "@/board/sizing";
 import { MATH_BASE_PX } from "@/tools/mathtext";
 import { theme } from "@/styles/theme";
-import { track, trackBoardActivated } from "@/analytics";
+import { trackCreated } from "@/board/commands";
+import { track } from "@/analytics";
 import type { useBoardStore } from "@/board/store";
 import type { AnyBoardObject } from "@/board/types";
 import type { InPlaceEditorHandle } from "@/canvas/interactions/types";
@@ -373,12 +374,9 @@ export function createMathEditor(opts: {
         if (cur().board.objects.some((o) => o.id === s.objId))
           cur().updateObject(s.objId, { latex });
       }
-      if (s.isNew) {
-        track("tool_action", { tool: "mathtext", action: "created" });
-        trackBoardActivated(cur().board.id);
-      } else {
-        track("tool_action", { tool: "mathtext", action: "edited" });
-      }
+      // The deferred half of the creation ritual (board/commands.ts).
+      if (s.isNew) trackCreated("mathtext");
+      else track("tool_action", { tool: "mathtext", action: "edited" });
     })();
   };
 

@@ -37,11 +37,56 @@ export function setStageSizeProvider(fn: StageSizeProvider): void {
 }
 
 /**
+ * THE CREATION RITUAL — every path that puts a new object on the board
+ * (insert gallery / dialogs, the draw tool's shape commit, the text and maths
+ * taps, image drop) routes through here, so the shared behaviour is decided
+ * once: the fresh object is SELECTED (its frame shows it's live), the active
+ * tool switches to select unless the creating tool stays in play
+ * (`keepTool`), and analytics fire the standard `tool_action created` +
+ * board-activated pair. `deferTracking` is for create-then-edit-in-place
+ * flows (text, maths): the creation only counts on the editor's first
+ * non-empty commit, so abandoned empties stay invisible — the editor calls
+ * trackCreated then.
+ */
+export function createObject(
+  obj: AnyBoardObject,
+  opts: {
+    keepTool?: boolean;
+    deferTracking?: boolean;
+    /** Extra `tool_action` properties (e.g. the shape's `kind`). */
+    trackExtra?: Record<string, string>;
+  } = {},
+): void {
+  const st = useBoardStore.getState();
+  st.addObject(obj);
+  st.select(obj.id);
+  if (!opts.keepTool) st.setTool("select");
+  if (!opts.deferTracking) trackCreated(obj.type, opts.trackExtra);
+}
+
+/**
+ * The analytics half of the creation ritual, exposed for the deferred flows.
+ * One event for every tool interaction — `action` is the verb, `tool` the
+ * registry id (single source of truth). Umami's Properties tab filters by
+ * property value, so `tool_action` gives the full tool×action matrix (filter
+ * action -> rank tools; filter tool -> see its action mix). A creation also
+ * activates the board (fires once/board).
+ */
+export function trackCreated(
+  type: string,
+  extra?: Record<string, string>,
+): void {
+  track("tool_action", { tool: type, action: "created", ...extra });
+  trackBoardActivated(useBoardStore.getState().board.id);
+}
+
+/**
  * Place a new object: centre it on screen with a 22px cascade (mod 6) so
- * successive inserts fan out instead of stacking, then select it and switch to
- * the select tool. `at` (screen px relative to #stage) overrides the centre
- * for drag-dropped images so they land under the cursor; a dropped object
- * skips the cascade. No-op for an unregistered tool type.
+ * successive inserts fan out instead of stacking, then run the creation
+ * ritual (select + switch to the select tool + analytics). `at` (screen px
+ * relative to #stage) overrides the centre for drag-dropped images so they
+ * land under the cursor; a dropped object skips the cascade. No-op for an
+ * unregistered tool type.
  */
 export function placeObject(
   type: string,
@@ -56,7 +101,7 @@ export function placeObject(
   const at = opts.at;
   const anchor = screenToWorld(camera, at ? at.x : W / 2, at ? at.y : H / 2);
   const casc = at ? 0 : (board.objects.length % 6) * 22;
-  const obj: AnyBoardObject = {
+  createObject({
     id: makeId(),
     type,
     x: anchor.x - size.w / 2 + casc,
@@ -64,17 +109,7 @@ export function placeObject(
     w: size.w,
     h: size.h,
     ...params,
-  };
-  st.addObject(obj);
-  st.select(obj.id);
-  st.setTool("select");
-  // One event for every tool interaction — `action` is the verb, `tool` the
-  // registry id (single source of truth). Umami's Properties tab filters by
-  // property value, so `tool_action` gives the full tool×action matrix (filter
-  // action -> rank tools; filter tool -> see its action mix). Placing a widget
-  // also activates the board (fires once/board).
-  track("tool_action", { tool: type, action: "created" });
-  trackBoardActivated(board.id);
+  });
 }
 
 // --- editing (EDIT) ----------------------------------------------------------
