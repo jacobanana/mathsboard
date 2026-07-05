@@ -16,6 +16,12 @@ export interface GridMethodParams {
   b: number;
 }
 
+// Top band inside the box that houses the "a × b" operation label. Keeping the
+// header inside the object's bounding box (rather than floating above it) makes
+// it part of the selection area and clears the systemic "show answer" button,
+// which AnswerButtonLayer floats just ABOVE the box's top-left corner.
+const HEAD = 26;
+
 export const gridMethodTool = defineCanvasTool<GridMethodParams>({
   kind: "canvas",
   type: "gridmethod",
@@ -28,7 +34,7 @@ export const gridMethodTool = defineCanvasTool<GridMethodParams>({
 
   size: (p) => ({
     w: (partition(p.a).length + 1) * 72,
-    h: (partition(p.b).length + 1) * 54,
+    h: (partition(p.b).length + 1) * 54 + HEAD,
   }),
 
   draw: ({ ctx, theme, font }, o) => {
@@ -37,16 +43,28 @@ export const gridMethodTool = defineCanvasTool<GridMethodParams>({
       cols = A.length,
       rows = B.length,
       cw = 72,
-      ch = 54;
+      ch = 54,
+      gy = o.y + HEAD; // grid sits below the header band
     ctx.save();
     fillPanel(ctx, o);
+    // Operation label, inside the header band at the top-left of the box.
+    ctx.fillStyle = theme.muted;
+    ctx.font = "600 14px " + font;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      o.revealed
+        ? o.a + " × " + o.b + " = " + o.a * o.b
+        : o.a + " × " + o.b,
+      o.x,
+      o.y + HEAD / 2,
+    );
     ctx.font = "600 18px " + font;
     ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
     for (let r = 0; r <= rows; r++)
       for (let c = 0; c <= cols; c++) {
         const cx = o.x + c * cw,
-          cy = o.y + r * ch;
+          cy = gy + r * ch;
         if ((r === 0 || c === 0) && !(r === 0 && c === 0)) {
           ctx.fillStyle = theme.accentSoft;
           ctx.fillRect(cx, cy, cw, ch);
@@ -66,18 +84,7 @@ export const gridMethodTool = defineCanvasTool<GridMethodParams>({
       }
     ctx.strokeStyle = theme.lineInk;
     ctx.lineWidth = 2;
-    ctx.strokeRect(o.x, o.y, (cols + 1) * cw, (rows + 1) * ch);
-    ctx.fillStyle = theme.muted;
-    ctx.font = "600 14px " + font;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText(
-      o.revealed
-        ? o.a + " × " + o.b + " = " + o.a * o.b
-        : o.a + " × " + o.b,
-      o.x,
-      o.y - 7,
-    );
+    ctx.strokeRect(o.x, gy, (cols + 1) * cw, (rows + 1) * ch);
     ctx.restore();
   },
 

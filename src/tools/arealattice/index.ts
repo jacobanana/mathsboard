@@ -15,6 +15,13 @@ export interface AreaLatticeParams {
   b: number;
 }
 
+// Top band inside the box that houses the "a × b" operation label. Keeping the
+// header inside the object's bounding box (rather than floating above it) makes
+// it part of the selection area and clears the systemic "show answer" button,
+// which AnswerButtonLayer floats just ABOVE the box's top-left corner. Only the
+// area model draws this label; the lattice model has no header.
+const HEAD = 26;
+
 export default defineCanvasTool<AreaLatticeParams>({
   kind: "canvas",
   type: "arealattice",
@@ -32,7 +39,7 @@ export default defineCanvasTool<AreaLatticeParams>({
         cell = 46;
       return { w: cell + n * cell + 30, h: 26 + m * cell + 30 };
     }
-    return { w: 430, h: 210 };
+    return { w: 430, h: 210 + HEAD };
   },
 
   draw: ({ ctx, theme, font }, o) => {
@@ -90,9 +97,9 @@ export default defineCanvasTool<AreaLatticeParams>({
     const leftW = 44,
       topH = 26,
       rectX = o.x + leftW,
-      rectY = o.y + topH,
+      rectY = o.y + HEAD + topH,
       rectW = o.w - leftW,
-      rectH = o.h - topH;
+      rectH = o.h - HEAD - topH;
     const tA = A.reduce((s, v) => s + v, 0),
       tB = B.reduce((s, v) => s + v, 0);
     const colX = [rectX];
@@ -138,19 +145,23 @@ export default defineCanvasTool<AreaLatticeParams>({
     ctx.fillStyle = theme.lineInk;
     ctx.font = "700 16px " + font;
     for (let c = 0; c < A.length; c++)
-      ctx.fillText("×" + A[c], (colX[c] + colX[c + 1]) / 2, o.y + topH / 2);
+      ctx.fillText(
+        "×" + A[c],
+        (colX[c] + colX[c + 1]) / 2,
+        o.y + HEAD + topH / 2,
+      );
     for (let r = 0; r < B.length; r++)
       ctx.fillText(String(B[r]), o.x + leftW / 2, (rowY[r] + rowY[r + 1]) / 2);
     ctx.font = "600 13px " + font;
     ctx.fillStyle = theme.muted;
     ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
+    ctx.textBaseline = "middle";
     ctx.fillText(
       o.revealed
         ? o.a + " × " + o.b + " = " + o.a * o.b
         : o.a + " × " + o.b,
       o.x,
-      o.y - 7,
+      o.y + HEAD / 2,
     );
     ctx.restore();
   },
