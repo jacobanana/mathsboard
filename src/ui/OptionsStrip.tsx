@@ -8,8 +8,9 @@
 //                        MODE selector (freehand + the shape kinds, roadmap A2)
 //                        on the BOTTOM line, nearest the dock's Draw button.
 //   tool === "select" -> manipulate only (move / resize / rotate on the canvas);
-//                        the pointer NEVER carries a styling panel. In collab
-//                        builds it shows the laser toggle, otherwise nothing.
+//                        the pointer NEVER carries a styling panel. It DOES show
+//                        the grid-snap toggle (moves/resizes snap on squared
+//                        paper), plus the laser toggle in collab builds.
 //   tool === "text"   -> size slider (textSize) + colour dropdown.
 //   tool === "math"   -> size slider (mathSize) + colour dropdown.
 //   tool === "eraser" -> size slider (eraserSize) only.
@@ -379,13 +380,14 @@ export function OptionsStrip(): JSX.Element | null {
   // The pointer tool never carries a styling panel — selecting a shape shows
   // move / resize / rotate chrome on the canvas, not colour/width controls.
   // To restyle an object you double-click it (edit mode: its own drawing tool
-  // takes over and this pill styles it live). So the pointer shows only the
-  // laser toggle, and only in collab builds (the laser is a sharing feature).
+  // takes over and this pill styles it live). What it DOES carry is the grid-
+  // snap toggle, since moves and resizes snap to the grid on squared paper (see
+  // select.ts), plus the laser toggle in collab builds (a sharing feature).
   if (tool === "select") {
-    if (!COLLAB_ENABLED) return null;
     return (
       <div className="island" id="options">
-        <LaserToggle />
+        {COLLAB_ENABLED && <LaserToggle />}
+        <SnapToggle />
       </div>
     );
   }
