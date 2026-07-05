@@ -342,12 +342,15 @@ export function editObjectAt(e: MouseEvent, c: InputCtx): void {
 
 /**
  * The dashed selection frame around every selected object and stroke. Shared:
- * the select controller draws it, and the DRAW controller reuses it so a
- * freshly committed (auto-selected) shape reads as editable straight away.
+ * the select controller draws it, the DRAW / TEXT / MATH controllers reuse it so
+ * a selected object reads as editable in its own tool too — a freshly committed
+ * shape, or a text/maths object that's selected but not being edited. The object
+ * currently OPEN in an in-place editor (`editingId`) is skipped: its textarea /
+ * math field is the visual, so a frame around the hidden object would be noise.
  */
 export function drawSelectionOutlines(
   kit: OverlayKit,
-  st: Pick<BoardState, "board" | "selection">,
+  st: Pick<BoardState, "board" | "selection" | "editingId">,
 ): void {
   const { camera, theme } = kit;
   const tctx = kit.back;
@@ -357,6 +360,7 @@ export function drawSelectionOutlines(
   tctx.lineWidth = 2 / camera.scale;
   tctx.setLineDash([8 / camera.scale, 6 / camera.scale]);
   for (const sid of st.selection.objectIds) {
+    if (sid === st.editingId) continue; // its editor overlay is the visual
     const o = st.board.objects.find((x) => x.id === sid);
     if (o) tctx.strokeRect(o.x - pad, o.y - pad, o.w + pad * 2, o.h + pad * 2);
   }

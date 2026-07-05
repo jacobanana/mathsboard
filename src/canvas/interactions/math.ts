@@ -8,6 +8,7 @@ import { hitTest } from "@/board/geometry";
 import { id as newId } from "@/board/types";
 import { mathTextTool, MATH_BASE_PX } from "@/tools/mathtext";
 import { prewarmMathEditor } from "@/canvas/mathEditor";
+import { drawSelectionOutlines } from "@/canvas/interactions/select";
 import type { AnyBoardObject } from "@/board/types";
 import type { InteractionController } from "@/canvas/interactions/types";
 
@@ -76,6 +77,12 @@ export const mathController: InteractionController = {
       st.select(obj.id);
       c.mathEditor.open(obj, true);
     }
+  },
+
+  // A selected (but not actively edited) maths object shows the dashed frame,
+  // like a shape in the draw tool — so it reads as editable in the maths tool too.
+  drawOverlay(kit, c) {
+    drawSelectionOutlines(kit, c.store.getState());
   },
 
   // A deferred maths-tool tap becomes a pinch.

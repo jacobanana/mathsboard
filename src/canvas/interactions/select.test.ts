@@ -7,10 +7,15 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import "@/tools";
-import { editObjectAt, selectController } from "@/canvas/interactions/select";
+import {
+  drawSelectionOutlines,
+  editObjectAt,
+  selectController,
+} from "@/canvas/interactions/select";
 import { useBoardStore } from "@/board/store";
 import { id as newId } from "@/board/types";
 import type { AnyBoardObject, Stroke } from "@/board/types";
+import { theme } from "@/styles/theme";
 import { anObject, aStroke, fakeInputCtx, freshBoard, pointer } from "@/testing/fixtures";
 
 const st = () => useBoardStore.getState();
@@ -36,6 +41,50 @@ beforeEach(() => {
 
 afterEach(() => {
   selectController.cancel?.(ctx); // never leak a live drag into the next test
+});
+
+describe("drawSelectionOutlines (the dashed frame)", () => {
+  // A recording 2D-context stub: we only care WHICH boxes get framed.
+  const recRect = () => {
+    const rects: number[][] = [];
+    const rec = {
+      save() {},
+      restore() {},
+      setLineDash() {},
+      strokeStyle: "",
+      lineWidth: 0,
+      strokeRect(x: number, y: number, w: number, h: number) {
+        rects.push([x, y, w, h]);
+      },
+    };
+    return { rec, rects };
+  };
+  const kit = (rec: unknown) => ({
+    back: rec as CanvasRenderingContext2D,
+    ink: rec as CanvasRenderingContext2D,
+    camera: { x: 0, y: 0, scale: 1 },
+    theme,
+  });
+
+  it("frames each selected object (so it reads as editable in any tool)", () => {
+    const { rec, rects } = recRect();
+    drawSelectionOutlines(kit(rec), {
+      board: st().board,
+      selection: { objectIds: [O.id], strokeIds: [] },
+      editingId: null,
+    });
+    expect(rects).toHaveLength(1); // O's padded box
+  });
+
+  it("skips the object actively open in its in-place editor", () => {
+    const { rec, rects } = recRect();
+    drawSelectionOutlines(kit(rec), {
+      board: st().board,
+      selection: { objectIds: [O.id], strokeIds: [] },
+      editingId: O.id, // its textarea / math field is the visual
+    });
+    expect(rects).toHaveLength(0);
+  });
 });
 
 describe("click selection", () => {

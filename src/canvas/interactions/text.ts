@@ -16,6 +16,7 @@ import { hitTest } from "@/board/geometry";
 import { textSizeOf } from "@/canvas/drawHelpers";
 import { id as newId } from "@/board/types";
 import type { AnyBoardObject } from "@/board/types";
+import { drawSelectionOutlines } from "@/canvas/interactions/select";
 import type {
   InputCtx,
   InteractionController,
@@ -140,9 +141,11 @@ export const textController: InteractionController = {
     });
   },
 
-  // The rubber-band rectangle while dragging a text box. Drawn on the template
-  // (back) layer like the selection chrome, in world space.
-  drawOverlay(kit) {
+  // A selected (but not actively edited) text object reads as editable via its
+  // dashed frame, like a shape in the draw tool; plus the rubber-band rectangle
+  // while dragging a new text box. Both on the template (back) layer, world space.
+  drawOverlay(kit, c) {
+    drawSelectionOutlines(kit, c.store.getState());
     if (!pending || !isDrag(pending)) return;
     const { back, camera, theme } = kit;
     const x = Math.min(pending.wx, pending.cur!.x);
