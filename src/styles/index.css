@@ -246,6 +246,20 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .iw-mark.ok{color:#2E9E5B;} .iw-mark.no{color:#D64545;}
 .iw-score{margin-top:8px;font-weight:800;font-size:14px;color:var(--bar);min-height:18px;}
 
+/* --- Dice widget (.idice): a 3D die on a small tray; click to roll --- */
+.idice{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+.idice:active{cursor:grabbing;}
+.idice-canvas{display:block;background:radial-gradient(120% 100% at 50% 20%,#FDFBF4 0%,#F2ECDA 100%);}
+.idice-cap{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px;border-top:1px solid #F0EAD6;background:#FBF7EC;}
+.idice-die{font-weight:800;font-size:13px;color:var(--bar);letter-spacing:.02em;}
+.idice-val{font-weight:800;font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums;min-width:1.6em;text-align:right;}
+
+/* Dice dialog: the die-type (face count) segmented picker. */
+.dice-faces{display:flex;gap:6px;flex-wrap:wrap;}
+.dice-face-btn{padding:7px 12px;border-radius:10px;background:var(--hover);color:var(--bar);font-weight:800;font-size:14px;cursor:pointer;border:2px solid transparent;font-variant-numeric:tabular-nums;}
+.dice-face-btn:hover{filter:brightness(.97);}
+.dice-face-btn.active{background:var(--accent);color:#3a2a05;border-color:var(--accent);}
+
 /* --- Boards: toolbar title chip --- */
 .board-title{display:inline-flex;align-items:center;gap:7px;max-width:240px;min-height:44px;padding:0 12px;border-radius:13px;background:transparent;color:var(--ink);font-weight:700;font-size:14px;}
 .board-title:hover{background:var(--hover);}

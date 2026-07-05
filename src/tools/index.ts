@@ -33,6 +33,7 @@ import fracAmountTool from "@/tools/fracamount";
 import { percAmountTool } from "@/tools/percamount";
 import fdpTool from "@/tools/fdp";
 import clockTool from "@/tools/clock";
+import diceTool from "@/tools/dice";
 import noteTool from "@/tools/note";
 import worksheetTool from "@/tools/worksheet";
 import imageTool from "@/tools/image";
@@ -60,6 +61,9 @@ const ALL_TOOLS = [
   longDivTool,
   chunkingTool,
   placeValueTool,
+  // A rollable 3D die (probability / number games) — a widget overlay, not a
+  // canvas tool, but it lives with the number tools in the gallery.
+  diceTool,
   // Practice
   worksheetTool,
   // Fractions, decimals & %
