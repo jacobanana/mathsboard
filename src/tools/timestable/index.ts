@@ -11,7 +11,7 @@
 // fillPanel(o) -> fillPanel(ctx, o). Literal hex (#C3D4D2) stays literal. All
 // numeric constants, offsets and branching are identical to the original.
 
-import { defineCanvasTool } from "@/tools/registry";
+import { defineCanvasTool, type InputFieldSpec } from "@/tools/registry";
 import { fillPanel } from "@/canvas/drawHelpers";
 import { TimesTableDialog } from "@/tools/timestable/Dialog";
 
@@ -75,7 +75,8 @@ export const timesTableTool = defineCanvasTool<TimesTableParams>({
         if (r === 0 && c === 0) t = "×";
         else if (r === 0) t = String(c);
         else if (c === 0) t = String(r);
-        else if (o.revealed) t = String(r * c);
+        // Inner product cells are type-in inputs (see `inputs`); the overlay
+        // shows the value, so draw() paints only the header row + column.
         if (t) {
           ctx.fillStyle = theme.lineInk;
           ctx.fillText(t, cx + cell / 2, cy + cell / 2 + 1);
@@ -93,20 +94,39 @@ export const timesTableTool = defineCanvasTool<TimesTableParams>({
   // gives live green/red marking. Grid mode has no inputs yet.
   inputs: {
     fields: (o) => {
-      if (o.mode !== "single") return [];
-      const w = 240,
-        rowH = 34;
-      return Array.from({ length: o.rows }, (_, idx) => {
-        const i = idx + 1;
-        return {
-          key: "r" + i,
-          x: w * 0.64,
-          y: (i - 1) * rowH + 5,
-          w: w * 0.32,
-          h: rowH - 10,
-          correct: i * o.k,
-        };
-      });
+      if (o.mode === "single") {
+        const w = 240,
+          rowH = 34;
+        return Array.from({ length: o.rows }, (_, idx) => {
+          const i = idx + 1;
+          return {
+            key: "r" + i,
+            x: w * 0.64,
+            y: (i - 1) * rowH + 5,
+            w: w * 0.32,
+            h: rowH - 10,
+            correct: i * o.k,
+          };
+        });
+      }
+      // Full grid: a frameless input in every inner product cell. The tool
+      // already draws the gridlines, so each input fills its cell (variant
+      // "cell") rather than adding its own border.
+      const n = o.n,
+        cell = 40;
+      const out: InputFieldSpec[] = [];
+      for (let r = 1; r <= n; r++)
+        for (let c = 1; c <= n; c++)
+          out.push({
+            key: "r" + r + "c" + c,
+            x: c * cell,
+            y: r * cell,
+            w: cell,
+            h: cell,
+            correct: r * c,
+            variant: "cell",
+          });
+      return out;
     },
   },
 

@@ -16,12 +16,23 @@
 // overlay), so pen strokes paint over the inputs. Inputs are only interactive
 // in select mode; every drawing tool adds `.locked`, dropping the inputs to
 // pointer-events:none so a stroke passes straight through to the canvas.
+//
+// DENSITY: a 12×12 grid is 144 inputs, so objects whose projected box is fully
+// off-screen render no inputs at all (viewport cull) — pan a grid away and its
+// DOM cost goes to zero.
 
 import { useBoardStore } from "@/board/store";
 import { worldToScreen } from "@/board/geometry";
 import { getTool } from "@/tools/registry";
 
-export function InputOverlayLayer(): JSX.Element {
+interface InputOverlayLayerProps {
+  /** #stage element, for culling inputs of off-screen objects. */
+  container: HTMLElement | null;
+}
+
+export function InputOverlayLayer({
+  container,
+}: InputOverlayLayerProps): JSX.Element {
   const objects = useBoardStore((s) => s.board.objects);
   const camera = useBoardStore((s) => s.camera);
   const tool = useBoardStore((s) => s.tool);
@@ -30,6 +41,9 @@ export function InputOverlayLayer(): JSX.Element {
 
   // Typeable only with the select tool; every drawing tool draws through.
   const interactive = tool === "select";
+  const rect = container?.getBoundingClientRect();
+  const W = rect?.width ?? Infinity;
+  const H = rect?.height ?? Infinity;
 
   return (
     <div className={"inputlayer" + (interactive ? "" : " locked")}>
@@ -41,6 +55,14 @@ export function InputOverlayLayer(): JSX.Element {
         const box = nat.w > 0 ? o.w / nat.w : 1; // box-resize scale (aspect locked)
         const px = box * camera.scale; // one natural unit → screen px
         const s = worldToScreen(camera, o.x, o.y);
+        // Skip objects entirely outside the stage (their inputs would be off-screen).
+        if (
+          s.x > W ||
+          s.y > H ||
+          s.x + o.w * camera.scale < 0 ||
+          s.y + o.h * camera.scale < 0
+        )
+          return [];
         const rec = o as unknown as Record<string, unknown>;
         return t.inputs.fields(o as never).map((f) => {
           const typed = (rec["ans:" + f.key] as string) ?? "";
@@ -55,7 +77,9 @@ export function InputOverlayLayer(): JSX.Element {
                 : "no"
               : "";
           const cls =
-            "iofield" + (revealBlank ? " revealed" : marked ? " " + marked : "");
+            "iofield" +
+            (f.variant === "cell" ? " cell" : "") +
+            (revealBlank ? " revealed" : marked ? " " + marked : "");
           return (
             <input
               key={o.id + ":" + f.key}
@@ -69,7 +93,9 @@ export function InputOverlayLayer(): JSX.Element {
                 top: s.y + f.y * px,
                 width: f.w * px,
                 height: f.h * px,
-                fontSize: Math.max(8, f.h * px * 0.5),
+                // Fit by height, but cap by width so many-digit answers in a
+                // square grid cell don't overflow.
+                fontSize: Math.max(8, Math.min(f.h * 0.55, f.w * 0.42) * px),
               }}
               // Keep typing local: don't let keys reach the board shortcut
               // handler (e.g. "e" = eraser) or the press bubble to the canvas.

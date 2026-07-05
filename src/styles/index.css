@@ -211,6 +211,12 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .iofield.no{border-color:#D64545;background:#FBECEC;color:#D64545;}
 .iofield.revealed{color:var(--muted);}
 .iofield:focus{outline:none;border-color:var(--accent);background:#fff;}
+/* "cell" variant: frameless, fills a gridline-drawn cell (the 12×12 grid). The
+   cell itself is the frame, so the highlight is a fill, not a border. */
+.iofield.cell{border:0;border-radius:0;background:transparent;}
+.iofield.cell:focus{background:rgba(242,179,61,.24);}
+.iofield.cell.ok{background:rgba(46,158,91,.16);color:#2E9E5B;}
+.iofield.cell.no{background:rgba(214,69,69,.16);color:#D64545;}
 .ilayer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
 /* --- Systemic "show answer" toggle (AnswerButtonLayer) --- */
 .answer-layer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}

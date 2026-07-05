@@ -176,7 +176,7 @@ export default function App(): JSX.Element {
         {...(COLLAB_ENABLED ? imageDrop.handlers : {})}
       >
         <BoardCanvas onEditObject={openEditFor} />
-        <InputOverlayLayer />
+        <InputOverlayLayer container={stageEl} />
         <WidgetLayer onEditObject={openEditFor} />
         <AnswerButtonLayer container={stageEl} />
         {COLLAB_ENABLED && <PresenceLayer />}
