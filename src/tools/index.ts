@@ -13,6 +13,7 @@ import { COLLAB_ENABLED } from "@/config";
 // Most tools default-export their Tool; three reference tools only name-export.
 import { textTool } from "@/tools/text";
 import { mathTextTool } from "@/tools/mathtext";
+import shapeTool from "@/tools/shape";
 import { numberLineTool } from "@/tools/numberline";
 import fractionTool from "@/tools/fraction";
 import fractionWallTool from "@/tools/fractionwall";
@@ -43,6 +44,10 @@ const ALL_TOOLS = [
   // clicking the board, edited in place via MathLive. Registered here so the
   // canvas can draw/size saved objects.
   mathTextTool,
+  // Shapes (lines, arrows, geometry) are created by dragging with the draw
+  // tool's shape modes (inGallery:false). Registered so the canvas can
+  // draw/size/edit saved shape objects.
+  shapeTool,
   // Number & calculating (prototype gallery order: place value comes LAST here).
   numberLineTool,
   timesTableTool,

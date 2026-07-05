@@ -217,6 +217,143 @@ export function EyeOffIcon(): JSX.Element {
   );
 }
 
+// --- draw-mode + arrange icons (shape tool, roadmap A2/A5) ------------------
+
+/** Freehand mode: a loose scribble. */
+export function ScribbleIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M3 17c2.5-6 4.5-8.5 6-7.5s-1.5 8 .5 8.5 4-9.5 6-8.5-.5 8 1.5 8.5 3-3 4-5" />
+    </svg>
+  );
+}
+
+export function LineIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <line x1="5" y1="19" x2="19" y2="5" />
+    </svg>
+  );
+}
+
+export function ArrowIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <line x1="5" y1="19" x2="19" y2="5" />
+      <polyline points="11 5 19 5 19 13" />
+    </svg>
+  );
+}
+
+export function RectIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="4" y="6" width="16" height="12" rx="1" />
+    </svg>
+  );
+}
+
+export function EllipseIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <ellipse cx="12" cy="12" rx="8.5" ry="6.5" />
+    </svg>
+  );
+}
+
+export function TriangleIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M12 4.5 20.5 19h-17Z" />
+    </svg>
+  );
+}
+
+/** A hexagon standing in for "any regular polygon". */
+export function PolygonIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9Z" />
+    </svg>
+  );
+}
+
+/** A Bézier curve with its two control handles. */
+export function CurveIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M4 19C7 6 17 18 20 5" />
+      <circle cx="4" cy="19" r="1.4" />
+      <circle cx="20" cy="5" r="1.4" />
+    </svg>
+  );
+}
+
+/** Two rays and an arc — the angle tool. */
+export function AngleIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M4 19h16" />
+      <path d="M4 19 15 6" />
+      <path d="M11 19a7.5 7.5 0 0 0-2.5-5.5" />
+    </svg>
+  );
+}
+
+/** A magnet — the grid-snapping toggle. */
+export function SnapIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="m6 15-4-4 6.75-6.77a7.79 7.79 0 0 1 11 11L13 22l-4-4 6.39-6.36a2.14 2.14 0 0 0-3-3L6 15" />
+      <path d="m5 8 4 4" />
+      <path d="m12 15 4 4" />
+    </svg>
+  );
+}
+
+export function BringToFrontIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="8" y="8" width="8" height="8" rx="2" />
+      <path d="M4 10a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2" />
+      <path d="M14 20a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2" />
+    </svg>
+  );
+}
+
+export function SendToBackIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="14" y="14" width="8" height="8" rx="2" />
+      <rect x="2" y="2" width="8" height="8" rx="2" />
+      <path d="M7 14v1a2 2 0 0 0 2 2h1" />
+      <path d="M14 7h1a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+export function GroupIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+      <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+      <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+      <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+      <rect x="7" y="7" width="6" height="6" rx="1" />
+      <rect x="12" y="12" width="5" height="5" rx="1" />
+    </svg>
+  );
+}
+
+export function UngroupIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="4" y="4" width="7" height="7" rx="1" />
+      <rect x="13" y="13" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
 /** A plain glyph icon (unicode) wrapped so callers stay declarative. */
 export function Glyph({ children }: { children: ReactNode }): JSX.Element {
   return <>{children}</>;

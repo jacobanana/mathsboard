@@ -34,6 +34,7 @@ import type {
 } from "@/board/types";
 import { id as newId, newBoardDocument } from "@/board/types";
 import { applyEraser } from "@/board/geometry";
+import type { ShapeKind } from "@/tools/shape/geometry";
 import { migrateDocument } from "@/board/migrations";
 import { localRepository } from "@/board/persistence/LocalBoardRepository";
 import { theme } from "@/styles/theme";
@@ -54,6 +55,13 @@ export interface Selection {
 }
 
 const EMPTY_SELECTION: Selection = { objectIds: [], strokeIds: [] };
+
+/**
+ * The draw tool's active mode: freehand ink or one of the shape kinds
+ * (roadmap A2). One dock button, toggled in the options pill / by shortcut —
+ * the pen tool "became the drawing tool".
+ */
+export type DrawMode = "free" | ShapeKind;
 
 /**
  * How a shared board was joined, for the `board_joined` analytics event:
@@ -92,6 +100,14 @@ interface BoardState {
   mathSize: number;
   /** Eraser footprint diameter (screen px, like penSize). */
   eraserSize: number;
+  /** The draw tool's mode: freehand ink or a shape kind (roadmap A2). */
+  drawMode: DrawMode;
+  /** Background colour for new closed shapes ("none" = transparent). */
+  fillColor: string;
+  /** Side count for new regular polygons (3-12). */
+  polygonSides: number;
+  /** Grid snapping (roadmap A3): honoured only on squared paper; Alt bypasses. */
+  snap: boolean;
   /** Object + stroke ids currently selected (multi-select). */
   selection: Selection;
   /**
@@ -144,6 +160,26 @@ interface BoardState {
     rect: { x: number; y: number; w: number; h: number },
   ): void;
   /**
+   * Patch an object mid-drag (vertex-handle edits). Does NOT push history --
+   * the drag handler pushes once at drag start so the whole drag is a single
+   * undo step (mirrors moveObject / resizeObject).
+   */
+  dragObject(id: string, patch: Partial<AnyBoardObject>): void;
+  /**
+   * Rewrite z-order keys on the given shapes as one undoable step (bring to
+   * front / send to back — computed in board/commands.ts).
+   */
+  setShapeOrders(
+    objectOrders: Record<string, number>,
+    strokeOrders: Record<string, number>,
+  ): void;
+  /** Tag (or untag, groupId null) shapes as one group, one undoable step. */
+  setGroup(
+    objectIds: string[],
+    strokeIds: string[],
+    groupId: string | null,
+  ): void;
+  /**
    * Translate every selected object and stroke by (dx, dy) in world coords.
    * Does NOT push history -- the drag handler pushes once at drag start so the
    * whole drag collapses to a single undo step (mirrors moveObject).
@@ -175,6 +211,10 @@ interface BoardState {
   setTextSize(n: number): void;
   setMathSize(n: number): void;
   setEraserSize(n: number): void;
+  setDrawMode(m: DrawMode): void;
+  setFillColor(c: string): void;
+  setPolygonSides(n: number): void;
+  setSnap(on: boolean): void;
   setCamera(patch: Partial<Camera>): void;
   /** Select exactly one object (or clear the selection when id is null). */
   select(id: string | null): void;
@@ -326,6 +366,12 @@ export function activeMathObjectId(
   return activeObjectIdOfType(s, "mathtext");
 }
 
+export function activeShapeObjectId(
+  s: Pick<BoardState, "editingId" | "selection" | "board">,
+): string | null {
+  return activeObjectIdOfType(s, "shape");
+}
+
 /**
  * Whether the current board is a PERSISTED board (so its name should be shown)
  * rather than a never-saved local draft. A shared board always counts — it lives
@@ -367,6 +413,10 @@ export const useBoardStore = create<BoardState>((set, get) => {
     textSize: 26,
     mathSize: 26,
     eraserSize: 45,
+    drawMode: "free",
+    fillColor: "none",
+    polygonSides: 5,
+    snap: true,
     selection: EMPTY_SELECTION,
     editingId: null,
 
@@ -416,6 +466,21 @@ export const useBoardStore = create<BoardState>((set, get) => {
     resizeObject(id, rect) {
       // No history boundary here -- caller pushed once at drag start.
       session.patchObject(id, { ...rect });
+    },
+
+    dragObject(id, patch) {
+      // No history boundary here -- caller pushed once at drag start.
+      session.patchObject(id, patch);
+    },
+
+    setShapeOrders(objectOrders, strokeOrders) {
+      session.stopCapture();
+      session.setShapeOrders(objectOrders, strokeOrders);
+    },
+
+    setGroup(objectIds, strokeIds, groupId) {
+      session.stopCapture();
+      session.setShapeGroup(objectIds, strokeIds, groupId);
     },
 
     nudgeSelection(dx, dy) {
@@ -514,6 +579,18 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
     setEraserSize(n) {
       set({ eraserSize: n });
+    },
+    setDrawMode(m) {
+      set({ drawMode: m });
+    },
+    setFillColor(c) {
+      set({ fillColor: c });
+    },
+    setPolygonSides(n) {
+      set({ polygonSides: n });
+    },
+    setSnap(on) {
+      set({ snap: on });
     },
     setCamera(patch) {
       set((state) => ({ camera: { ...state.camera, ...patch } }));

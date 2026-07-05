@@ -417,6 +417,50 @@ export function translateShapes(
   });
 }
 
+/**
+ * Rewrite z-order keys as ONE undoable transaction (bring to front / send to
+ * back, board/commands.ts). Only shapes whose key actually changes are
+ * written, so an arrange that moves nothing is CRDT-silent.
+ */
+export function setShapeOrders(
+  objectOrders: Record<string, number>,
+  strokeOrders: Record<string, number>,
+): void {
+  const { objects, strokes } = must().h;
+  tx(() => {
+    for (const [id, order] of Object.entries(objectOrders)) {
+      const y = objects.get(id);
+      if (y && y.get("order") !== order) y.set("order", order);
+    }
+    for (const [id, order] of Object.entries(strokeOrders)) {
+      const y = strokes.get(id);
+      if (y && y.get("order") !== order) y.set("order", order);
+    }
+  });
+}
+
+/** Tag (groupId string) or untag (null) shapes as one group, in ONE
+ *  undoable transaction. */
+export function setShapeGroup(
+  objectIds: string[],
+  strokeIds: string[],
+  groupId: string | null,
+): void {
+  const { objects, strokes } = must().h;
+  const apply = (y: Y.Map<unknown> | undefined) => {
+    if (!y) return;
+    if (groupId == null) {
+      if (y.has("groupId")) y.delete("groupId");
+    } else if (y.get("groupId") !== groupId) {
+      y.set("groupId", groupId);
+    }
+  };
+  tx(() => {
+    for (const id of objectIds) apply(objects.get(id));
+    for (const id of strokeIds) apply(strokes.get(id));
+  });
+}
+
 export function removeShapes(objectIds: string[], strokeIds: string[]): void {
   const { objects, strokes } = must().h;
   tx(() => {

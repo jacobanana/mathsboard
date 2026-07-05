@@ -7,6 +7,24 @@ import { id as newId } from "@/board/types";
 export const MIN_SCALE = 0.2;
 export const MAX_SCALE = 4;
 
+// --- grid snapping (roadmap A3) ---------------------------------------------
+// The squared paper's base cell (drawHelpers.drawGrid starts from gap 30), so
+// snapped geometry lands exactly on the printed lines. Controllers opt in per
+// gesture: shape creation, vertex drags and selection moves snap when the
+// store's `snap` flag is on AND the background is squared; holding Alt
+// bypasses it for one gesture (industry convention).
+
+export const GRID_SIZE = 30;
+
+/** Snap a world point to the nearest grid intersection. */
+export const snapPt = (
+  p: { x: number; y: number },
+  grid: number = GRID_SIZE,
+): { x: number; y: number } => ({
+  x: Math.round(p.x / grid) * grid,
+  y: Math.round(p.y / grid) * grid,
+});
+
 export const clamp = (v: number, a: number, b: number): number =>
   Math.max(a, Math.min(b, v));
 
