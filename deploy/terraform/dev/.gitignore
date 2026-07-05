@@ -1,0 +1,16 @@
+# Terraform state contains secrets in plaintext - never commit it.
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+crash.*.log
+
+# Your filled-in variables (secrets).
+terraform.tfvars
+*.auto.tfvars
+
+# OpenStack RC / credential files, if kept alongside the config.
+*openrc*
+clouds.yaml
+
+# Keep .terraform.lock.hcl committed for reproducible provider versions.

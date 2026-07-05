@@ -293,6 +293,18 @@ for roughly €3–4/month. Full walkthrough:
 
 From then on, `git push` to `main` builds, ships and restarts automatically.
 
+#### Dev / staging box for pull requests
+
+An optional **second** always-on box lets you try a PR on a real server before
+merging. Provision it from `deploy/terraform/dev/` (same module, its own bucket,
+analytics off) and set the `DEV_DEPLOY_*` secrets — full steps in the
+[Terraform README](deploy/terraform/README.md#dev--staging-environment). Once
+it's up, opening a PR triggers `deploy-dev.yml`: it builds throwaway
+`ghcr.io/…-{web,api}:pr-<n>` images (never `latest`, and **no** GitHub Release)
+and rolls the dev box onto them. Closing the PR runs `cleanup-dev.yml`, which
+deletes those `pr-<n>` tags and returns the box to `latest` — so development
+builds never linger in your image registry or release history.
+
 ### Manual, on any VPS
 
 Any box with Docker and the compose plugin works, without Terraform:

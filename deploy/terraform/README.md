@@ -7,10 +7,36 @@ only pulls. Total cost is roughly **€3-4/month**, and new accounts get ~€300
 of free credit.
 
 ```
-push to main ─▶ GitHub Actions ─▶ build web+api ─▶ GHCR (public)
+push to main ─▶ GitHub Actions ─▶ build web+api ─▶ GHCR (public, `latest`)
                                                       │
    VPS: git pull && docker compose pull && up  ◀──────┘   (auto, via SSH)
 ```
+
+## Layout
+
+The stack definition lives in a reusable module, instantiated once per
+environment:
+
+```
+deploy/terraform/
+├── main.tf, variables.tf, outputs.tf   # PRODUCTION root  (board.<domain>)
+├── modules/mathboard/                  # the shared stack (network, box, bucket…)
+└── dev/                                # DEV / STAGING root (dev.board.<domain>)
+    ├── main.tf, variables.tf, outputs.tf
+    └── terraform.tfvars.example
+```
+
+Production and dev keep **separate state** — run `terraform` from the
+production directory (`deploy/terraform/`) for the public box, and from
+`deploy/terraform/dev/` for the dev box. The dev environment is documented in
+its [own section](#dev--staging-environment) below.
+
+> **Upgrading an existing deployment?** The production resources moved into
+> `modules/mathboard` but carry `moved {}` blocks, so your next
+> `terraform apply` in `deploy/terraform/` reports only address changes — **no
+> resource is recreated**, and the floating IP, bucket, and generated passwords
+> are preserved. Run `terraform init` first (to install the module), then
+> `terraform plan` and confirm it shows moves, not replacements.
 
 ## What gets created
 
@@ -117,12 +143,76 @@ ssh -i ~/.ssh/mathboard_deploy ubuntu@<floating_ip>
 cd /opt/mathboard && git pull && docker compose pull && docker compose up -d
 ```
 
+## Dev / staging environment
+
+A second, always-on box that **open pull requests deploy onto**, so you can try a
+change on a real server before it reaches `main` — without polluting your
+releases or your production image tags.
+
+```
+PR opened/updated ─▶ Actions ─▶ build web+api ─▶ GHCR tag `pr-<n>` (throwaway)
+                                                    │
+      dev box: git checkout <pr sha> && compose pull && up  ◀──┘  (auto, via SSH)
+
+PR closed ────────▶ Actions ─▶ delete the `pr-<n>` tags + reset dev box to latest
+```
+
+Why it stays clean:
+
+- PR images are tagged **`pr-<number>` only** — never `latest`, so the
+  production pointer is untouched — and **no GitHub Release is cut** for a PR.
+- Those `pr-<number>` tags are **deleted when the PR closes**
+  (`.github/workflows/cleanup-dev.yml`), so dev builds never accumulate in GHCR.
+- The dev box uses its **own bucket** (`mathboard-dev`) and **no analytics**
+  stack, so it can never touch production data or the Umami database.
+
+It's a single shared box (a staging server), not one environment per PR — the
+most recently deployed PR is what's live on `dev.board.<domain>`.
+
+### Provision it
+
+```sh
+cd deploy/terraform/dev
+cp terraform.tfvars.example terraform.tfvars
+# edit: os_cloud, site_address (dev.board.<domain>), ssh_public_key,
+#       y_sweet_auth, y_sweet_server_token   (generate a SEPARATE y-sweet keypair)
+terraform init
+terraform apply
+terraform output floating_ip     # -> dev A record + DEV_DEPLOY_HOST secret
+```
+
+Add an **A record** `dev.board` → the dev `floating_ip` (no analytics subdomain
+needed). Then set the dev deploy secrets (mirrors of the production three):
+
+| Secret | Value |
+|---|---|
+| `DEV_DEPLOY_HOST` | the dev `floating_ip` output (or `dev.board.<domain>`) |
+| `DEV_DEPLOY_USER` | `ubuntu` |
+| `DEV_DEPLOY_SSH_KEY` | the **private** key matching `ssh_public_key` above |
+
+```powershell
+gh secret set DEV_DEPLOY_USER --body "ubuntu"
+gh secret set DEV_DEPLOY_HOST --body (terraform output -raw floating_ip)
+gh secret set DEV_DEPLOY_SSH_KEY < ~/.ssh/mathboard_deploy
+```
+
+Set both `mathboard-web` and `mathboard-api` GHCR packages to **public** (same
+one-time step as production) so the dev box can pull without logging in. Open a
+PR and the `Deploy PR to dev` workflow builds, pushes `pr-<n>`, and rolls the
+dev box; the `pr-<n>` tags disappear again when you close or merge it.
+
+> The cleanup job deletes package versions via the API using the built-in
+> `GITHUB_TOKEN` (`packages: write`). If your GHCR packages aren't linked to
+> this repo and the delete is rejected, create a PAT with `delete:packages` and
+> reference it in `cleanup-dev.yml` instead of `secrets.GITHUB_TOKEN`.
+
 ## Tear down
 ```sh
 terraform destroy
 ```
 Stops all billing (the bucket's contents are deleted with it — back up first if
-you care about the boards).
+you care about the boards). Tear the dev box down the same way from
+`deploy/terraform/dev/`.
 
 ## Notes
 - Terraform **state holds secrets in plaintext**. Local state is fine for
