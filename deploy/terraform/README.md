@@ -1,4 +1,4 @@
-# Deploy mathboard to Infomaniak Public Cloud
+# Deploy mathsboard to Infomaniak Public Cloud
 
 Provisions a single small instance that runs the whole collab stack (Caddy +
 token API + Y-Sweet) plus an S3-compatible bucket, on Infomaniak's OpenStack
@@ -41,10 +41,10 @@ A dedicated key (not your personal one), so the CI secret is scoped to this
 pipeline and easy to revoke. Use an empty passphrase so CI can use it
 unattended:
 ```powershell
-ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\mathboard_deploy" -C "mathboard-deploy"
+ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\mathsboard_deploy" -C "mathsboard-deploy"
 # press Enter twice at the passphrase prompts
 ```
-Its **public** half (`mathboard_deploy.pub`) goes into `ssh_public_key` below;
+Its **public** half (`mathsboard_deploy.pub`) goes into `ssh_public_key` below;
 the **private** half becomes the `DEPLOY_SSH_KEY` secret in step 7.
 
 ### 4. Fill in variables
@@ -76,24 +76,24 @@ HTTPS request once DNS resolves — nothing to provision by hand.
 ### 7. GitHub secrets
 The deploy job SSHes into the box, so it needs three secrets. Run these from
 this `deploy/terraform/` directory (where you just applied — `gh` still finds
-the repo from the git remote, or add `-R jacobanana/mathboard`):
+the repo from the git remote, or add `-R jacobanana/mathsboard`):
 
 ```powershell
 gh secret set DEPLOY_USER --body "ubuntu"
 gh secret set DEPLOY_HOST --body (terraform output -raw floating_ip)
-Get-Content ~/.ssh/mathboard_deploy -Raw | gh secret set DEPLOY_SSH_KEY
+Get-Content ~/.ssh/mathsboard_deploy -Raw | gh secret set DEPLOY_SSH_KEY
 ```
 
 | Secret | Value |
 |---|---|
 | `DEPLOY_HOST` | the `floating_ip` output (or `board.<domain>`) |
 | `DEPLOY_USER` | `ubuntu` |
-| `DEPLOY_SSH_KEY` | the **private** deploy key (`mathboard_deploy`) |
+| `DEPLOY_SSH_KEY` | the **private** deploy key (`mathsboard_deploy`) |
 
 The SSH key is multiline, so **pipe it from the file** rather than using
 `--body` (that mangles newlines and leaks the key into shell history). On
 bash/Git Bash the equivalent is
-`gh secret set DEPLOY_SSH_KEY < ~/.ssh/mathboard_deploy`. Check with
+`gh secret set DEPLOY_SSH_KEY < ~/.ssh/mathsboard_deploy`. Check with
 `gh secret list`.
 
 Pushing to GHCR needs no secret (it uses the built-in `GITHUB_TOKEN`). After the
@@ -113,8 +113,8 @@ README's [Analytics](../../README.md#analytics-optional-self-hosted-umami) and
 Push to `main` → images rebuild → the VPS pulls and restarts automatically.
 Manual rollover if ever needed:
 ```sh
-ssh -i ~/.ssh/mathboard_deploy ubuntu@<floating_ip>
-cd /opt/mathboard && git pull && docker compose pull && docker compose up -d
+ssh -i ~/.ssh/mathsboard_deploy ubuntu@<floating_ip>
+cd /opt/mathsboard && git pull && docker compose pull && docker compose up -d
 ```
 
 ## Tear down

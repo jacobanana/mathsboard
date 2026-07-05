@@ -54,6 +54,6 @@ an issue to discuss before building.
 ## Reporting bugs & security issues
 
 - **Bugs / feature ideas:** open a
-  [GitHub issue](https://github.com/jacobanana/mathboard/issues).
+  [GitHub issue](https://github.com/jacobanana/mathsboard/issues).
 - **Security vulnerabilities:** please don't use public issues — follow
   [SECURITY.md](SECURITY.md).

@@ -7,7 +7,7 @@ variable "os_cloud" {
 variable "name" {
   description = "Base name for all resources (network, sg, instance, key...)."
   type        = string
-  default     = "mathboard"
+  default     = "mathsboard"
 }
 
 # ---- Instance --------------------------------------------------------------
@@ -76,7 +76,7 @@ variable "analytics_address" {
 variable "repo_url" {
   description = "Public git URL cloud-init clones on the instance."
   type        = string
-  default     = "https://github.com/jacobanana/mathboard.git"
+  default     = "https://github.com/jacobanana/mathsboard.git"
 }
 
 variable "y_sweet_auth" {
@@ -96,7 +96,7 @@ variable "y_sweet_server_token" {
 variable "s3_bucket" {
   description = "Bucket (Swift container) name for Y-Sweet docs + uploads."
   type        = string
-  default     = "mathboard"
+  default     = "mathsboard"
 }
 
 variable "s3_endpoint" {

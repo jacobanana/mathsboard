@@ -59,7 +59,7 @@ resource "openstack_networking_router_interface_v2" "iface" {
 # ---------------------------------------------------------------------------
 resource "openstack_networking_secgroup_v2" "sg" {
   name        = "${var.name}-sg"
-  description = "mathboard: ssh + web"
+  description = "mathsboard: ssh + web"
 }
 
 resource "openstack_networking_secgroup_rule_v2" "ssh" {

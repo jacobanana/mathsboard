@@ -221,7 +221,7 @@ it).
 
 **Images build in CI; the server only pulls.**
 `.github/workflows/publish.yml` builds the `web` and `api` images on every push
-to `main`, pushes them to GHCR (`ghcr.io/jacobanana/mathboard-{web,api}`), then
+to `main`, pushes them to GHCR (`ghcr.io/jacobanana/mathsboard-{web,api}`), then
 SSHes to the VPS to `git pull && docker compose pull && up`. The box never
 builds: `docker-compose.yml` references the published images, and
 `docker-compose.local.yml` adds `build:` back only for local development and

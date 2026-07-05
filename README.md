@@ -1,8 +1,8 @@
-[![Maths Board — teach and learn maths together on a shared, infinite canvas](docs/header.png)](https://mathboard.mixedmode.ch)
+[![Maths Board — teach and learn maths together on a shared, infinite canvas](docs/header.png)](https://mathsboard.mixedmode.ch)
 
 # Maths Board
 
-**▶ Try it live at [mathboard.mixedmode.ch](https://mathboard.mixedmode.ch)** — open it and start, or share a board to work together in real time.
+**▶ Try it live at [mathsboard.mixedmode.ch](https://mathsboard.mixedmode.ch)** — open it and start, or share a board to work together in real time.
 
 Maths Board is a free, open-source **maths whiteboard for teaching and learning
 together**. It's an infinite canvas where you demonstrate a written method,

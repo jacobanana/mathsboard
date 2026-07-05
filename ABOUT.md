@@ -65,7 +65,7 @@ self-hosted, no third-party SaaS in the data path:
   the runtime and packaging
 
 > A full, machine-readable list of every dependency (including transitive ones)
-> and its license lives in [`package.json`](https://github.com/jacobanana/mathboard/blob/main/package.json)
+> and its license lives in [`package.json`](https://github.com/jacobanana/mathsboard/blob/main/package.json)
 > and the project's lockfile.
 
 ---
@@ -105,14 +105,14 @@ Analytics or any other third party.
 
 **Open for inspection.** Don't take our word for it — Maths Board is fully open
 source, so anyone can read exactly what it does with your data:
-<https://github.com/jacobanana/mathboard>.
+<https://github.com/jacobanana/mathsboard>.
 
 ---
 
 ## License
 
 Maths Board is **free and open-source software**, released under the
-**[GNU Affero General Public License, version 3 (AGPL-3.0)](https://github.com/jacobanana/mathboard/blob/main/LICENSE)**.
+**[GNU Affero General Public License, version 3 (AGPL-3.0)](https://github.com/jacobanana/mathsboard/blob/main/LICENSE)**.
 
 In plain terms, you are free to:
 
@@ -127,8 +127,8 @@ modified source code available to those users under the same license. That's
 what keeps Maths Board, and every version built from it, free and open for
 everyone.
 
-The full legal text is in the [`LICENSE`](https://github.com/jacobanana/mathboard/blob/main/LICENSE)
+The full legal text is in the [`LICENSE`](https://github.com/jacobanana/mathsboard/blob/main/LICENSE)
 file, and the complete source code is at
-<https://github.com/jacobanana/mathboard>.
+<https://github.com/jacobanana/mathsboard>.
 
 © 2026 Adrien Fauconnet and the Maths Board contributors.

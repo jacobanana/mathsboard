@@ -9,7 +9,7 @@ Thank you for helping keep it safe.
 
 Instead, report them privately through GitHub's private vulnerability reporting:
 
-➡️ **[Report a vulnerability](https://github.com/jacobanana/mathboard/security/advisories/new)**
+➡️ **[Report a vulnerability](https://github.com/jacobanana/mathsboard/security/advisories/new)**
 &nbsp;(or use the repository's **Security** tab → **Report a vulnerability**).
 
 This opens a confidential advisory visible only to you and the maintainers.

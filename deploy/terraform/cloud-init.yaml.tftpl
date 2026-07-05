@@ -11,7 +11,7 @@ packages:
 write_files:
   # Staged here first because `git clone` needs an empty target directory;
   # runcmd copies it into the repo after cloning.
-  - path: /root/mathboard.env
+  - path: /root/mathsboard.env
     permissions: "0600"
     content: |
       SITE_ADDRESS=${site_address}
@@ -34,8 +34,8 @@ write_files:
 runcmd:
   - curl -fsSL https://get.docker.com | sh
   - usermod -aG docker ${deploy_user}
-  - git clone ${repo_url} /opt/mathboard
-  - cp /root/mathboard.env /opt/mathboard/.env
-  - chmod 600 /opt/mathboard/.env
-  - chown -R ${deploy_user}:${deploy_user} /opt/mathboard
-  - cd /opt/mathboard && docker compose up -d
+  - git clone ${repo_url} /opt/mathsboard
+  - cp /root/mathsboard.env /opt/mathsboard/.env
+  - chmod 600 /opt/mathsboard/.env
+  - chown -R ${deploy_user}:${deploy_user} /opt/mathsboard
+  - cd /opt/mathsboard && docker compose up -d

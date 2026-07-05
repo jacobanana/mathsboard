@@ -16,7 +16,7 @@ services:
     # Image is built + pushed to GHCR by .github/workflows/publish.yml; the VPS
     # only pulls it. For a local source build, docker-compose.local.yml adds
     # `build:` back so `up --build` compiles from src/ instead.
-    image: ghcr.io/jacobanana/mathboard-web:${IMAGE_TAG:-latest}
+    image: ghcr.io/jacobanana/mathsboard-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - "80:80"
@@ -37,7 +37,7 @@ services:
       - ysweet
 
   api:
-    image: ghcr.io/jacobanana/mathboard-api:${IMAGE_TAG:-latest}
+    image: ghcr.io/jacobanana/mathsboard-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     # All configuration (connection string, S3 bucket + creds) comes from .env;
     # required:false lets the local-test overlay run without one.

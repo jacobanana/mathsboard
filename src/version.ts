@@ -10,10 +10,10 @@ import { COLLAB_ENABLED } from "@/config";
 export const FRONTEND_VERSION = import.meta.env.VITE_APP_VERSION ?? "dev";
 
 export function logVersions(): void {
-  console.log(`mathboard frontend ${FRONTEND_VERSION}`);
+  console.log(`mathsboard frontend ${FRONTEND_VERSION}`);
   if (!COLLAB_ENABLED) return; // static single-user build: no backend to ask.
   fetch("/api/version")
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-    .then((d) => console.log(`mathboard backend ${d?.version ?? "unknown"}`))
-    .catch(() => console.log("mathboard backend unreachable"));
+    .then((d) => console.log(`mathsboard backend ${d?.version ?? "unknown"}`))
+    .catch(() => console.log("mathsboard backend unreachable"));
 }

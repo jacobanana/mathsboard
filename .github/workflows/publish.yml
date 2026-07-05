@@ -192,7 +192,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             set -e
-            cd /opt/mathboard
+            cd /opt/mathsboard
             git pull --ff-only
             docker compose pull
             # The Caddyfile is bind-mounted, so `up -d` won't recreate the web

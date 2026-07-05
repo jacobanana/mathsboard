@@ -5,12 +5,12 @@
   "description": "An infinite-canvas maths whiteboard for teaching and learning maths together: written-method scaffolds with live answer-reveal, a toolbox of maths widgets, and real-time collaboration.",
   "license": "AGPL-3.0-only",
   "author": "Adrien Fauconnet",
-  "homepage": "https://mathboard.mixedmode.ch",
+  "homepage": "https://mathsboard.mixedmode.ch",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jacobanana/mathboard.git"
+    "url": "git+https://github.com/jacobanana/mathsboard.git"
   },
-  "bugs": "https://github.com/jacobanana/mathboard/issues",
+  "bugs": "https://github.com/jacobanana/mathsboard/issues",
   "keywords": [
     "maths",
     "math",

@@ -28,7 +28,7 @@ services:
     environment:
       # server_token half of the committed DEV keypair (see ysweet below).
       YSWEET_CONNECTION_STRING: ys://AAAg6DB6hG-3FlnY9HyNLEYh9I7CIBXcHHnKB184_TvKK-8@ysweet:8080
-      S3_BUCKET: mathboard
+      S3_BUCKET: mathsboard
       AWS_ACCESS_KEY_ID: dev-minio
       AWS_SECRET_ACCESS_KEY: dev-minio-secret
       AWS_REGION: us-east-1
@@ -44,7 +44,7 @@ services:
       # purpose so the local test needs zero setup. Generate your own for
       # production (see .env.example).
       Y_SWEET_AUTH: d_EZ_OHsusz9uFe2ECUadSG9O_EJ7uLfE44wXniT
-      Y_SWEET_STORE: s3://mathboard/ysweet
+      Y_SWEET_STORE: s3://mathsboard/ysweet
       AWS_ACCESS_KEY_ID: dev-minio
       AWS_SECRET_ACCESS_KEY: dev-minio-secret
       AWS_REGION: us-east-1
@@ -78,7 +78,7 @@ services:
         until mc alias set local http://minio:9000 dev-minio dev-minio-secret >/dev/null 2>&1; do
           sleep 1
         done
-        mc mb -p local/mathboard
+        mc mb -p local/mathsboard
 
 volumes:
   minio_data:
