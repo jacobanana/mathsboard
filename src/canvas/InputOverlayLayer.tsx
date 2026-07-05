@@ -22,7 +22,7 @@
 // DOM cost goes to zero.
 
 import { useBoardStore } from "@/board/store";
-import { worldToScreen } from "@/board/geometry";
+import { hitTest, worldToScreen } from "@/board/geometry";
 import { getTool } from "@/tools/registry";
 
 interface InputOverlayLayerProps {
@@ -47,7 +47,7 @@ export function InputOverlayLayer({
 
   return (
     <div className={"inputlayer" + (interactive ? "" : " locked")}>
-      {objects.flatMap((o) => {
+      {objects.flatMap((o, i) => {
         if (o.id === editingId) return [];
         const t = getTool(o.type);
         if (!t || t.kind !== "canvas" || !t.inputs) return [];
@@ -63,8 +63,30 @@ export function InputOverlayLayer({
           s.y + o.h * camera.scale < 0
         )
           return [];
+        // Occlusion: if any higher-z object (later in the sorted list) overlaps
+        // this one, a field whose centre isn't the topmost object there is
+        // hidden — so an object placed on top gets the cursor (the click falls
+        // through to the canvas), and the buried input doesn't show through it.
+        const contested = objects
+          .slice(i + 1)
+          .some(
+            (b) =>
+              b.x - 6 < o.x + o.w &&
+              b.x + b.w + 6 > o.x &&
+              b.y - 6 < o.y + o.h &&
+              b.y + b.h + 6 > o.y,
+          );
         const rec = o as unknown as Record<string, unknown>;
         return t.inputs.fields(o as never).map((f) => {
+          if (
+            contested &&
+            hitTest(
+              objects,
+              o.x + (f.x + f.w / 2) * box,
+              o.y + (f.y + f.h / 2) * box,
+            )?.id !== o.id
+          )
+            return null;
           const typed = (rec["ans:" + f.key] as string) ?? "";
           const revealed = !!o.revealed;
           // Marking (and the correct answer in blank boxes) only appears once

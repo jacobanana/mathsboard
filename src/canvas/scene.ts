@@ -14,6 +14,7 @@
 
 import { drawGrid, drawStrokeFull, roundRect, FONT } from "@/canvas/drawHelpers";
 import { applyCam } from "@/canvas/viewport";
+import { hitTest } from "@/board/geometry";
 import { getTool } from "@/tools/registry";
 import { theme } from "@/styles/theme";
 import type { BoardDocument, Camera } from "@/board/types";
@@ -116,7 +117,9 @@ export function renderInputValues(
   applyCam(ctx, state.camera, view.dpr);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  for (const o of state.board.objects) {
+  const objects = state.board.objects;
+  for (let i = 0; i < objects.length; i++) {
+    const o = objects[i];
     if (o.id === state.editingId) continue;
     const t = getTool(o.type);
     if (!t || t.kind !== "canvas" || !t.inputs) continue;
@@ -124,10 +127,30 @@ export function renderInputValues(
     const scale = nat.w > 0 ? o.w / nat.w : 1;
     const rec = o as unknown as Record<string, unknown>;
     const revealed = !!o.revealed;
+    // Match InputOverlayLayer's occlusion: a field covered by a higher-z object
+    // isn't baked in (else buried answers would print over what covers them).
+    const contested = objects
+      .slice(i + 1)
+      .some(
+        (b) =>
+          b.x - 6 < o.x + o.w &&
+          b.x + b.w + 6 > o.x &&
+          b.y - 6 < o.y + o.h &&
+          b.y + b.h + 6 > o.y,
+      );
     ctx.save();
     ctx.translate(o.x, o.y);
     ctx.scale(scale, scale);
     for (const f of t.inputs.fields(o as never)) {
+      if (
+        contested &&
+        hitTest(
+          objects,
+          o.x + (f.x + f.w / 2) * scale,
+          o.y + (f.y + f.h / 2) * scale,
+        )?.id !== o.id
+      )
+        continue;
       const typed = String(rec["ans:" + f.key] ?? "");
       const hasVal = typed.trim() !== "";
       const mark =
