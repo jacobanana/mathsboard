@@ -55,7 +55,7 @@ import {
 } from "@/ui/constants";
 import { textSizeOf } from "@/canvas/drawHelpers";
 import { focusActiveTextEdit } from "@/canvas/textEditor";
-import { paramsOf, sizedBox } from "@/board/sizing";
+import { paramsOf, scaleOf, sizedBox } from "@/board/sizing";
 import { MATH_BASE_PX } from "@/tools/mathtext";
 import { isClosed } from "@/tools/shape/geometry";
 import type { ShapeKind } from "@/tools/shape/geometry";
@@ -460,7 +460,15 @@ export function OptionsStrip(): JSX.Element | null {
             pickTextSize,
           ] as const)
         : tool === "math"
-          ? ([MATH_SIZE_RANGE, mathSize, pickMathSize] as const)
+          ? ([
+              MATH_SIZE_RANGE,
+              // Maths size = the uniform resize scale (26 = scale 1): derive
+              // the edit target's value from its box, like text shows its own.
+              activeMath
+                ? Math.round(scaleOf(activeMath) * MATH_BASE_PX)
+                : mathSize,
+              pickMathSize,
+            ] as const)
           : ([ERASER_SIZE_RANGE, eraserSize, setEraserSize] as const);
 
   // Preview dot next to the slider: scaled into the 6-22px display band so the

@@ -15,6 +15,7 @@
 import { textSizeOf } from "@/canvas/drawHelpers";
 import { FONT } from "@/canvas/drawHelpers";
 import { scaleOf, sizedBox } from "@/board/sizing";
+import { track, trackBoardActivated } from "@/analytics";
 import type { useBoardStore } from "@/board/store";
 import type { AnyBoardObject } from "@/board/types";
 import type { InPlaceEditorHandle } from "@/canvas/interactions/types";
@@ -28,6 +29,9 @@ interface Editor {
   scale: number;
   /** Fixed wrap width (natural px) for a text BOX; null = auto-size the width. */
   boxW: number | null;
+  /** The text the edit started from, so commit can tell created / edited /
+   *  untouched apart (the same policy as the maths editor). */
+  initialText: string;
 }
 
 export interface TextEditor extends InPlaceEditorHandle {
@@ -150,7 +154,13 @@ export function createTextEditor(opts: {
     const { setEditingId } = store.getState();
     const s = scaleOf(obj);
     const boxW = (obj.boxW as number | undefined) ?? null;
-    editor = { objId: obj.id, isNew, scale: s, boxW };
+    editor = {
+      objId: obj.id,
+      isNew,
+      scale: s,
+      boxW,
+      initialText: (obj.text as string) || "",
+    };
     setEditingId(obj.id); // hides obj from the scene's draw pass
     render();
     ta.style.display = "block";
@@ -200,6 +210,15 @@ export function createTextEditor(opts: {
       sizedBox("text", { text, size, boxW }, ed.scale ?? 1) ??
       textSizeOf(text, size, boxW);
     st.updateObject(obj.id, { text, w: box.w, h: box.h });
+    // Analytics follow the maths editor's policy: a tool creation counts on
+    // its first non-empty commit (abandoned empties stay invisible), an edit
+    // only when the text actually changed.
+    if (ed.isNew) {
+      track("tool_action", { tool: "text", action: "created" });
+      trackBoardActivated(st.board.id);
+    } else if (text !== ed.initialText) {
+      track("tool_action", { tool: "text", action: "edited" });
+    }
     render();
   };
 

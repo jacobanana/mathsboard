@@ -29,9 +29,7 @@ import {
 import type { ResizeHandle } from "@/board/geometry";
 import {
   groupMembers,
-  isInSelection,
-  subtractSelection,
-  unionSelection,
+  pressSelection,
   expandToGroups,
 } from "@/board/selection";
 import type { HitKind } from "@/board/selection";
@@ -522,23 +520,13 @@ export const selectController: InteractionController = {
     if (stroke || obj) {
       const kind: HitKind = stroke ? "stroke" : "object";
       const hitId = stroke ? stroke.id : obj!.id;
-      const sel = st.selection;
-      // A grouped item stands for its whole group (board/selection.ts).
-      const members = groupMembers(st.board, kind, hitId);
-      if (shift) {
-        // Toggle membership (whole group at once); do not start a move (the
-        // item may have just been removed from the selection).
-        st.setSelection(
-          isInSelection(sel, kind, hitId)
-            ? subtractSelection(sel, members)
-            : unionSelection(sel, members),
-        );
-      } else {
-        const inSel = isInSelection(sel, kind, hitId);
-        const wasMulti = sel.objectIds.length + sel.strokeIds.length > 1;
-        const wasGroupOnly =
-          members.objectIds.length + members.strokeIds.length > 1;
-        if (!inSel) st.setSelection(members);
+      // THE shared press rule (groups, shift-toggle, collapse intent) lives in
+      // board/selection.ts — the widget overlay applies the same one.
+      const press = pressSelection(st.board, st.selection, kind, hitId, shift);
+      if (press.selection !== st.selection) st.setSelection(press.selection);
+      if (!shift) {
+        // Shift only toggles membership; it never starts a move (the item may
+        // have just been removed from the selection).
         const origin = anchorOrigin(st, { kind, id: hitId })!;
         moving = {
           pid: e.pointerId,
@@ -550,11 +538,7 @@ export const selectController: InteractionController = {
           ay: origin.y,
           anchor: { kind, id: hitId },
           moved: false,
-          // Click (no drag) on one of many -> collapse to it (its group) on
-          // release — but not when the "many" IS just the pressed group.
-          collapse: inSel && wasMulti && !(wasGroupOnly && !shift)
-            ? { kind, id: hitId }
-            : null,
+          collapse: press.collapse,
         };
       }
     } else {

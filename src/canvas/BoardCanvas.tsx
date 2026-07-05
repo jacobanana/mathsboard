@@ -358,6 +358,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
         s.tool !== prev.tool ||
         s.drawMode !== prev.drawMode ||
         s.penSize !== prev.penSize ||
+        s.highlighterSize !== prev.highlighterSize ||
         s.eraserSize !== prev.eraserSize ||
         s.selection !== prev.selection ||
         s.editingId !== prev.editingId

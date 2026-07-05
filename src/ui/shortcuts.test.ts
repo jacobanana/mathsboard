@@ -23,6 +23,8 @@ import {
   FILL_PALETTE,
   LASER_PALETTE,
   PEN_SIZE_RANGE,
+  HIGHLIGHTER_SIZE_RANGE,
+  SHAPE_WIDTH_RANGE,
 } from "@/ui/constants";
 import { anObject, aStroke, freshBoard, keydown } from "@/testing/fixtures";
 
@@ -408,6 +410,92 @@ describe("active-tool options", () => {
     fire(keydown("c"));
     expect(st().color).toBe(PALETTE[1][1]);
     expect(st().board.objects[0].color).toBe(PALETTE[1][1]);
+  });
+
+  it("C recolours a selected pencil stroke, exactly like the pill swatch", () => {
+    const s = aStroke({ color: PALETTE[0][1] });
+    freshBoard({ strokes: [s] });
+    st().setColor(PALETTE[0][1]);
+    st().setSelection({ objectIds: [], strokeIds: [s.id] });
+
+    fire(keydown("c"));
+    expect(st().color).toBe(PALETTE[1][1]);
+    expect(st().board.strokes[0].color).toBe(PALETTE[1][1]);
+  });
+
+  it("+/- in highlighter mode nudge the HIGHLIGHTER size, leaving the pen alone", () => {
+    st().setTool("pen");
+    st().setDrawMode("highlighter");
+
+    fire(keydown("+"));
+    expect(st().highlighterSize).toBe(20 + HIGHLIGHTER_SIZE_RANGE.step);
+    expect(st().penSize).toBe(6); // untouched
+  });
+
+  it("+/- in a shape mode use the shape width range and restyle the selected shape", () => {
+    const s = {
+      id: newId(),
+      type: "shape",
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 60,
+      kind: "rect",
+      nw: 100,
+      nh: 60,
+      pts: [],
+      stroke: PALETTE[0][1],
+      strokeWidth: SHAPE_WIDTH_RANGE.max - 1,
+      fill: "none",
+      dash: false,
+      showAngles: false,
+      both: false,
+    };
+    freshBoard({ objects: [s] });
+    st().setTool("pen");
+    st().setDrawMode("rect");
+    st().select(s.id);
+
+    fire(keydown("+"));
+    expect(st().board.objects[0].strokeWidth).toBe(SHAPE_WIDTH_RANGE.max);
+    fire(keydown("+")); // clamped at the SHAPE range, not the pen's wider one
+    expect(st().board.objects[0].strokeWidth).toBe(SHAPE_WIDTH_RANGE.max);
+  });
+
+  it("+/- restyle the selected pencil stroke in a freehand edit session", () => {
+    const s = aStroke({ size: 6 });
+    freshBoard({ strokes: [s] });
+    st().setTool("pen");
+    st().setDrawMode("free");
+    st().setSelection({ objectIds: [], strokeIds: [s.id] });
+
+    fire(keydown("+"));
+    expect(st().board.strokes[0].size).toBe(6 + PEN_SIZE_RANGE.step);
+    expect(st().penSize).toBe(6 + PEN_SIZE_RANGE.step); // default follows too
+  });
+
+  it("+/- resize a selected maths object from ITS current size, not the default", () => {
+    // natW/natH 200x60 resized to 2x (w=400) -> its derived size is 52, so a
+    // "+" lands on 54 — never 28 (the untouched default would give that).
+    const m = {
+      id: newId(),
+      type: "mathtext",
+      x: 0,
+      y: 0,
+      w: 400,
+      h: 120,
+      latex: "1+1",
+      natW: 200,
+      natH: 60,
+      color: PALETTE[0][1],
+    };
+    freshBoard({ objects: [m] });
+    st().setTool("math");
+    st().select(m.id);
+
+    fire(keydown("+"));
+    expect(st().board.objects[0].w).toBeCloseTo((200 * 54) / 26, 3);
+    expect(st().mathSize).toBe(54);
   });
 });
 

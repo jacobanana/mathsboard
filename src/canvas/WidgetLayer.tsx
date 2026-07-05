@@ -21,6 +21,7 @@
 
 import { useBoardStore } from "@/board/store";
 import { worldToScreen } from "@/board/geometry";
+import { pressSelection } from "@/board/selection";
 import { getTool } from "@/tools/registry";
 import type { AnyBoardObject } from "@/board/types";
 
@@ -49,21 +50,22 @@ export function WidgetLayer({ onEditObject }: WidgetLayerProps) {
   });
 
   // Capture phase: the worksheet header's own drag handler stopPropagation()s,
-  // and selection must land before the drag starts anyway.
+  // and selection must land before the drag starts anyway. Same press rule as
+  // the canvas (board/selection.ts pressSelection), so groups and shift-toggle
+  // behave identically on widgets. The click-collapse intent is deliberately
+  // not applied here: a widget press can't be told apart from the widget's own
+  // header-drag start, so collapsing would fire on drags too.
   const selectWidget = (o: AnyBoardObject, e: React.PointerEvent) => {
     const st = useBoardStore.getState();
     if (st.tool !== "select" || onControl(e.target)) return;
-    if (e.shiftKey) {
-      const ids = st.selection.objectIds;
-      st.setSelection({
-        ...st.selection,
-        objectIds: ids.includes(o.id)
-          ? ids.filter((x) => x !== o.id)
-          : [...ids, o.id],
-      });
-    } else if (!st.selection.objectIds.includes(o.id)) {
-      st.select(o.id);
-    }
+    const { selection } = pressSelection(
+      st.board,
+      st.selection,
+      "object",
+      o.id,
+      e.shiftKey,
+    );
+    if (selection !== st.selection) st.setSelection(selection);
   };
 
   // Mirrors BoardCanvas's onDblClick for canvas objects (select | pan tools).
