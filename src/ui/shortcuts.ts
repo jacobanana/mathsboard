@@ -246,7 +246,7 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "place-finish",
     group: "tools",
     keys: [["Enter"]],
-    label: "Finish the shape being placed (polygon / curve)",
+    label: "Stop adding points (curve / point polygon)",
     test: (c) =>
       bare(c) &&
       c.e.key === "Enter" &&
@@ -259,7 +259,7 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "place-cancel",
     group: "tools",
     keys: [["Esc"]],
-    label: "Abandon the shape being placed",
+    label: "Stop adding points (each added point undoes individually)",
     test: (c) =>
       c.e.key === "Escape" &&
       c.st.tool === "pen" &&

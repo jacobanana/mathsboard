@@ -36,10 +36,9 @@ import {
   magneticDirection,
   renormalize,
   shapeFromDrag,
-  splineSegments,
 } from "@/tools/shape/geometry";
 import type { Pt, ShapeKind } from "@/tools/shape/geometry";
-import { drawShapeGeometry, NO_FILL } from "@/tools/shape";
+import { drawShapeGeometry, NO_FILL, shapeTool } from "@/tools/shape";
 import type { ShapeParams } from "@/tools/shape";
 import { SHAPE_WIDTH_RANGE } from "@/ui/constants";
 import { track, trackBoardActivated } from "@/analytics";
@@ -68,13 +67,25 @@ interface LiveShape {
 
 let live: LiveShape | null = null;
 
-/** The in-progress CLICK-TO-PLACE shape: the closed point-by-point polygon
- *  (freepoly) or the open multi-point curve. */
+/**
+ * The in-progress CLICK-TO-PLACE session (point polygon / curve). CREATION
+ * IS EDITING: the object is committed to the document the moment it has
+ * enough points (2 for a curve, 3 for a polygon) and every further click
+ * APPENDS a point through updateObject — one undo step per point, exactly
+ * like editing afterwards. Only the first click(s) below the minimum are
+ * held locally (`pending`); the finishing gesture never adds a point.
+ */
 interface Placing {
   kind: "freepoly" | "curve";
-  pts: Pt[];
+  /** Points placed before the object exists (fewer than the minimum). */
+  pending: Pt[];
+  /** The live document object's id once the minimum count is reached. */
+  id: string | null;
   /** Last hover position (world), for the elastic segment preview. */
   cursor: Pt | null;
+  /** Last click (screen px + ms): a quick second click on the same spot is
+   *  the double-click's second half — it FINISHES instead of adding. */
+  last: { sx: number; sy: number; at: number } | null;
 }
 
 let placing: Placing | null = null;
@@ -121,7 +132,7 @@ function commitShape(
   y: number,
   params: ShapeParams,
   trackedAs: string = kind,
-): void {
+): string {
   const st = useBoardStore.getState();
   const obj: AnyBoardObject = {
     id: newId(),
@@ -136,6 +147,7 @@ function commitShape(
   st.select(obj.id);
   track("tool_action", { tool: "shape", action: "created", kind: trackedAs });
   trackBoardActivated(st.board.id);
+  return obj.id;
 }
 
 /** The live drag as full shape params + world origin (preview & commit). */
@@ -174,40 +186,45 @@ function pokeRender(): void {
   st.setSelection({ ...st.selection });
 }
 
-/** Abandon the in-progress placement (Escape / tool cancel). */
-export function cancelPlacement(): void {
-  if (!placing) return;
-  placing = null;
-  placePress = null;
-  pokeRender();
+/** How many points a placement needs before the object gets committed. */
+const minPoints = (kind: Placing["kind"]): number =>
+  kind === "freepoly" ? 3 : 2;
+
+/** The session's points in WORLD coords: the live object's (it may have been
+ *  reshaped by undo mid-session) or the pending clicks. */
+function sessionPoints(): Pt[] {
+  if (!placing) return [];
+  if (placing.id == null) return placing.pending;
+  const st = useBoardStore.getState();
+  const o = st.board.objects.find((x) => x.id === placing!.id);
+  if (!o) return [];
+  const pts = (o.pts as Pt[]) ?? [];
+  const s = (o.w as number) / Math.max(o.nw as number, 1);
+  return pts.map((p) => ({ x: (o.x as number) + p.x * s, y: (o.y as number) + p.y * s }));
 }
 
 /**
- * Finish the in-progress placement: freepoly closes into a `polygon` (≥ 3
- * corners), curve commits as an open spline (≥ 2 points); fewer points is
- * abandoned. Exposed for the Enter shortcut and double-click.
+ * End the in-progress placement session. The object (if it reached its
+ * minimum and was committed) simply STAYS — finishing never writes anything,
+ * so the closing gesture can't add stray points. Below the minimum, the
+ * pending clicks are discarded. Exposed for the Enter/Escape shortcuts.
  */
 export function finishPlacement(c?: InputCtx): void {
   if (!placing) return;
-  const { kind, pts: raw } = placing;
   placing = null;
   placePress = null;
-  const pts = [...raw];
-  // A double-click lands as two near-identical clicks; drop the duplicate.
-  while (
-    pts.length > 1 &&
-    Math.hypot(
-      pts[pts.length - 1].x - pts[pts.length - 2].x,
-      pts[pts.length - 1].y - pts[pts.length - 2].y,
-    ) < 1
-  ) {
-    pts.pop();
-  }
-  const min = kind === "freepoly" ? 3 : 2;
-  if (pts.length < min) {
-    pokeRender();
-    return;
-  }
+  if (c) c.render();
+  else pokeRender();
+}
+
+/** Alias of finishPlacement for the Escape shortcut / tool cancel: ending is
+ *  all there is — committed points are undone per click, not abandoned. */
+export function cancelPlacement(): void {
+  finishPlacement();
+}
+
+/** Build + commit the placement object once the minimum count is reached. */
+function commitPlacement(kind: Placing["kind"], pts: Pt[]): string {
   const st = useBoardStore.getState();
   const n = renormalize(pts);
   const shapeKind: ShapeKind = kind === "freepoly" ? "polygon" : "curve";
@@ -226,34 +243,74 @@ export function finishPlacement(c?: InputCtx): void {
     showAngles: shapeKind === "polygon",
     both: false,
   };
-  commitShape(shapeKind, n.ox, n.oy, params, kind);
-  if (c) c.render();
+  return commitShape(shapeKind, n.ox, n.oy, params, kind);
 }
 
-/** One placement click: start the shape, close it (freepoly, near the first
- *  corner), or append a point. */
+/** A quick second click on (nearly) the same spot is the double-click's
+ *  second half — treat it as "finish", never as another point. */
+const DOUBLE_PX = 6;
+const DOUBLE_MS = 400;
+
+/** One placement click: start the session, finish it (double-click's second
+ *  half / a freepoly click back on the first corner), or add a point — as
+ *  its OWN undo step once the object exists. */
 function placeClick(e: PointerEvent, c: InputCtx): void {
   const st = c.store.getState();
   const mode = st.drawMode;
   if (!placementMode(mode)) return;
+  if (placing && placing.kind !== mode) placing = null; // mode switched mid-build
   const pp = c.evPos(e);
+  const now = Date.now();
+  if (
+    placing?.last &&
+    now - placing.last.at < DOUBLE_MS &&
+    Math.hypot(pp.x - placing.last.sx, pp.y - placing.last.sy) <= DOUBLE_PX
+  ) {
+    finishPlacement(c);
+    return;
+  }
   const raw = c.toWorld(pp.x, pp.y);
   const w = snapping(c, e) ? snapPt(raw) : raw;
-  if (placing && placing.kind !== mode) placing = null; // mode switched mid-build
-  if (placing && placing.kind === "freepoly" && placing.pts.length >= 3) {
+  const world = sessionPoints();
+  if (placing && placing.kind === "freepoly" && world.length >= 3) {
     // Close on the first corner: within the screen radius of it, or (with
     // snapping on) landing on exactly its grid node.
     const d0 =
-      Math.hypot(raw.x - placing.pts[0].x, raw.y - placing.pts[0].y) *
-      st.camera.scale;
-    const sameNode = w.x === placing.pts[0].x && w.y === placing.pts[0].y;
+      Math.hypot(raw.x - world[0].x, raw.y - world[0].y) * st.camera.scale;
+    const sameNode = w.x === world[0].x && w.y === world[0].y;
     if (d0 <= CLOSE_PX || sameNode) {
       finishPlacement(c);
       return;
     }
   }
-  if (!placing) placing = { kind: mode, pts: [w], cursor: w };
-  else placing.pts.push(w);
+  if (!placing) {
+    placing = { kind: mode, pending: [], id: null, cursor: w, last: null };
+  }
+  placing.last = { sx: pp.x, sy: pp.y, at: now };
+  if (placing.id == null) {
+    placing.pending.push(w);
+    if (placing.pending.length >= minPoints(placing.kind)) {
+      // Enough points: the object goes LIVE in the document (one undo step
+      // covers this creation); further clicks append to it.
+      placing.id = commitPlacement(placing.kind, placing.pending);
+      placing.pending = [];
+    }
+    c.render();
+    return;
+  }
+  // Append to the live object through the shape tool's own insert (it keeps
+  // tangents/renormalisation right) — one undoable step per point.
+  const obj = st.board.objects.find((o) => o.id === placing!.id);
+  if (!obj) {
+    // Undone back past the creation: this click starts over.
+    placing.pending = [w];
+    placing.id = null;
+    c.render();
+    return;
+  }
+  const cap = shapeTool.vertices!;
+  const ins = cap.insert!(obj as never, (obj.pts as Pt[]).length - 1, w.x, w.y);
+  if (ins) st.updateObject(obj.id, ins.patch);
   c.render();
 }
 
@@ -390,45 +447,54 @@ export const drawController: InteractionController = {
     drawSelectionOutlines(kit, st);
 
     if (placementMode(mode) && placing) {
+      // The committed part of the shape renders as the REAL object via the
+      // scene (creation is editing). The overlay adds only the session
+      // chrome: the pending pre-minimum polyline, a dashed elastic guide to
+      // the cursor, dots on every point, and the freepoly close ring.
       const style = shapeStyleParams(
         c,
         placing.kind === "freepoly" ? "polygon" : "curve",
       );
       const ink = kit.ink;
-      const { pts, cursor } = placing;
-      const path =
-        cursor && placing.pts.length > 0 ? [...pts, cursor] : [...pts];
+      const { cursor } = placing;
+      const world = sessionPoints();
       ink.save();
       ink.globalAlpha = 0.9;
       ink.strokeStyle = style.stroke;
       ink.lineWidth = style.strokeWidth;
       ink.lineCap = "round";
       ink.lineJoin = "round";
-      ink.beginPath();
-      ink.moveTo(path[0].x, path[0].y);
-      if (placing.kind === "curve") {
-        // Live spline through the placed points and the cursor.
-        for (const s of splineSegments(path)) {
-          ink.bezierCurveTo(s.c1.x, s.c1.y, s.c2.x, s.c2.y, s.to.x, s.to.y);
-        }
-      } else {
-        for (let i = 1; i < path.length; i++) ink.lineTo(path[i].x, path[i].y);
+      if (placing.id == null && world.length > 1) {
+        // Below the minimum: the object doesn't exist yet, preview the run.
+        ink.beginPath();
+        ink.moveTo(world[0].x, world[0].y);
+        for (let i = 1; i < world.length; i++) ink.lineTo(world[i].x, world[i].y);
+        ink.stroke();
       }
-      ink.stroke();
-      // Placed-point dots; a freepoly's FIRST corner grows a ring once the
-      // shape can close.
+      if (cursor && world.length > 0) {
+        // Elastic guide: where the NEXT click would extend the shape.
+        const last = world[world.length - 1];
+        ink.save();
+        ink.lineWidth = Math.max(1.5, style.strokeWidth * 0.5);
+        ink.setLineDash([6 / kit.camera.scale, 5 / kit.camera.scale]);
+        ink.beginPath();
+        ink.moveTo(last.x, last.y);
+        ink.lineTo(cursor.x, cursor.y);
+        ink.stroke();
+        ink.restore();
+      }
       const r = 4 / kit.camera.scale;
       ink.fillStyle = style.stroke;
-      for (const p of pts) {
+      for (const p of world) {
         ink.beginPath();
         ink.arc(p.x, p.y, r, 0, Math.PI * 2);
         ink.fill();
       }
-      if (placing.kind === "freepoly" && pts.length >= 3) {
+      if (placing.kind === "freepoly" && world.length >= 3) {
         ink.strokeStyle = kit.theme.accent;
         ink.lineWidth = 2 / kit.camera.scale;
         ink.beginPath();
-        ink.arc(pts[0].x, pts[0].y, (CLOSE_PX - 4) / kit.camera.scale, 0, Math.PI * 2);
+        ink.arc(world[0].x, world[0].y, (CLOSE_PX - 4) / kit.camera.scale, 0, Math.PI * 2);
         ink.stroke();
       }
       ink.restore();
