@@ -394,6 +394,20 @@ export function patchObjectInput(
   }, INPUT_ORIGIN);
 }
 
+/** Patch fields on one stroke's live style (colour, width) - per-field CRDT
+ *  writes, exactly like patchObject but on the strokes map. */
+export function patchStroke(
+  id: string,
+  patch: Record<string, unknown>,
+): void {
+  const { strokes } = must().h;
+  tx(() => {
+    const y = strokes.get(id);
+    if (!y) return; // deleted concurrently - drop the edit, delete wins
+    applyShapePatch(y, patch);
+  });
+}
+
 export function insertStroke(stroke: Stroke): void {
   const { strokes } = must().h;
   tx(() => strokes.set(stroke.id, toYShape({ order: nextOrder(), ...stroke })));

@@ -167,6 +167,9 @@ interface BoardState {
   addShapes(objects: AnyBoardObject[], strokes: Stroke[]): void;
   /** Patch an object's fields. Pushes a history entry. */
   updateObject(id: string, patch: Partial<AnyBoardObject>): void;
+  /** Patch a freehand stroke's live style (colour, width). Pushes a history
+   *  entry, like updateObject — the options pill edits a stroke this way. */
+  updateStroke(id: string, patch: Partial<Stroke>): void;
   /**
    * Patch LIVE WIDGET STATE on an object (typed quiz answers, marks). Syncs to
    * peers and persists in the document like updateObject, but never enters the
@@ -417,6 +420,26 @@ export function activeShapeObjectId(
 }
 
 /**
+ * The lone selected pen stroke ("pencil"), or null — the stroke the options
+ * pill styles live in edit mode. Only a single selected stroke qualifies (never
+ * an eraser stroke, a multi-select, or a selection that also holds objects), the
+ * stroke analogue of activeShapeObjectId.
+ */
+export function activeStrokeId(
+  s: Pick<BoardState, "selection" | "board">,
+): string | null {
+  if (
+    s.selection.strokeIds.length !== 1 ||
+    s.selection.objectIds.length !== 0
+  ) {
+    return null;
+  }
+  const id = s.selection.strokeIds[0];
+  const stroke = s.board.strokes.find((x) => x.id === id);
+  return stroke && stroke.mode === "pen" ? stroke.id : null;
+}
+
+/**
  * Whether the current board is a PERSISTED board (so its name should be shown)
  * rather than a never-saved local draft. A shared board always counts — it lives
  * in the online store under a name every collaborator sees; a solo board counts
@@ -486,6 +509,11 @@ export const useBoardStore = create<BoardState>((set, get) => {
     updateObject(id, patch) {
       session.stopCapture();
       session.patchObject(id, patch);
+    },
+
+    updateStroke(id, patch) {
+      session.stopCapture();
+      session.patchStroke(id, patch);
     },
 
     updateWidgetState(id, patch) {

@@ -7,10 +7,9 @@
 //                        lock and the grid-snap toggle) on TOP, and the DRAW
 //                        MODE selector (freehand + the shape kinds, roadmap A2)
 //                        on the BOTTOM line, nearest the dock's Draw button.
-//   tool === "select" -> when a single SHAPE is selected: its border width /
-//                        border colour / background colour, edited live, plus
-//                        the snap toggle (styling a shape after the fact —
-//                        the industry-standard selection panel, kept tiny).
+//   tool === "select" -> manipulate only (move / resize / rotate on the canvas);
+//                        the pointer NEVER carries a styling panel. In collab
+//                        builds it shows the laser toggle, otherwise nothing.
 //   tool === "text"   -> size slider (textSize) + colour dropdown.
 //   tool === "math"   -> size slider (mathSize) + colour dropdown.
 //   tool === "eraser" -> size slider (eraserSize) only.
@@ -20,12 +19,14 @@
 // displaces the dock or any other button — the dock stays static while the
 // options animate in and out above it (CSS #options).
 //
-// Selecting a colour or size updates the store's ephemeral drawing state.
-// Additionally — mirroring the prototype, where changing colour/size while a
-// text object is selected or being edited mutates that object live — when a
-// TEXT / MATHS / SHAPE object is the current selection (or is being edited via
-// its overlay), the change is also written back through updateObject so the
-// object updates immediately.
+// EDIT MODE. Restyling an existing object is done by EDITING IT WITH ITS OWN
+// TOOL: double-clicking an object switches to the tool that draws it (text ->
+// text, maths -> math, shape -> pen@its-kind, a pencil stroke -> pen freehand)
+// and keeps it selected — see select.ts editObjectAt. So when a TEXT / MATHS /
+// SHAPE object or a pen STROKE is the active edit target (a single selection of
+// that type, or a text/maths object open in its overlay), this pill both
+// reflects that target's own colour/size AND writes changes straight back to it
+// (updateObject / updateStroke), on top of updating the drawing defaults.
 
 import { useRef, useState } from "react";
 import {
@@ -33,6 +34,7 @@ import {
   activeTextObjectId,
   activeMathObjectId,
   activeShapeObjectId,
+  activeStrokeId as activeStrokeSel,
 } from "@/board/store";
 import type { DrawMode } from "@/board/store";
 import { COLLAB_ENABLED } from "@/config";
@@ -266,16 +268,42 @@ export function OptionsStrip(): JSX.Element | null {
   const setFillColor = useBoardStore((s) => s.setFillColor);
   const setPolygonSides = useBoardStore((s) => s.setPolygonSides);
   const updateObject = useBoardStore((s) => s.updateObject);
+  const updateStroke = useBoardStore((s) => s.updateStroke);
   const activeTextId = useBoardStore(activeTextObjectId);
   const activeMathId = useBoardStore(activeMathObjectId);
   const activeShapeId = useBoardStore(activeShapeObjectId);
+  const activeStrokeId = useBoardStore(activeStrokeSel);
   const activeShape = useBoardStore((s) =>
     activeShapeId != null
       ? s.board.objects.find((o) => o.id === activeShapeId)
       : undefined,
   );
+  const activeText = useBoardStore((s) =>
+    activeTextId != null
+      ? s.board.objects.find((o) => o.id === activeTextId)
+      : undefined,
+  );
+  const activeMath = useBoardStore((s) =>
+    activeMathId != null
+      ? s.board.objects.find((o) => o.id === activeMathId)
+      : undefined,
+  );
+  const activeStroke = useBoardStore((s) =>
+    activeStrokeId != null
+      ? s.board.strokes.find((o) => o.id === activeStrokeId)
+      : undefined,
+  );
 
-  const shapeSelected = tool === "select" && activeShape != null;
+  // The object/stroke the active tool is editing, if any, drives the pill's
+  // live values so the controls reflect what they edit (an object's own colour,
+  // not just the drawing defaults). At most one is ever set — the selection is a
+  // single object OR stroke of one type.
+  const editColor =
+    (activeStroke?.color as string | undefined) ??
+    (activeShape?.stroke as string | undefined) ??
+    (activeText?.color as string | undefined) ??
+    (activeMath?.color as string | undefined);
+
   if (
     tool !== "pen" &&
     tool !== "text" &&
@@ -293,6 +321,7 @@ export function OptionsStrip(): JSX.Element | null {
     if (activeTextId != null) updateObject(activeTextId, { color: hex });
     if (activeMathId != null) updateObject(activeMathId, { color: hex });
     if (activeShapeId != null) updateObject(activeShapeId, { stroke: hex });
+    if (activeStrokeId != null) updateStroke(activeStrokeId, { color: hex });
   }
 
   function pickFill(hex: string): void {
@@ -330,6 +359,7 @@ export function OptionsStrip(): JSX.Element | null {
   function pickPenSize(px: number): void {
     setPenSize(px);
     if (activeShapeId != null) updateObject(activeShapeId, { strokeWidth: px });
+    if (activeStrokeId != null) updateStroke(activeStrokeId, { size: px });
   }
 
   // --- SELECT tool in LASER mode: the laser toggle + the area-frame toggle.
@@ -345,62 +375,12 @@ export function OptionsStrip(): JSX.Element | null {
     );
   }
 
-  // --- SELECT tool: live styling for the selected shape --------------------
-  if (shapeSelected) {
-    const kind = activeShape.kind as ShapeKind;
-    const width = (activeShape.strokeWidth as number) ?? 3;
-    const frac =
-      (width - SHAPE_WIDTH_RANGE.min) /
-      (SHAPE_WIDTH_RANGE.max - SHAPE_WIDTH_RANGE.min);
-    const dot = Math.round(6 + frac * 16);
-    return (
-      <div className="island" id="options">
-        <label className="size-wrap" title={`Border width — ${width}px`}>
-          <input
-            type="range"
-            className="size-slider"
-            id="sizeSlider"
-            min={SHAPE_WIDTH_RANGE.min}
-            max={SHAPE_WIDTH_RANGE.max}
-            step={SHAPE_WIDTH_RANGE.step}
-            value={width}
-            onChange={(e) =>
-              updateObject(activeShapeId!, {
-                strokeWidth: Number(e.target.value),
-              })
-            }
-          />
-          <span
-            className="size-dot"
-            style={{ width: dot, height: dot, background: "currentColor" }}
-          />
-        </label>
-        <SwatchPicker
-          id="strokeBtn"
-          title={`Border colour (${keyHint("cycleColor")})`}
-          value={(activeShape.stroke as string) ?? color}
-          palette={PALETTE}
-          onPick={pickColour}
-        />
-        {isClosed(kind) && (
-          <SwatchPicker
-            id="fillBtn"
-            title={`Background colour (${keyHint("cycleFill")})`}
-            value={(activeShape.fill as string) ?? "none"}
-            palette={FILL_PALETTE}
-            onPick={pickFill}
-          />
-        )}
-        <SnapToggle />
-        {/* Laser is a collaboration feature — collab builds only. */}
-        {COLLAB_ENABLED && <LaserToggle />}
-      </div>
-    );
-  }
-
-  // The pointer with nothing selected: just the laser toggle. The laser is a
-  // collaboration feature (like sharing), so the static single-user build has
-  // no options here at all.
+  // --- SELECT tool: manipulate only ----------------------------------------
+  // The pointer tool never carries a styling panel — selecting a shape shows
+  // move / resize / rotate chrome on the canvas, not colour/width controls.
+  // To restyle an object you double-click it (edit mode: its own drawing tool
+  // takes over and this pill styles it live). So the pointer shows only the
+  // laser toggle, and only in collab builds (the laser is a sharing feature).
   if (tool === "select") {
     if (!COLLAB_ENABLED) return null;
     return (
@@ -410,17 +390,29 @@ export function OptionsStrip(): JSX.Element | null {
     );
   }
 
+  // In edit mode the size control reflects the edited target's own value (an
+  // object's width, a stroke's size), so the pill shows what it changes; with
+  // nothing under edit it shows the drawing default.
   const [range, value, setValue] =
     tool === "pen"
       ? drawMode === "free"
-        ? ([PEN_SIZE_RANGE, penSize, pickPenSize] as const)
+        ? ([
+            PEN_SIZE_RANGE,
+            (activeStroke?.size as number | undefined) ?? penSize,
+            pickPenSize,
+          ] as const)
         : ([
             SHAPE_WIDTH_RANGE,
-            Math.min(penSize, SHAPE_WIDTH_RANGE.max),
+            (activeShape?.strokeWidth as number | undefined) ??
+              Math.min(penSize, SHAPE_WIDTH_RANGE.max),
             pickPenSize,
           ] as const)
       : tool === "text"
-        ? ([TEXT_SIZE_RANGE, textSize, pickTextSize] as const)
+        ? ([
+            TEXT_SIZE_RANGE,
+            (activeText?.size as number | undefined) ?? textSize,
+            pickTextSize,
+          ] as const)
         : tool === "math"
           ? ([MATH_SIZE_RANGE, mathSize, pickMathSize] as const)
           : ([ERASER_SIZE_RANGE, eraserSize, setEraserSize] as const);
@@ -542,7 +534,7 @@ export function OptionsStrip(): JSX.Element | null {
             (shapeMode ? "Border colour" : "Colour") +
             ` (${keyHint("cycleColor")})`
           }
-          value={color}
+          value={editColor ?? color}
           palette={PALETTE}
           onPick={pickColour}
         />
@@ -553,7 +545,7 @@ export function OptionsStrip(): JSX.Element | null {
         <SwatchPicker
           id="fillBtn"
           title="Background colour"
-          value={fillColor}
+          value={(activeShape?.fill as string | undefined) ?? fillColor}
           palette={FILL_PALETTE}
           onPick={pickFill}
         />

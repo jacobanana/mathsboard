@@ -269,4 +269,39 @@ describe("double-click edit routing", () => {
     editObjectAt(pointer(120, 105), spyCtx); // on the numberline
     expect(editedViaDialog).toEqual([O.id]);
   });
+
+  it("enters edit mode in the object's OWN tool (text -> text, shape -> pen@kind)", () => {
+    const T: AnyBoardObject = {
+      id: newId(), type: "text", x: 400, y: 300, w: 80, h: 34,
+      text: "hi", size: 26, color: "#000",
+    };
+    const Sh: AnyBoardObject = {
+      id: newId(), type: "shape", kind: "rect", x: 500, y: 400, w: 60, h: 40,
+      stroke: "#000", strokeWidth: 3, fill: "none", nw: 60, nh: 40, pts: [],
+    };
+    freshBoard({ objects: [T, Sh] });
+    const spyCtx = fakeInputCtx({
+      editor: { open: () => {}, commit: () => {}, isOpen: () => false },
+    });
+
+    editObjectAt(pointer(410, 310), spyCtx); // the text object
+    expect(st().tool).toBe("text");
+    expect(st().selection.objectIds).toEqual([T.id]);
+
+    editObjectAt(pointer(520, 415), spyCtx); // the rectangle shape
+    expect(st().tool).toBe("pen");
+    expect(st().drawMode).toBe("rect");
+    expect(st().selection.objectIds).toEqual([Sh.id]);
+  });
+
+  it("edits a pencil stroke in the freehand pen tool", () => {
+    const S2 = aStroke({ points: [{ x: 150, y: 500 }, { x: 250, y: 500 }] });
+    freshBoard({ objects: [], strokes: [S2] });
+    st().setTool("select");
+
+    editObjectAt(pointer(200, 500), fakeInputCtx());
+    expect(st().tool).toBe("pen");
+    expect(st().drawMode).toBe("free");
+    expect(st().selection).toEqual({ objectIds: [], strokeIds: [S2.id] });
+  });
 });

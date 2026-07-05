@@ -21,6 +21,20 @@ describe("drawing and erasing", () => {
     expect(st().board.strokes[0].points).toEqual(s.points);
   });
 
+  it("updateStroke restyles a stroke live, as its own undo step", () => {
+    const s = aStroke({ color: "#111111", size: 6 });
+    st().addStroke(s);
+    st().updateStroke(s.id, { color: "#ff0000", size: 12 });
+    const after = st().board.strokes.find((x) => x.id === s.id)!;
+    expect(after.color).toBe("#ff0000");
+    expect(after.size).toBe(12);
+    // One undo reverts only the restyle, back to the drawn stroke's own style.
+    st().undo();
+    const reverted = st().board.strokes.find((x) => x.id === s.id)!;
+    expect(reverted.color).toBe("#111111");
+    expect(reverted.size).toBe(6);
+  });
+
   it("erasing the middle of a stroke splits it, the first fragment keeping the id", () => {
     const s = aStroke({ points: [{ x: 0, y: 0 }, { x: 100, y: 0 }] });
     st().addStroke(s);

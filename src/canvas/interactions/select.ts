@@ -43,6 +43,7 @@ import {
 } from "@/board/resize";
 import { getTool } from "@/tools/registry";
 import type { VertexCapability } from "@/tools/registry";
+import type { DrawMode } from "@/board/store";
 import { niceAngleTarget } from "@/tools/shape/geometry";
 import {
   laserDown,
@@ -293,20 +294,46 @@ function anchorOrigin(
 }
 
 /**
- * Double-click edit, shared with the pan controller: select the hit object,
- * then edit free text / maths notation in place or route everything else to
- * the host's settings-dialog flow.
+ * Double-click edit, shared with the pan controller. EDITING AN OBJECT MEANS
+ * EDITING IT WITH ITS OWN TOOL: switch to the tool that draws this kind and
+ * keep the object selected, so the options pill styles it live (rather than the
+ * select tool carrying a styling panel). Free text / maths also re-open their
+ * in-place overlay editor; a pencil stroke edits in the freehand pen tool.
+ * Widget/canvas tools with a settings dialog (numberline, clock, ...) have no
+ * drawing tool of their own, so they still route to that dialog.
  */
 export function editObjectAt(e: MouseEvent, c: InputCtx): void {
   const st = c.store.getState();
   const pp = c.evPos(e);
   const w = c.toWorld(pp.x, pp.y);
+
+  // Strokes sit above objects on the ink layer (as in single-click selection),
+  // so a double-click on a pencil stroke wins: edit it in the freehand pen tool.
+  const stroke = hitTestStroke(st.board.strokes, w.x, w.y);
+  if (stroke) {
+    st.setSelection({ objectIds: [], strokeIds: [stroke.id] });
+    st.setDrawMode("free");
+    st.setTool("pen");
+    return;
+  }
+
   const hit = hitTest(st.board.objects, w.x, w.y);
   if (!hit) return;
   st.select(hit.id);
-  if (hit.type === "text") c.editor.open(hit, false);
-  else if (hit.type === "mathtext") c.mathEditor.open(hit, false);
-  else c.editObject(hit);
+  if (hit.type === "text") {
+    st.setTool("text");
+    c.editor.open(hit, false);
+  } else if (hit.type === "mathtext") {
+    st.setTool("math");
+    c.mathEditor.open(hit, false);
+  } else if (hit.type === "shape") {
+    // Match the draw mode to the shape's kind so the pill shows the right
+    // controls (fill for closed shapes, sides for polygons, ...).
+    st.setDrawMode(hit.kind as DrawMode);
+    st.setTool("pen");
+  } else {
+    c.editObject(hit);
+  }
 }
 
 /**
