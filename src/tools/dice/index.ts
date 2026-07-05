@@ -56,6 +56,9 @@ const diceTool = defineWidgetTool<DiceParams>({
   defaults: () => ({ faces: 6, color: DEFAULT_DICE_COLOR }),
   // Square die area (150) plus the caption strip under it (see Dice CAPTION_H).
   defaultSize: { w: 150, h: 176 },
+  // The die derives its whole render from obj.w/obj.h, so it resizes cleanly
+  // via the WidgetHandleLayer (aspect-locked, keeping the die square).
+  resizable: true,
   Component: Dice,
   Dialog: DiceDialog,
 });

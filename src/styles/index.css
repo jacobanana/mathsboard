@@ -220,6 +220,10 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .iofield.cell.ok{background:rgba(46,158,91,.16);color:#2E9E5B;}
 .iofield.cell.no{background:rgba(214,69,69,.16);color:#D64545;}
 .ilayer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
+/* --- Widget resize handles (WidgetHandleLayer): DOM handles over the selected
+   resizable widget, above the widget card so they stay clickable. --- */
+.whandle-layer{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden;}
+.whandle{position:absolute;width:11px;height:11px;transform:translate(-50%,-50%);background:var(--accent);border:1.5px solid var(--paper);border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,.28);pointer-events:auto;touch-action:none;}
 /* --- Systemic "show answer" toggle (AnswerButtonLayer) --- */
 .answer-layer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
 .answer-btn{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;color:var(--bar);background:var(--island);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--island-border);box-shadow:var(--island-shadow);opacity:.45;transition:opacity .12s,background .12s,color .12s;}

@@ -313,6 +313,15 @@ export interface WidgetTool<P = Record<string, unknown>> extends ToolMeta {
   defaultSize: { w: number; h: number };
   Component: React.FC<WidgetProps<P>>;
   Dialog?: React.FC<ToolDialogProps<P>>;
+  /**
+   * Opt in to box resizing. Widgets are HTML overlays, so their resize handles
+   * can't be painted on the canvas (they'd sit under the widget) — the
+   * WidgetHandleLayer floats DOM handles over the selected widget instead. Only
+   * set this when the Component fully derives its layout from `obj.w`/`obj.h`
+   * (like the die): a widget that self-measures its natural size (the worksheet)
+   * would just snap back and must NOT opt in. The box keeps its aspect ratio.
+   */
+  resizable?: boolean;
 }
 
 export type Tool = CanvasTool<any> | WidgetTool<any>;

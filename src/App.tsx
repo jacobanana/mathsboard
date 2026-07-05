@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BoardCanvas } from "@/canvas/BoardCanvas";
 import { WidgetLayer } from "@/canvas/WidgetLayer";
+import { WidgetHandleLayer } from "@/canvas/WidgetHandleLayer";
 import { InputOverlayLayer } from "@/canvas/InputOverlayLayer";
 import { AnswerButtonLayer } from "@/canvas/AnswerButtonLayer";
 import { PresenceLayer } from "@/ui/PresenceLayer";
@@ -178,6 +179,7 @@ export default function App(): JSX.Element {
         <BoardCanvas onEditObject={openEditFor} />
         <InputOverlayLayer container={stageEl} />
         <WidgetLayer onEditObject={openEditFor} />
+        <WidgetHandleLayer />
         <AnswerButtonLayer container={stageEl} />
         {COLLAB_ENABLED && <PresenceLayer />}
         <ZoomCluster getStageSize={getStageSize} />
