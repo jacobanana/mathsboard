@@ -3,8 +3,8 @@
 // Ported from maths-whiteboard.html: size case (line 216), drawFDP (line 285),
 // fdpDialog (lines 551-558).
 
-import { defineCanvasTool } from "@/tools/registry";
-import { fmtNum, fillPanel } from "@/canvas/drawHelpers";
+import { defineCanvasTool, type InputFieldSpec } from "@/tools/registry";
+import { fillPanel } from "@/canvas/drawHelpers";
 import { FDPDialog } from "@/tools/fdp/Dialog";
 
 export interface FDPParams {
@@ -25,8 +25,7 @@ export const fdpTool = defineCanvasTool<FDPParams>({
   size: () => ({ w: 340, h: 150 }),
 
   draw: ({ ctx, theme, font }, o) => {
-    const dec = o.num / o.den,
-      pct = dec * 100;
+    const dec = o.num / o.den;
     ctx.save();
     fillPanel(ctx, o);
     ctx.fillStyle = theme.lineInk;
@@ -47,24 +46,48 @@ export const fdpTool = defineCanvasTool<FDPParams>({
     ctx.strokeStyle = theme.lineInk;
     ctx.lineWidth = 2;
     ctx.strokeRect(bx, by, bw, bh);
-    const labels: [string, string][] = [
-      ["Fraction", o.num + "/" + o.den],
-      ["Decimal", o.revealed ? fmtNum(dec) : "?"],
-      ["Percentage", o.revealed ? fmtNum(pct) + "%" : "?"],
-    ];
+    const labels = ["Fraction", "Decimal", "Percentage"];
     const colW = bw / 3;
     ctx.textAlign = "center";
     const ly = by + bh + 22;
-    labels.forEach(([t, v], i) => {
+    labels.forEach((t, i) => {
       const cxL = bx + colW * i + colW / 2;
       ctx.fillStyle = theme.muted;
       ctx.font = "600 12px " + font;
       ctx.fillText(t, cxL, ly);
-      ctx.fillStyle = i === 0 ? theme.lineInk : theme.bar;
-      ctx.font = "700 20px " + font;
-      ctx.fillText(v, cxL, ly + 24);
+      // Decimal + percentage are type-in boxes (see `inputs`); only the given
+      // fraction is drawn on the canvas.
+      if (i === 0) {
+        ctx.fillStyle = theme.lineInk;
+        ctx.font = "700 20px " + font;
+        ctx.fillText(o.num + "/" + o.den, cxL, ly + 24);
+      }
     });
     ctx.restore();
+  },
+
+  // Type-in boxes for the decimal and percentage equivalents, centred under
+  // their column headers at fixed positions (natural width 340). Answers can be
+  // decimals, so marking is tolerant (answersMatch): e.g. 3/4 → 0.75 and 75.
+  inputs: {
+    fields: (o) => {
+      const bx = 16,
+        bw = 340 - 32,
+        colW = bw / 3;
+      const ly = 42 + 30 + 22; // by + bh + 22, matching draw()
+      const dec = o.num / o.den;
+      const h = 30,
+        boxW = colW * 0.8;
+      const mk = (i: number, key: string, correct: number): InputFieldSpec => ({
+        key,
+        correct,
+        x: bx + colW * i + colW / 2 - boxW / 2,
+        y: ly + 4,
+        w: boxW,
+        h,
+      });
+      return [mk(1, "dec", dec), mk(2, "pct", dec * 100)];
+    },
   },
 
   Dialog: FDPDialog,

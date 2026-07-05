@@ -15,7 +15,7 @@
 import { drawGrid, drawStrokeFull, roundRect, FONT } from "@/canvas/drawHelpers";
 import { applyCam } from "@/canvas/viewport";
 import { hitTest } from "@/board/geometry";
-import { getTool } from "@/tools/registry";
+import { answersMatch, getTool } from "@/tools/registry";
 import { theme } from "@/styles/theme";
 import type { BoardDocument, Camera } from "@/board/types";
 
@@ -155,7 +155,7 @@ export function renderInputValues(
       const hasVal = typed.trim() !== "";
       const mark =
         revealed && hasVal && f.correct != null
-          ? Number(typed) === f.correct
+          ? answersMatch(typed, f.correct)
             ? "ok"
             : "no"
           : null;

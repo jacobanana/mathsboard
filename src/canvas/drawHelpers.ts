@@ -102,6 +102,17 @@ export function wrapText(
 const measureCanvas: HTMLCanvasElement = document.createElement("canvas");
 const measureCtx: CanvasRenderingContext2D = measureCanvas.getContext("2d")!;
 
+/**
+ * Width (px) of `text` in `font` (a full CSS font shorthand, e.g. "700 18px "+
+ * FONT). Lets a tool's `inputs.fields()` place an answer box after variable-
+ * width prompt text without a live render context, mirroring how draw() lays it
+ * out. Measured at natural size — fields are in the tool's natural coords.
+ */
+export function measureTextWidth(text: string, font: string): number {
+  measureCtx.font = font;
+  return measureCtx.measureText(text).width;
+}
+
 /** Box size for a "note" / problem card containing `text`. */
 export function noteSize(text: string): { w: number; h: number } {
   const maxW = 360 - 46;

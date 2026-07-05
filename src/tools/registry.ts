@@ -208,6 +208,19 @@ export interface InputCapability<P> {
   fields(obj: BoardObjectBase & P): InputFieldSpec[];
 }
 
+/**
+ * Whether a typed answer matches the expected value, for input marking. Rounds
+ * both to 6dp so float noise and clean decimals (0.75, 33.333333) compare
+ * equal; non-numeric input never matches.
+ */
+export function answersMatch(typed: string, correct: number): boolean {
+  if (typed.trim() === "") return false; // blank never matches (even correct 0)
+  const n = Number(typed);
+  if (!Number.isFinite(n)) return false;
+  const r = (v: number) => Math.round(v * 1e6) / 1e6;
+  return r(n) === r(correct);
+}
+
 /** A tool drawn onto the board canvas. */
 export interface CanvasTool<P = Record<string, unknown>> extends ToolMeta {
   kind: "canvas";

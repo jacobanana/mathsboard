@@ -8,8 +8,8 @@
 // Mechanical port only: tctx -> ctx; css('--line-ink') -> theme.lineInk,
 // css('--muted') -> theme.muted; FONT -> font; fillPanel now takes ctx.
 
-import { defineCanvasTool } from "@/tools/registry";
-import { fmtNum, fillPanel } from "@/canvas/drawHelpers";
+import { defineCanvasTool, type InputFieldSpec } from "@/tools/registry";
+import { fmtNum, fillPanel, measureTextWidth, FONT } from "@/canvas/drawHelpers";
 import { PercAmountDialog } from "@/tools/percamount/Dialog";
 
 export interface PercAmountParams {
@@ -43,11 +43,7 @@ export const percAmountTool = defineCanvasTool<PercAmountParams>({
     ctx.font = "700 24px " + font;
     const head = fmtNum(o.pct) + "% of " + fmtNum(o.whole) + " =";
     ctx.fillText(head, o.x + 16, cy);
-    ctx.fillText(
-      o.revealed ? fmtNum(ans) : "",
-      o.x + 16 + ctx.measureText(head).width + 10,
-      cy,
-    );
+    // The answer is a type-in box after the prompt (see `inputs`).
     if (o.revealed) {
       ctx.font = "600 17px " + font;
       ctx.fillStyle = theme.muted;
@@ -72,6 +68,27 @@ export const percAmountTool = defineCanvasTool<PercAmountParams>({
       );
     }
     ctx.restore();
+  },
+
+  // Single answer box after the "pct% of whole =" prompt; its x mirrors draw()
+  // (prompt drawn at 700 24px, +10 gap).
+  inputs: {
+    fields: (o) => {
+      const cy = 34;
+      const head = fmtNum(o.pct) + "% of " + fmtNum(o.whole) + " =";
+      const h = 32;
+      const out: InputFieldSpec[] = [
+        {
+          key: "ans",
+          x: 16 + measureTextWidth(head, "700 24px " + FONT) + 10,
+          y: cy - h / 2,
+          w: 74,
+          h,
+          correct: (o.whole * o.pct) / 100,
+        },
+      ];
+      return out;
+    },
   },
 
   Dialog: PercAmountDialog,

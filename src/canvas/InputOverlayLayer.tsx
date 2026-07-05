@@ -23,7 +23,7 @@
 
 import { useBoardStore } from "@/board/store";
 import { hitTest, worldToScreen } from "@/board/geometry";
-import { getTool } from "@/tools/registry";
+import { answersMatch, getTool } from "@/tools/registry";
 
 interface InputOverlayLayerProps {
   /** #stage element, for culling inputs of off-screen objects. */
@@ -94,7 +94,7 @@ export function InputOverlayLayer({
           const revealBlank = revealed && typed.trim() === "" && f.correct != null;
           const marked =
             revealed && f.correct != null && typed.trim() !== ""
-              ? Number(typed) === f.correct
+              ? answersMatch(typed, f.correct)
                 ? "ok"
                 : "no"
               : "";

@@ -6,7 +6,7 @@
 //   dialog: arrayDialog (lines 441-448)
 
 import { defineCanvasTool } from "@/tools/registry";
-import { fillPanel } from "@/canvas/drawHelpers";
+import { fillPanel, measureTextWidth, FONT } from "@/canvas/drawHelpers";
 import { ArrayDialog } from "@/tools/array/Dialog";
 
 export interface ArrayParams {
@@ -45,12 +45,30 @@ export default defineCanvasTool<ArrayParams>({
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     const ly = y0 + (o.rows - 1) * g + 34;
-    ctx.fillText(
-      o.rows + " × " + o.cols + " = " + (o.revealed ? String(o.rows * o.cols) : "__"),
-      x0,
-      ly,
-    );
+    // The product is a type-in box after the "r × c =" prompt (see `inputs`).
+    ctx.fillText(o.rows + " × " + o.cols + " =", x0, ly);
     ctx.restore();
+  },
+
+  // Single answer box for the product, placed right after the "r × c =" prompt
+  // (measured so it tracks the digits), matching the draw() layout.
+  inputs: {
+    fields: (o) => {
+      const g = 30;
+      const ly = 12 + (o.rows - 1) * g + 34;
+      const prefix = o.rows + " × " + o.cols + " = ";
+      const h = 32;
+      return [
+        {
+          key: "ans",
+          x: 14 + measureTextWidth(prefix, "700 18px " + FONT),
+          y: ly - h / 2,
+          w: 60,
+          h,
+          correct: o.rows * o.cols,
+        },
+      ];
+    },
   },
 
   Dialog: ArrayDialog,

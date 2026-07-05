@@ -3,7 +3,8 @@
 // Ported from maths-whiteboard.html: objSize 'chunking' case (line 211),
 // drawChunking (line 256), chunkingDialog (lines 504-511).
 
-import { defineCanvasTool } from "@/tools/registry";
+import { defineCanvasTool, type InputFieldSpec } from "@/tools/registry";
+import { measureTextWidth, FONT } from "@/canvas/drawHelpers";
 import { ChunkingDialog } from "@/tools/chunking/Dialog";
 
 export interface ChunkingParams {
@@ -63,14 +64,17 @@ export const chunkingTool = defineCanvasTool<ChunkingParams>({
     ctx.textBaseline = "middle";
     ctx.fillStyle = theme.lineInk;
     const rx = o.x + o.w - 96;
-    let y = o.y + 26;
+    const y0 = o.y + 26;
+    // The "d ÷ v =" question is always shown, with the answer as a type-in box
+    // after it (see `inputs`); revealing adds the chunking ladder on the right.
+    ctx.font = "600 22px " + font;
+    ctx.textAlign = "left";
+    ctx.fillText(o.dividend + " ÷ " + o.divisor + " =", o.x + 10, y0);
     if (!o.revealed) {
-      ctx.font = "600 22px " + font;
-      ctx.textAlign = "left";
-      ctx.fillText(o.dividend + " ÷ " + o.divisor + " =", o.x + 10, y);
       ctx.restore();
       return;
     }
+    let y = y0;
     ctx.font = "600 22px " + font;
     ctx.textAlign = "right";
     let run = o.dividend;
@@ -108,6 +112,26 @@ export const chunkingTool = defineCanvasTool<ChunkingParams>({
       y,
     );
     ctx.restore();
+  },
+
+  // Single answer box (the quotient) after the "d ÷ v =" question line, which
+  // is always drawn; x mirrors draw() (600 22px prompt at x+10).
+  inputs: {
+    fields: (o) => {
+      const q = o.dividend + " ÷ " + o.divisor + " = ";
+      const h = 30;
+      const out: InputFieldSpec[] = [
+        {
+          key: "ans",
+          x: 10 + measureTextWidth(q, "600 22px " + FONT),
+          y: 26 - h / 2,
+          w: 64,
+          h,
+          correct: Math.floor(o.dividend / o.divisor),
+        },
+      ];
+      return out;
+    },
   },
 
   Dialog: ChunkingDialog,

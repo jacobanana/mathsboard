@@ -10,8 +10,14 @@
 // helpers (drawStackFrac, fillPanel, fmtNum) imported and given explicit
 // ctx/theme per the foundation contract. All numbers/offsets kept identical.
 
-import { defineCanvasTool } from "@/tools/registry";
-import { drawStackFrac, fillPanel, fmtNum } from "@/canvas/drawHelpers";
+import { defineCanvasTool, type InputFieldSpec } from "@/tools/registry";
+import {
+  drawStackFrac,
+  fillPanel,
+  fmtNum,
+  measureTextWidth,
+  FONT,
+} from "@/canvas/drawHelpers";
 import { FracAmountDialog } from "@/tools/fracamount/Dialog";
 
 export interface FracAmountParams {
@@ -48,9 +54,7 @@ export default defineCanvasTool<FracAmountParams>({
     ctx.textAlign = "left";
     const mid = "of " + fmtNum(o.whole) + " =";
     ctx.fillText(mid, x, cy);
-    x += ctx.measureText(mid).width + 12;
-    ctx.font = "700 24px " + font;
-    ctx.fillText(o.revealed ? fmtNum(ans) : "", x, cy);
+    // The answer is a type-in box after "of N =" (see `inputs`).
     if (o.revealed) {
       ctx.font = "600 17px " + font;
       ctx.fillStyle = theme.muted;
@@ -81,6 +85,34 @@ export default defineCanvasTool<FracAmountParams>({
       );
     }
     ctx.restore();
+  },
+
+  // Single answer box after the "num/den of whole =" prompt. Its x mirrors
+  // draw(): stacked-fraction width (max of num/den at 700 24px, +6, per
+  // drawStackFrac) + the "of N =" text width at 600 22px.
+  inputs: {
+    fields: (o) => {
+      const cy = 34;
+      const fw =
+        Math.max(
+          measureTextWidth(String(o.num), "700 24px " + FONT),
+          measureTextWidth(String(o.den), "700 24px " + FONT),
+        ) + 6;
+      const mid = "of " + fmtNum(o.whole) + " =";
+      const x = 14 + fw + 12 + measureTextWidth(mid, "600 22px " + FONT) + 12;
+      const h = 32;
+      const out: InputFieldSpec[] = [
+        {
+          key: "ans",
+          x,
+          y: cy - h / 2,
+          w: 74,
+          h,
+          correct: (o.whole / o.den) * o.num,
+        },
+      ];
+      return out;
+    },
   },
 
   Dialog: FracAmountDialog,
