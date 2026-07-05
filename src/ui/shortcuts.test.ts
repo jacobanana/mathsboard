@@ -10,7 +10,7 @@ import "@/tools";
 import {
   handleShortcut,
   keyHint,
-  SHORTCUTS,
+  shortcutCatalog,
   shortcutsByGroup,
   type ShortcutHost,
 } from "@/ui/shortcuts";
@@ -23,6 +23,8 @@ import {
   FILL_PALETTE,
   LASER_PALETTE,
   PEN_SIZE_RANGE,
+  HIGHLIGHTER_SIZE_RANGE,
+  SHAPE_WIDTH_RANGE,
 } from "@/ui/constants";
 import { anObject, aStroke, freshBoard, keydown } from "@/testing/fixtures";
 
@@ -355,16 +357,16 @@ describe("arrow nudge", () => {
 describe("active-tool options", () => {
   it("+/- nudge the pen size within its range and clamp at the edges", () => {
     st().setTool("pen");
-    st().setPenSize(PEN_SIZE_RANGE.max);
+    st().setSize("pen", PEN_SIZE_RANGE.max);
     expect(fire(keydown("+"))).toBe(true);
-    expect(st().penSize).toBe(PEN_SIZE_RANGE.max); // clamped
+    expect(st().sizes.pen).toBe(PEN_SIZE_RANGE.max); // clamped
 
     fire(keydown("-"));
-    expect(st().penSize).toBe(PEN_SIZE_RANGE.max - PEN_SIZE_RANGE.step);
+    expect(st().sizes.pen).toBe(PEN_SIZE_RANGE.max - PEN_SIZE_RANGE.step);
 
-    st().setPenSize(6);
+    st().setSize("pen", 6);
     fire(keydown("=")); // unshifted +/= key counts as +
-    expect(st().penSize).toBe(6 + PEN_SIZE_RANGE.step);
+    expect(st().sizes.pen).toBe(6 + PEN_SIZE_RANGE.step);
   });
 
   it("resizing text re-measures the live text object's box", () => {
@@ -409,13 +411,159 @@ describe("active-tool options", () => {
     expect(st().color).toBe(PALETTE[1][1]);
     expect(st().board.objects[0].color).toBe(PALETTE[1][1]);
   });
+
+  it("C cycles FROM the edit target's own colour, not the stale default", () => {
+    // The shape is red while the drawing default is still black: C must step
+    // red -> orange (the target's context), with the default following — the
+    // same rule as +/- stepping from the target's size.
+    const s = {
+      id: newId(),
+      type: "shape",
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 60,
+      kind: "rect",
+      nw: 100,
+      nh: 60,
+      pts: [],
+      stroke: PALETTE[3][1], // red
+      strokeWidth: 3,
+      fill: "none",
+      dash: false,
+      showAngles: false,
+      both: false,
+    };
+    freshBoard({ objects: [s] });
+    st().setColor(PALETTE[0][1]); // default: black
+    st().select(s.id);
+
+    fire(keydown("c"));
+    expect(st().board.objects[0].stroke).toBe(PALETTE[4][1]); // red -> orange
+    expect(st().color).toBe(PALETTE[4][1]); // default follows the target
+  });
+
+  it("B cycles FROM the selected shape's own fill, not the default", () => {
+    const s = {
+      id: newId(),
+      type: "shape",
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 60,
+      kind: "rect",
+      nw: 100,
+      nh: 60,
+      pts: [],
+      stroke: PALETTE[0][1],
+      strokeWidth: 3,
+      fill: FILL_PALETTE[4][1], // soft red
+      dash: false,
+      showAngles: false,
+      both: false,
+    };
+    freshBoard({ objects: [s] });
+    st().setFillColor(FILL_PALETTE[0][1]); // default: "none"
+    st().select(s.id);
+
+    fire(keydown("b"));
+    expect(st().board.objects[0].fill).toBe(FILL_PALETTE[5][1]); // soft red -> soft orange
+    expect(st().fillColor).toBe(FILL_PALETTE[5][1]);
+  });
+
+  it("C recolours a selected pencil stroke, exactly like the pill swatch", () => {
+    const s = aStroke({ color: PALETTE[0][1] });
+    freshBoard({ strokes: [s] });
+    st().setColor(PALETTE[0][1]);
+    st().setSelection({ objectIds: [], strokeIds: [s.id] });
+
+    fire(keydown("c"));
+    expect(st().color).toBe(PALETTE[1][1]);
+    expect(st().board.strokes[0].color).toBe(PALETTE[1][1]);
+  });
+
+  it("+/- in highlighter mode nudge the HIGHLIGHTER size, leaving the pen alone", () => {
+    st().setTool("pen");
+    st().setDrawMode("highlighter");
+
+    fire(keydown("+"));
+    expect(st().sizes.highlighter).toBe(20 + HIGHLIGHTER_SIZE_RANGE.step);
+    expect(st().sizes.pen).toBe(6); // untouched
+  });
+
+  it("+/- in a shape mode use the shape width range and restyle the selected shape", () => {
+    const s = {
+      id: newId(),
+      type: "shape",
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 60,
+      kind: "rect",
+      nw: 100,
+      nh: 60,
+      pts: [],
+      stroke: PALETTE[0][1],
+      strokeWidth: SHAPE_WIDTH_RANGE.max - 1,
+      fill: "none",
+      dash: false,
+      showAngles: false,
+      both: false,
+    };
+    freshBoard({ objects: [s] });
+    st().setTool("pen");
+    st().setDrawMode("rect");
+    st().select(s.id);
+
+    fire(keydown("+"));
+    expect(st().board.objects[0].strokeWidth).toBe(SHAPE_WIDTH_RANGE.max);
+    fire(keydown("+")); // clamped at the SHAPE range, not the pen's wider one
+    expect(st().board.objects[0].strokeWidth).toBe(SHAPE_WIDTH_RANGE.max);
+  });
+
+  it("+/- restyle the selected pencil stroke in a freehand edit session", () => {
+    const s = aStroke({ size: 6 });
+    freshBoard({ strokes: [s] });
+    st().setTool("pen");
+    st().setDrawMode("free");
+    st().setSelection({ objectIds: [], strokeIds: [s.id] });
+
+    fire(keydown("+"));
+    expect(st().board.strokes[0].size).toBe(6 + PEN_SIZE_RANGE.step);
+    expect(st().sizes.pen).toBe(6 + PEN_SIZE_RANGE.step); // default follows too
+  });
+
+  it("+/- resize a selected maths object from ITS current size, not the default", () => {
+    // natW/natH 200x60 resized to 2x (w=400) -> its derived size is 52, so a
+    // "+" lands on 54 — never 28 (the untouched default would give that).
+    const m = {
+      id: newId(),
+      type: "mathtext",
+      x: 0,
+      y: 0,
+      w: 400,
+      h: 120,
+      latex: "1+1",
+      natW: 200,
+      natH: 60,
+      color: PALETTE[0][1],
+    };
+    freshBoard({ objects: [m] });
+    st().setTool("math");
+    st().select(m.id);
+
+    fire(keydown("+"));
+    expect(st().board.objects[0].w).toBeCloseTo((200 * 54) / 26, 3);
+    expect(st().sizes.math).toBe(54);
+  });
 });
 
 describe("catalog invariants (the help page's single source of truth)", () => {
   it("every entry has a unique id, at least one key combo, and a label", () => {
-    const ids = SHORTCUTS.map((s) => s.id);
+    const catalog = shortcutCatalog();
+    const ids = catalog.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const s of SHORTCUTS) {
+    for (const s of catalog) {
       expect(s.keys.length, s.id).toBeGreaterThan(0);
       expect(s.keys.every((combo) => combo.length > 0), s.id).toBe(true);
       expect(s.label, s.id).not.toBe("");
@@ -432,6 +580,6 @@ describe("catalog invariants (the help page's single source of truth)", () => {
     const groups = shortcutsByGroup();
     expect(groups.every((g) => g.items.length > 0)).toBe(true);
     const total = groups.reduce((n, g) => n + g.items.length, 0);
-    expect(total).toBe(SHORTCUTS.length);
+    expect(total).toBe(shortcutCatalog().length);
   });
 });

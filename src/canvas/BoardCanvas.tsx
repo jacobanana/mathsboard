@@ -24,8 +24,15 @@ import { screenToWorld } from "@/board/geometry";
 import { renderScene, renderInputValues } from "@/canvas/scene";
 import { createTextEditor } from "@/canvas/textEditor";
 import { createMathEditor, prewarmMathEditor } from "@/canvas/mathEditor";
+import {
+  anyEditorOpen,
+  commitAllEditors,
+  openEditorFor,
+  registerInPlaceEditor,
+} from "@/canvas/editors";
 import { registerExportLayers } from "@/canvas/export";
 import { getInteraction } from "@/canvas/interactions";
+import { drawSelectionOutlines } from "@/canvas/interactions/select";
 import * as viewport from "@/canvas/viewport";
 import { theme } from "@/styles/theme";
 import type { AnyBoardObject } from "@/board/types";
@@ -113,6 +120,17 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     [store],
   );
 
+  // Register both editors by the object type they edit: guards and
+  // controllers resolve them through canvas/editors.ts, never by name.
+  useEffect(() => {
+    const unText = registerInPlaceEditor("text", editor);
+    const unMath = registerInPlaceEditor("mathtext", mathEditor);
+    return () => {
+      unText();
+      unMath();
+    };
+  }, [editor, mathEditor]);
+
   // --- the controllers' window into the host --------------------------------
   const inputCtx = useMemo<InputCtx>(
     () => ({
@@ -130,15 +148,20 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       get canvas() {
         return tCanvasRef.current!;
       },
-      editor,
-      mathEditor,
+      editors: {
+        open: (obj, isNew) => void openEditorFor(obj, isNew),
+        commitAll: commitAllEditors,
+        anyOpen: anyEditorOpen,
+      },
       editObject: (obj) => onEditObjectRef.current?.(obj),
     }),
-    [store, requestRender, editor, mathEditor],
+    [store, requestRender],
   );
 
-  // --- draw: scene (grid + objects + committed ink), then the controller's
-  // preview overlay in the same camera space ---------------------------------
+  // --- draw: scene (grid + objects + committed ink), then the selection
+  // chrome (host-drawn — it follows the selection in EVERY tool unless the
+  // controller opts out, e.g. the laser), then the controller's preview
+  // overlay in the same camera space ------------------------------------------
   const renderNow = useCallback(() => {
     const tCanvas = tCanvasRef.current;
     const iCanvas = iCanvasRef.current;
@@ -148,11 +171,10 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     if (!tctx || !ictx) return;
     const st = store.getState();
     renderScene(tctx, ictx, viewRef.current, st);
+    const kit = { back: tctx, ink: ictx, camera: st.camera, theme };
     const ctrl = activeRef.current ?? getInteraction(st.tool);
-    ctrl?.drawOverlay?.(
-      { back: tctx, ink: ictx, camera: st.camera, theme },
-      inputCtx,
-    );
+    if (!ctrl?.suppressSelectionChrome?.(st)) drawSelectionOutlines(kit, st);
+    ctrl?.drawOverlay?.(kit, inputCtx);
   }, [store, inputCtx]);
   renderNowRef.current = renderNow;
 
@@ -199,9 +221,8 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       activeRef.current ?? getInteraction(store.getState().tool);
 
     const onPointerDown = (e: PointerEvent) => {
-      if (editor.isOpen() || mathEditor.isOpen()) {
-        editor.commit();
-        mathEditor.commit();
+      if (anyEditorOpen()) {
+        commitAllEditors();
         return; // the dismissing tap is swallowed
       }
       pointers.current.set(e.pointerId, inputCtx.evPos(e));
@@ -277,8 +298,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     };
 
     const onWheel = (e: WheelEvent) => {
-      if (editor.isOpen()) editor.commit();
-      if (mathEditor.isOpen()) mathEditor.commit();
+      commitAllEditors();
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
         const f = Math.exp(-e.deltaY * 0.0015);
@@ -309,7 +329,7 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       surface.removeEventListener("dblclick", onDblClick);
       stage.removeEventListener("wheel", onWheel);
     };
-  }, [editor, mathEditor, inputCtx, store]);
+  }, [inputCtx, store]);
 
   // ======================================================================
   // LIFECYCLE + STORE SUBSCRIPTIONS
@@ -357,8 +377,8 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
         s.camera !== prev.camera ||
         s.tool !== prev.tool ||
         s.drawMode !== prev.drawMode ||
-        s.penSize !== prev.penSize ||
-        s.eraserSize !== prev.eraserSize ||
+        s.sizes !== prev.sizes || // any brush ring / preview size
+
         s.selection !== prev.selection ||
         s.editingId !== prev.editingId
       ) {
@@ -395,7 +415,16 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
         ref={taRef}
         spellCheck={false}
         onInput={() => editor.autoSize()}
-        onBlur={() => editor.commit()}
+        onBlur={(e) => {
+          // Adjusting this text's own options (size / colour / alignment) must
+          // not end the edit: skip the commit when focus lands in the options
+          // pill or a colour popover. Leaving the zone (canvas, other UI) commits
+          // as before. The size slider takes focus, so it re-focuses the
+          // textarea on release (focusActiveTextEdit) to re-arm this.
+          const to = e.relatedTarget as Element | null;
+          if (to && to.closest("#options,.swatch-menu")) return;
+          editor.commit();
+        }}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();

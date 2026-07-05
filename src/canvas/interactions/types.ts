@@ -31,14 +31,25 @@ export interface Pt {
   y: number;
 }
 
-/** An in-place editor overlay, owned by the host (it holds the DOM). Two
- *  exist: the free-text <textarea> (canvas/textEditor.ts) and the MathLive
- *  maths editor (canvas/mathEditor.ts). Controllers and host guards drive
- *  them through this shared handle. */
+/** An in-place editor overlay, owned by the host (it holds the DOM) and
+ *  registered against the object type it edits (canvas/editors.ts). Two
+ *  exist today: the free-text <textarea> (canvas/textEditor.ts) and the
+ *  MathLive maths editor (canvas/mathEditor.ts). Controllers and host guards
+ *  reach every editor through the registry facade on InputCtx. */
 export interface InPlaceEditorHandle {
   open(obj: AnyBoardObject, isNew: boolean): void;
   commit(): void;
   isOpen(): boolean;
+}
+
+/** The in-place editor REGISTRY as controllers see it: resolve by the
+ *  object's type — controllers never name an editor. */
+export interface EditorsHandle {
+  /** Open the registered editor for obj.type (no-op if the type has none). */
+  open(obj: AnyBoardObject, isNew: boolean): void;
+  /** Commit whatever is open (the "tap elsewhere commits" rule). */
+  commitAll(): void;
+  anyOpen(): boolean;
 }
 
 /** Everything a controller can reach. One stable instance per canvas host. */
@@ -54,10 +65,8 @@ export interface InputCtx {
    *  call this only when controller-local preview state changed). */
   render(): void;
   canvas: HTMLCanvasElement;
-  /** The in-place free-text editor (a positioned <textarea>). */
-  editor: InPlaceEditorHandle;
-  /** The in-place maths editor (a positioned MathLive <math-field>). */
-  mathEditor: InPlaceEditorHandle;
+  /** The in-place editors, resolved by object type (canvas/editors.ts). */
+  editors: EditorsHandle;
   /** Open an object's settings Dialog (the host-routed EDIT flow). */
   editObject(obj: AnyBoardObject): void;
 }
@@ -89,4 +98,14 @@ export interface InteractionController {
   onPointerLeave?(c: InputCtx): void;
   /** Contribute a preview overlay, drawn after the scene in world space. */
   drawOverlay?(kit: OverlayKit, c: InputCtx): void;
+  /**
+   * Selection chrome FOLLOWS THE SELECTION: the host draws the dashed
+   * outlines for every tool (right after the scene, under the controller's
+   * own overlay). A tool opts OUT by returning true here while its state
+   * says so — the laser aims instead of selecting, so the select controller
+   * suppresses the chrome in laser mode. Default: never suppressed.
+   */
+  suppressSelectionChrome?(
+    st: ReturnType<InputCtx["store"]["getState"]>,
+  ): boolean;
 }

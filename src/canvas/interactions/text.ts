@@ -1,85 +1,62 @@
-// The text interaction controller: a tap either re-opens an existing text
-// object in the in-place editor or creates a fresh empty one and edits it.
-//
-// The create/edit is DEFERRED to pointerup so a SECOND finger can cancel it
-// into a pinch/pan instead. Every other tool starts its single-pointer action
-// on pointerdown and the host's two-pointer branch cancels it; the text tool
-// used to open the editor immediately, which the incoming second finger then
-// committed-and-swallowed -- so text was the one tool that could never
-// two-finger zoom.
+// The text interaction controller — a tap-edit tool (see tapEdit.ts for the
+// shared gesture: deferred taps, drag-to-create, straight into the in-place
+// editor). Text is the one tool with a DRAG create: rubber-band a rectangle
+// to make a fixed-width TEXT BOX whose width is the dragged width — text
+// wraps to it and the height grows with the content (the drag height is only
+// the intent hint). A plain tap creates AUTO-sizing text (the box hugs the
+// text as you type), or re-opens an existing text object.
 
-import { hitTest } from "@/board/geometry";
 import { textSizeOf } from "@/canvas/drawHelpers";
 import { id as newId } from "@/board/types";
-import type { AnyBoardObject } from "@/board/types";
-import type { InteractionController } from "@/canvas/interactions/types";
+import { makeTapEditController } from "@/canvas/interactions/tapEdit";
 
-/** A tap awaiting pointerup. `edit` is the existing text object to re-open,
- *  or null to place a fresh box at (wx, wy). */
-interface PendingText {
-  pid: number;
-  wx: number;
-  wy: number;
-  edit: AnyBoardObject | null;
-}
+/** Smallest wrap width (world px) a dragged box may have — a near-vertical
+ *  drag still yields a usable box, not a one-character-per-line sliver. */
+const MIN_BOX_W = 48;
 
-let pending: PendingText | null = null;
-
-export const textController: InteractionController = {
+export const textController = makeTapEditController({
   tool: "text",
+  type: "text",
   cursor: "text",
 
-  onPointerDown(e, c) {
-    const st = c.store.getState();
-    const pp = c.evPos(e);
-    const w = c.toWorld(pp.x, pp.y);
-    const hit = hitTest(st.board.objects, w.x, w.y);
-    pending = {
-      pid: e.pointerId,
-      wx: w.x,
-      wy: w.y,
-      edit: hit && hit.type === "text" ? hit : null,
+  // Tap: auto-sizing text at the point, in the current defaults.
+  create: (st, at) => {
+    const size = st.sizes.text;
+    const sz = textSizeOf("", size);
+    return {
+      id: newId(),
+      type: "text",
+      x: at.x,
+      y: at.y,
+      w: sz.w,
+      h: sz.h,
+      text: "",
+      size,
+      color: st.color,
+      align: st.textAlign,
     };
   },
 
-  onPointerMove() {
-    // Nothing to preview: the tap resolves on release.
+  // Drag: a fixed-width text box anchored at the rect's top-left, wrapping to
+  // the dragged width.
+  dragCreate: (st, a, b) => {
+    const size = st.sizes.text;
+    const x = Math.min(a.x, b.x);
+    const y = Math.min(a.y, b.y);
+    const boxW = Math.max(Math.abs(b.x - a.x), MIN_BOX_W);
+    const sz = textSizeOf("", size, boxW);
+    return {
+      id: newId(),
+      type: "text",
+      x,
+      y,
+      w: sz.w,
+      h: sz.h,
+      text: "",
+      size,
+      color: st.color,
+      align: st.textAlign,
+      boxW,
+    };
   },
-
-  onPointerUp(e, c) {
-    if (!pending || e.pointerId !== pending.pid) return;
-    const pt = pending;
-    pending = null;
-    // pointercancel = the system took over (scroll/palm); drop the tap. A
-    // real pointerup creates the box / re-opens the editor.
-    if (e.type === "pointercancel") return;
-    const st = c.store.getState();
-    if (pt.edit) {
-      st.select(pt.edit.id);
-      c.editor.open(pt.edit, false);
-    } else {
-      // Create a fresh, empty text object then edit it in place.
-      const size = st.textSize;
-      const sz = textSizeOf("", size);
-      const obj: AnyBoardObject = {
-        id: newId(),
-        type: "text",
-        x: pt.wx,
-        y: pt.wy,
-        w: sz.w,
-        h: sz.h,
-        text: "",
-        size,
-        color: st.color,
-      };
-      st.addObject(obj);
-      st.select(obj.id);
-      c.editor.open(obj, true);
-    }
-  },
-
-  // A deferred text-tool tap becomes a pinch.
-  cancel() {
-    pending = null;
-  },
-};
+});

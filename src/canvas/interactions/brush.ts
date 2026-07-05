@@ -8,6 +8,7 @@ import { screenToWorld } from "@/board/geometry";
 import { drawStrokeFull } from "@/canvas/drawHelpers";
 import { id as newId } from "@/board/types";
 import type { Stroke } from "@/board/types";
+import type { SizeChannelId } from "@/ui/constants";
 import type {
   InteractionController,
   Pt,
@@ -22,13 +23,15 @@ interface LiveStroke {
   points: Pt[];
 }
 
-/** The brush's nib diameter (screen px) for the store's current settings. */
-function nibPx(st: { penSize: number; eraserSize: number; highlighterSize: number }, mode: Stroke["mode"]): number {
-  return mode === "eraser"
-    ? st.eraserSize
-    : mode === "highlighter"
-      ? st.highlighterSize
-      : st.penSize;
+/** The brush's nib diameter (screen px): each brush mode maps straight onto
+ *  its size channel in the store's `sizes` table. */
+function nibPx(
+  st: { sizes: Record<SizeChannelId, number> },
+  mode: Stroke["mode"],
+): number {
+  return st.sizes[
+    mode === "eraser" ? "eraser" : mode === "highlighter" ? "highlighter" : "pen"
+  ];
 }
 
 function makeBrushController(mode: Stroke["mode"]): InteractionController {

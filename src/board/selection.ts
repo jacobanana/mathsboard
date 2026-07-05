@@ -1,8 +1,10 @@
 // Pure selection algebra (the C7 tidy in docs/canvas-app-architecture.md),
-// kept beside the Selection type's owner (board/store.ts). The "collapse a
-// multi-select on plain click" RULE lives in the select interaction controller;
-// these are only the value helpers it (and future tools) build on.
+// kept beside the Selection type's owner (board/store.ts). pressSelection is
+// THE press rule — every surface that lets a pointer press select something
+// (the select controller, the widget overlay) routes through it, so groups,
+// shift-toggle and the collapse intent can never diverge between surfaces.
 
+import { selectionCount } from "@/board/store";
 import type { Selection } from "@/board/store";
 import type { BoardDocument } from "@/board/types";
 
@@ -51,6 +53,47 @@ export const groupMembers = (
   return {
     objectIds: board.objects.filter((o) => o.groupId === gid).map((o) => o.id),
     strokeIds: board.strokes.filter((s) => s.groupId === gid).map((s) => s.id),
+  };
+};
+
+/**
+ * THE PRESS RULE, shared by every selectable surface (canvas + widget layer):
+ * what a pointer press on `id` does to the selection, and whether a plain
+ * click (no drag) should later COLLAPSE a multi-selection to the pressed item
+ * (Figma-style — the caller applies `collapse` on release, drags never do).
+ *
+ *   - a grouped item stands for its whole group;
+ *   - shift toggles membership (whole group at once), never collapses;
+ *   - a plain press outside the selection replaces it;
+ *   - a plain press on one of many keeps the selection (a drag moves it all)
+ *     but records the collapse intent — unless the pressed item IS a
+ *     multi-member group (collapsing to the group it's already in is a no-op).
+ *
+ * Returns the input selection by reference when nothing changes, so callers
+ * can skip a store write.
+ */
+export const pressSelection = (
+  board: Pick<BoardDocument, "objects" | "strokes">,
+  sel: Selection,
+  kind: HitKind,
+  id: string,
+  shift: boolean,
+): { selection: Selection; collapse: { kind: HitKind; id: string } | null } => {
+  const members = groupMembers(board, kind, id);
+  if (shift) {
+    return {
+      selection: isInSelection(sel, kind, id)
+        ? subtractSelection(sel, members)
+        : unionSelection(sel, members),
+      collapse: null,
+    };
+  }
+  const inSel = isInSelection(sel, kind, id);
+  const groupPress = selectionCount(members) > 1;
+  return {
+    selection: inSel ? sel : members,
+    collapse:
+      inSel && selectionCount(sel) > 1 && !groupPress ? { kind, id } : null,
   };
 };
 

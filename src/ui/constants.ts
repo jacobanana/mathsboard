@@ -7,8 +7,8 @@
 //                  laser, soft pastels for shape fills.
 //   *_SIZE_RANGE-> slider bounds for each brush-like setting. The old S/M/L
 //                  presets (pen 3/6/12, text 18/26/40) sit inside these ranges;
-//                  defaults live in the store (penSize 6, textSize 26,
-//                  eraserSize 45).
+//                  ranges + defaults are bundled per SIZE CHANNEL below and
+//                  seed the store's `sizes` table.
 //
 // Palettes are literal hex (not theme tokens), so they stay as literals here.
 // ORDER MATTERS: PALETTE[0] is the default ink (= theme.ink, black) and the
@@ -89,3 +89,31 @@ export const TEXT_SIZE_RANGE: SizeRange = { min: 12, max: 64, step: 2 };
  *  i.e. uniform-resize scale 1). */
 export const MATH_SIZE_RANGE: SizeRange = { min: 12, max: 64, step: 2 };
 export const ERASER_SIZE_RANGE: SizeRange = { min: 12, max: 120, step: 4 };
+
+// --- size channels ----------------------------------------------------------
+// Every size-bearing setting is a CHANNEL: one entry here = one default in the
+// store's `sizes` table (board/store.ts) + one range. Which channel the active
+// tool/mode binds to is decided in board/styling.ts (sizeBinding) — adding a
+// sized tool means adding a channel here, not a store field + setter + UI
+// branches. (The pen's shape modes share the "pen" channel but clamp it into
+// SHAPE_WIDTH_RANGE — the border width follows the pen default.)
+
+export type SizeChannelId = "pen" | "highlighter" | "text" | "math" | "eraser";
+
+export const SIZE_CHANNELS: Record<
+  SizeChannelId,
+  { range: SizeRange; default: number }
+> = {
+  pen: { range: PEN_SIZE_RANGE, default: 6 },
+  highlighter: { range: HIGHLIGHTER_SIZE_RANGE, default: 20 },
+  text: { range: TEXT_SIZE_RANGE, default: 26 },
+  math: { range: MATH_SIZE_RANGE, default: 26 },
+  eraser: { range: ERASER_SIZE_RANGE, default: 45 },
+};
+
+/** A fresh per-channel defaults table (the store's boot value). */
+export function defaultSizes(): Record<SizeChannelId, number> {
+  return Object.fromEntries(
+    Object.entries(SIZE_CHANNELS).map(([id, c]) => [id, c.default]),
+  ) as Record<SizeChannelId, number>;
+}

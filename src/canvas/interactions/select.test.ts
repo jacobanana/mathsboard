@@ -7,10 +7,15 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import "@/tools";
-import { editObjectAt, selectController } from "@/canvas/interactions/select";
+import {
+  drawSelectionOutlines,
+  editObjectAt,
+  selectController,
+} from "@/canvas/interactions/select";
 import { useBoardStore } from "@/board/store";
 import { id as newId } from "@/board/types";
 import type { AnyBoardObject, Stroke } from "@/board/types";
+import { theme } from "@/styles/theme";
 import { anObject, aStroke, fakeInputCtx, freshBoard, pointer } from "@/testing/fixtures";
 
 const st = () => useBoardStore.getState();
@@ -36,6 +41,59 @@ beforeEach(() => {
 
 afterEach(() => {
   selectController.cancel?.(ctx); // never leak a live drag into the next test
+});
+
+describe("drawSelectionOutlines (the dashed frame)", () => {
+  // A recording 2D-context stub: we only care WHICH boxes get framed.
+  const recRect = () => {
+    const rects: number[][] = [];
+    const rec = {
+      save() {},
+      restore() {},
+      setLineDash() {},
+      strokeStyle: "",
+      lineWidth: 0,
+      strokeRect(x: number, y: number, w: number, h: number) {
+        rects.push([x, y, w, h]);
+      },
+    };
+    return { rec, rects };
+  };
+  const kit = (rec: unknown) => ({
+    back: rec as CanvasRenderingContext2D,
+    ink: rec as CanvasRenderingContext2D,
+    camera: { x: 0, y: 0, scale: 1 },
+    theme,
+  });
+
+  it("frames each selected object (so it reads as editable in any tool)", () => {
+    const { rec, rects } = recRect();
+    drawSelectionOutlines(kit(rec), {
+      board: st().board,
+      selection: { objectIds: [O.id], strokeIds: [] },
+      editingId: null,
+    });
+    expect(rects).toHaveLength(1); // O's padded box
+  });
+
+  it("skips the object actively open in its in-place editor", () => {
+    const { rec, rects } = recRect();
+    drawSelectionOutlines(kit(rec), {
+      board: st().board,
+      selection: { objectIds: [O.id], strokeIds: [] },
+      editingId: O.id, // its textarea / math field is the visual
+    });
+    expect(rects).toHaveLength(0);
+  });
+});
+
+describe("selection chrome (host-drawn)", () => {
+  it("is suppressed only while the laser aims (the one declared opt-out)", () => {
+    st().select(O.id);
+    expect(selectController.suppressSelectionChrome!(st())).toBe(false);
+    st().setLaserMode(true);
+    expect(selectController.suppressSelectionChrome!(st())).toBe(true);
+  });
 });
 
 describe("click selection", () => {
@@ -254,10 +312,10 @@ describe("double-click edit routing", () => {
     const editedInPlace: string[] = [];
     const editedViaDialog: string[] = [];
     const spyCtx = fakeInputCtx({
-      editor: {
+      editors: {
         open: (obj) => editedInPlace.push(obj.id),
-        commit: () => {},
-        isOpen: () => false,
+        commitAll: () => {},
+        anyOpen: () => false,
       },
       editObject: (obj) => editedViaDialog.push(obj.id),
     });
@@ -280,9 +338,7 @@ describe("double-click edit routing", () => {
       stroke: "#000", strokeWidth: 3, fill: "none", nw: 60, nh: 40, pts: [],
     };
     freshBoard({ objects: [T, Sh] });
-    const spyCtx = fakeInputCtx({
-      editor: { open: () => {}, commit: () => {}, isOpen: () => false },
-    });
+    const spyCtx = fakeInputCtx();
 
     editObjectAt(pointer(410, 310), spyCtx); // the text object
     expect(st().tool).toBe("text");
@@ -294,6 +350,27 @@ describe("double-click edit routing", () => {
     expect(st().drawMode).toBe("rect");
     expect(st().selection.objectIds).toEqual([Sh.id]);
     expect(st().drawEditMode).toBe(true); // double-click again to exit
+  });
+
+  it("routes a maths object to the maths tool's in-place editor", () => {
+    const M: AnyBoardObject = {
+      id: newId(), type: "mathtext", x: 400, y: 300, w: 200, h: 60,
+      latex: "1+1", natW: 200, natH: 60, color: "#000",
+    };
+    freshBoard({ objects: [M] });
+    const opened: string[] = [];
+    const spyCtx = fakeInputCtx({
+      editors: {
+        open: (obj) => opened.push(obj.id),
+        commitAll: () => {},
+        anyOpen: () => false,
+      },
+    });
+
+    editObjectAt(pointer(410, 310), spyCtx);
+    expect(st().tool).toBe("math");
+    expect(st().selection.objectIds).toEqual([M.id]);
+    expect(opened).toEqual([M.id]);
   });
 
   it("edits a pencil stroke in the freehand pen tool", () => {

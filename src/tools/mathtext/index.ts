@@ -20,7 +20,9 @@
 
 import { defineCanvasTool } from "@/tools/registry";
 import { getMathImage, mathImageState } from "@/tools/mathtext/render";
+import { paramsOf, scaleOf, sizedBox } from "@/board/sizing";
 import { theme } from "@/styles/theme";
+import type { AnyBoardObject } from "@/board/types";
 // The KaTeX page stylesheet serves svg.ts's hidden-DOM measurement pass.
 // Imported from this eagerly-registered module so measurement works on a
 // saved board that loads straight into draw().
@@ -63,6 +65,31 @@ export const mathTextTool = defineCanvasTool<MathTextParams>({
       w: Math.max(24, Math.round(p.natW * s)),
       h: Math.max(24, Math.round(p.natH * s)),
     };
+  },
+
+  // Double-click: edit with the maths tool, in the in-place MathLive overlay.
+  editWith: () => ({ tool: "math", inPlace: true }),
+
+  // Live styling (options pill + shortcuts, via board/styling.ts). The maths
+  // "size" IS the uniform resize scale expressed in font px (MATH_BASE_PX =
+  // scale 1), so the size channel maps px <-> box exactly like a handle-resize.
+  styling: {
+    color: {
+      get: (o) => o.color || theme.ink, // legacy objects predate the field
+      patch: (_o, color) => ({ color }),
+    },
+    size: {
+      get: (o) =>
+        Math.round(scaleOf(o as unknown as AnyBoardObject) * MATH_BASE_PX),
+      patch: (o, px) => {
+        const box = sizedBox(
+          "mathtext",
+          paramsOf(o as unknown as AnyBoardObject),
+          px / MATH_BASE_PX,
+        );
+        return box ? { w: box.w, h: box.h } : {};
+      },
+    },
   },
 
   draw: ({ ctx, theme, font }, o) => {

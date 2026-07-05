@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "@/tools";
 import {
   copySelection,
+  createObject,
   duplicateSelection,
   editObject,
   pasteClipboard,
@@ -33,6 +34,32 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe("createObject (the shared creation ritual)", () => {
+  it("adds the object, selects it, and switches to the select tool", () => {
+    const o = anObject();
+    createObject(o);
+
+    expect(st().board.objects.map((x) => x.id)).toEqual([o.id]);
+    expect(st().selection).toEqual({ objectIds: [o.id], strokeIds: [] });
+    expect(st().tool).toBe("select");
+  });
+
+  it("keepTool leaves the creating tool active (draw / text / maths flows)", () => {
+    st().setTool("pen");
+    createObject(anObject(), { keepTool: true });
+
+    expect(st().tool).toBe("pen");
+    expect(st().selection.objectIds).toHaveLength(1);
+  });
+
+  it("creation is one undoable step", () => {
+    createObject(anObject());
+    expect(st().board.objects).toHaveLength(1);
+    st().undo();
+    expect(st().board.objects).toHaveLength(0);
+  });
 });
 
 describe("placeObject", () => {

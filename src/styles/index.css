@@ -55,6 +55,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 /* Polygon side-count stepper. */
 .sides-stepper{display:inline-flex;align-items:center;gap:2px;}
 .sides-stepper .btn{min-width:34px;min-height:36px;font-size:17px;}
+/* Text-alignment segmented control (left / centre / right). */
+.align-group{display:inline-flex;align-items:center;gap:2px;}
 .sides-val{min-width:2ch;text-align:center;font-weight:700;}
 /* "No fill" swatches: white with a red diagonal. */
 .color-cur.none,.swatch.none{background:linear-gradient(to top right,#fff 44%,#D64545 47%,#D64545 53%,#fff 56%) #fff;}

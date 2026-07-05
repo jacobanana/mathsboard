@@ -171,9 +171,23 @@ export function noteSize(text: string): { w: number; h: number } {
   return { w: 360, h: 18 + 24 + lines.length * 24 + 16 };
 }
 
-/** Box size for a free-text object of `text` at `size` px. */
-export function textSizeOf(text: string, size: number): { w: number; h: number } {
-  measureCtx.font = "500 " + size + "px " + FONT;
+/**
+ * Box size for a free-text object of `text` at `size` px. With `boxW` (a fixed
+ * wrap width, natural px) the text WRAPS to that width and the box height grows
+ * with the wrapped line count — a dragged text box. Without it the box hugs the
+ * text: width = the longest line, height = the explicit line count.
+ */
+export function textSizeOf(
+  text: string,
+  size: number,
+  boxW?: number,
+): { w: number; h: number } {
+  const shorthand = "500 " + size + "px " + FONT;
+  measureCtx.font = shorthand;
+  if (boxW != null) {
+    const lines = wrapText(measureCtx, text || " ", boxW, shorthand);
+    return { w: boxW, h: Math.max(lines.length * size * 1.3, size) };
+  }
   const lines = (text || " ").split("\n");
   let w = 0;
   lines.forEach((l) => {

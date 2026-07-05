@@ -34,6 +34,8 @@ import type {
 } from "@/board/types";
 import { id as newId, newBoardDocument } from "@/board/types";
 import { applyEraser } from "@/board/geometry";
+import { defaultSizes } from "@/ui/constants";
+import type { SizeChannelId } from "@/ui/constants";
 import type { ShapeKind } from "@/tools/shape/geometry";
 import { migrateDocument } from "@/board/migrations";
 import { localRepository } from "@/board/persistence/LocalBoardRepository";
@@ -65,21 +67,50 @@ const EMPTY_SELECTION: Selection = { objectIds: [], strokeIds: [] };
  */
 export type DrawMode = "free" | "highlighter" | "freepoly" | ShapeKind;
 
-/** Every draw mode in its UI order — the options pill's row and the cycle
- *  the draw shortcut (3 / D) steps through when pressed again. */
-export const DRAW_MODE_ORDER: DrawMode[] = [
-  "free",
-  "highlighter",
-  "line",
-  "arrow",
-  "rect",
-  "ellipse",
-  "triangle",
-  "polygon",
-  "freepoly",
-  "curve",
-  "angle",
+/**
+ * THE draw-mode table, in UI order. One list drives everything mode-shaped:
+ * the options pill's mode row (label + tooltip; icons live UI-side in
+ * ui/toolSpecs), the `mode-<x>` shortcut entries (key + help label,
+ * generated in ui/shortcuts.ts) and the cycle the draw key (3 / D) steps
+ * through. Adding a draw mode = one row here (+ its icon and geometry).
+ */
+export interface DrawModeSpec {
+  mode: DrawMode;
+  /** Pill tooltip / aria-label. */
+  label: string;
+  /** Bare shortcut key (lowercase), or null for none (curve: B is taken by
+   *  the background-colour cycle; it stays reachable from the pill). */
+  key: string | null;
+  /** Help-page description (defaults to `label`). */
+  hint?: string;
+}
+
+export const DRAW_MODES: DrawModeSpec[] = [
+  { mode: "free", label: "Freehand", key: "f", hint: "Freehand pen" },
+  {
+    mode: "highlighter",
+    label: "Highlighter",
+    key: "k",
+    hint: "Highlighter (translucent marker)",
+  },
+  { mode: "line", label: "Line", key: "l", hint: "Line (clicks onto 15° directions)" },
+  { mode: "arrow", label: "Arrow", key: "a", hint: "Arrow (clicks onto 15° directions)" },
+  { mode: "rect", label: "Rectangle", key: "r", hint: "Rectangle (square via the lock toggle)" },
+  { mode: "ellipse", label: "Ellipse", key: "o", hint: "Ellipse (circle via the lock toggle)" },
+  { mode: "triangle", label: "Triangle", key: "y", hint: "Triangle (drag corners to change its angles)" },
+  { mode: "polygon", label: "Polygon", key: "n", hint: "Polygon (n-gon — sides in the options pill)" },
+  {
+    mode: "freepoly",
+    label: "Point-by-point polygon",
+    key: "q",
+    hint: "Point-by-point polygon (click corners; close on the first one)",
+  },
+  { mode: "curve", label: "Curve", key: null },
+  { mode: "angle", label: "Angle", key: "g", hint: "Angle (drag to open it, like a protractor)" },
 ];
+
+/** The cycle order (derived — never a second hand-kept list). */
+export const DRAW_MODE_ORDER: DrawMode[] = DRAW_MODES.map((m) => m.mode);
 
 /**
  * How a shared board was joined, for the `board_joined` analytics event:
@@ -111,15 +142,15 @@ interface BoardState {
   camera: Camera;
   tool: ToolName;
   color: string;
-  penSize: number;
-  /** Highlighter nib width (screen px, like penSize) — its own wider setting. */
-  highlighterSize: number;
-  textSize: number;
-  /** Base font size new maths notation is placed at (maps onto the uniform
-   *  resize scale: 26 = the layout size, i.e. scale 1 — see tools/mathtext). */
-  mathSize: number;
-  /** Eraser footprint diameter (screen px, like penSize). */
-  eraserSize: number;
+  /**
+   * Per-channel size defaults (screen px; text/maths in font px). One table,
+   * seeded from ui/constants SIZE_CHANNELS — which channel the active tool
+   * binds to is board/styling.ts's sizeBinding. New sized tools add a channel
+   * there, not a field + setter here.
+   */
+  sizes: Record<SizeChannelId, number>;
+  /** Default horizontal alignment for new text (and the live edit target). */
+  textAlign: "left" | "center" | "right";
   /** The draw tool's mode: freehand ink or a shape kind (roadmap A2). */
   drawMode: DrawMode;
   /**
@@ -259,11 +290,9 @@ interface BoardState {
   /** Set (or clear) the draw tool's edit-a-target mode. */
   setDrawEditMode(on: boolean): void;
   setColor(c: string): void;
-  setPenSize(n: number): void;
-  setHighlighterSize(n: number): void;
-  setTextSize(n: number): void;
-  setMathSize(n: number): void;
-  setEraserSize(n: number): void;
+  /** Set one size channel's default (see `sizes`). */
+  setSize(channel: SizeChannelId, n: number): void;
+  setTextAlign(a: "left" | "center" | "right"): void;
   setDrawMode(m: DrawMode): void;
   setFillColor(c: string): void;
   setPolygonSides(n: number): void;
@@ -394,66 +423,9 @@ const FRESH_DOC_STATE = {
   editingId: null as string | null,
 };
 
-/**
- * The lone object of `type` currently being styled, or null. Editing (an
- * in-place overlay) wins over selection; for selection only a single selected
- * object qualifies (never a multi-select or a stroke). Shared by the options
- * strip and the colour / size keyboard shortcuts so "which object updates
- * live" stays in one place. Use the named wrappers below as store selectors.
- */
-function activeObjectIdOfType(
-  s: Pick<BoardState, "editingId" | "selection" | "board">,
-  type: string,
-): string | null {
-  const id =
-    s.editingId ??
-    (s.selection.objectIds.length === 1 && s.selection.strokeIds.length === 0
-      ? s.selection.objectIds[0]
-      : null);
-  if (id == null) return null;
-  const o = s.board.objects.find((obj) => obj.id === id);
-  return o && o.type === type ? o.id : null;
-}
-
-export function activeTextObjectId(
-  s: Pick<BoardState, "editingId" | "selection" | "board">,
-): string | null {
-  return activeObjectIdOfType(s, "text");
-}
-
-export function activeMathObjectId(
-  s: Pick<BoardState, "editingId" | "selection" | "board">,
-): string | null {
-  return activeObjectIdOfType(s, "mathtext");
-}
-
-export function activeShapeObjectId(
-  s: Pick<BoardState, "editingId" | "selection" | "board">,
-): string | null {
-  return activeObjectIdOfType(s, "shape");
-}
-
-/**
- * The lone selected pen stroke ("pencil"), or null — the stroke the options
- * pill styles live in edit mode. Only a single selected stroke qualifies (never
- * an eraser stroke, a multi-select, or a selection that also holds objects), the
- * stroke analogue of activeShapeObjectId.
- */
-export function activeStrokeId(
-  s: Pick<BoardState, "selection" | "board">,
-): string | null {
-  if (
-    s.selection.strokeIds.length !== 1 ||
-    s.selection.objectIds.length !== 0
-  ) {
-    return null;
-  }
-  const id = s.selection.strokeIds[0];
-  const stroke = s.board.strokes.find((x) => x.id === id);
-  // Pen and highlighter strokes are both restyleable in edit mode; eraser
-  // strokes are never stored, so this is really "any persisted stroke".
-  return stroke && stroke.mode !== "eraser" ? stroke.id : null;
-}
+// "Which single object/stroke is being styled live" used to be four per-type
+// selectors here; it is now ONE — board/styling.ts's activeEditTarget, next to
+// the style channels that consume it.
 
 /**
  * Whether the current board is a PERSISTED board (so its name should be shown)
@@ -492,11 +464,8 @@ export const useBoardStore = create<BoardState>((set, get) => {
     camera: { x: 0, y: 0, scale: 1 },
     tool: "pen",
     color: theme.ink,
-    penSize: 6,
-    highlighterSize: 20,
-    textSize: 26,
-    mathSize: 26,
-    eraserSize: 45,
+    sizes: defaultSizes(),
+    textAlign: "left",
     drawMode: "free",
     drawEditMode: false,
     laserMode: false,
@@ -667,20 +636,11 @@ export const useBoardStore = create<BoardState>((set, get) => {
     setColor(c) {
       set({ color: c });
     },
-    setPenSize(n) {
-      set({ penSize: n });
+    setSize(channel, n) {
+      set((s) => ({ sizes: { ...s.sizes, [channel]: n } }));
     },
-    setHighlighterSize(n) {
-      set({ highlighterSize: n });
-    },
-    setTextSize(n) {
-      set({ textSize: n });
-    },
-    setMathSize(n) {
-      set({ mathSize: n });
-    },
-    setEraserSize(n) {
-      set({ eraserSize: n });
+    setTextAlign(a) {
+      set({ textAlign: a });
     },
     setDrawMode(m) {
       set({ drawMode: m });
