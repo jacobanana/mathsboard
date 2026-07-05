@@ -64,7 +64,7 @@ export const mathController: InteractionController = {
       // editor's font-size and the commit box both derive from it.
       const params = { ...mathTextTool.defaults(), color: st.color };
       const sz = mathTextTool.size(params);
-      const k = st.mathSize / MATH_BASE_PX;
+      const k = st.sizes.math / MATH_BASE_PX;
       const obj: AnyBoardObject = {
         id: newId(),
         type: "mathtext",

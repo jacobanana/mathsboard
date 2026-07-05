@@ -18,15 +18,9 @@
 //   - entries are tried in ARRAY ORDER, the first whose test() matches wins,
 //     preventDefault() is called, and dispatch stops.
 
-import {
-  useBoardStore,
-  activeTextObjectId,
-  activeMathObjectId,
-  activeShapeObjectId,
-  activeStrokeId,
-  DRAW_MODE_ORDER,
-} from "@/board/store";
+import { useBoardStore, DRAW_MODE_ORDER } from "@/board/store";
 import type { DrawMode } from "@/board/store";
+import { applyStyle, sizeBinding, sizeValue } from "@/board/styling";
 import {
   cancelPlacement,
   finishPlacement,
@@ -42,21 +36,8 @@ import {
   ungroupSelection,
 } from "@/board/commands";
 import type { ArrangeAction } from "@/board/commands";
-import { textSizeOf } from "@/canvas/drawHelpers";
-import { paramsOf, scaleOf, sizedBox } from "@/board/sizing";
-import { MATH_BASE_PX } from "@/tools/mathtext";
 import { COLLAB_ENABLED } from "@/config";
-import {
-  PALETTE,
-  FILL_PALETTE,
-  LASER_PALETTE,
-  PEN_SIZE_RANGE,
-  HIGHLIGHTER_SIZE_RANGE,
-  SHAPE_WIDTH_RANGE,
-  TEXT_SIZE_RANGE,
-  MATH_SIZE_RANGE,
-  ERASER_SIZE_RANGE,
-} from "@/ui/constants";
+import { PALETTE, FILL_PALETTE, LASER_PALETTE } from "@/ui/constants";
 
 type BoardState = ReturnType<typeof useBoardStore.getState>;
 
@@ -116,10 +97,9 @@ const bare = (c: ShortcutCtx): boolean => !c.mod && !c.e.altKey && !c.inField;
 
 // --- colour + size (active-tool options) ----------------------------------
 
-/** Cycle the colour of whatever palette is active (C). In laser mode that's the
- *  laser's own palette; otherwise the draw palette — also recolouring the live
- *  edit target (text / maths / shape border / pencil stroke), exactly like a
- *  swatch click in the options pill. */
+/** Cycle the colour of whatever palette is active (C). In laser mode that's
+ *  the laser's own palette; otherwise the draw palette — the styling service
+ *  recolours the live edit target too, exactly like a pill swatch click. */
 function cycleColor(): void {
   const st = useBoardStore.getState();
   // Laser mode shows its own vivid palette; C cycles that instead.
@@ -129,26 +109,16 @@ function cycleColor(): void {
     return;
   }
   const idx = PALETTE.findIndex(([, hex]) => hex === st.color);
-  const [, next] = PALETTE[(idx + 1) % PALETTE.length];
-  st.setColor(next);
-  const tid = activeTextObjectId(st) ?? activeMathObjectId(st);
-  if (tid != null) st.updateObject(tid, { color: next });
-  const sid = activeShapeObjectId(st);
-  if (sid != null) st.updateObject(sid, { stroke: next });
-  const skid = activeStrokeId(st);
-  if (skid != null) st.updateStroke(skid, { color: next });
+  applyStyle("color", PALETTE[(idx + 1) % PALETTE.length][1]);
 }
 
-/** Cycle the BACKGROUND (fill) palette (B). Sets the default fill for new
- *  shapes and recolours a selected shape's background, matching the fill
- *  swatch. Includes the "none" (transparent) entry. */
+/** Cycle the BACKGROUND (fill) palette (B): the default fill for new shapes,
+ *  plus a selected shape's background via the styling service. Includes the
+ *  "none" (transparent) entry. */
 function cycleFillColor(): void {
   const st = useBoardStore.getState();
   const idx = FILL_PALETTE.findIndex(([, hex]) => hex === st.fillColor);
-  const next = FILL_PALETTE[(idx + 1) % FILL_PALETTE.length][1];
-  st.setFillColor(next);
-  const sid = activeShapeObjectId(st);
-  if (sid != null) st.updateObject(sid, { fill: next });
+  applyStyle("fill", FILL_PALETTE[(idx + 1) % FILL_PALETTE.length][1]);
 }
 
 /** Switch to the draw tool in the given mode (the shape keys, L / A / R /
@@ -181,86 +151,19 @@ const bracketLeft = (e: KeyboardEvent): boolean =>
 const arrange = (action: ArrangeAction) => () => arrangeSelection(action);
 
 /**
- * Nudge the active tool's size one step (+/-), MIRRORING THE OPTIONS PILL
- * exactly: the same range and current value the pill's slider shows for this
- * tool/mode (including the pen's highlighter and shape sub-modes), and the
- * same live restyle of the edit target (a text/maths object, a shape's border
- * width, a pencil stroke's size). No-op for tools without a size (select/pan).
+ * Nudge the active tool's size one step (+/-). The styling service supplies
+ * the binding the pill's slider uses (channel + range + edit target, incl.
+ * the pen's highlighter/shape sub-modes), so the keys and the slider CANNOT
+ * disagree. No-op for tools without a size (select / pan).
  */
 function adjustSize(dir: 1 | -1): void {
   const st = useBoardStore.getState();
-  const step = (cur: number, range: { min: number; max: number; step: number }) =>
-    Math.min(range.max, Math.max(range.min, cur + dir * range.step));
-
-  if (st.tool === "pen") {
-    const skid = activeStrokeId(st);
-    const stroke =
-      skid != null ? st.board.strokes.find((s) => s.id === skid) : undefined;
-    if (st.drawMode === "highlighter") {
-      const cur = stroke?.size ?? st.highlighterSize;
-      const next = step(cur, HIGHLIGHTER_SIZE_RANGE);
-      if (next === cur) return;
-      st.setHighlighterSize(next);
-      if (skid != null) st.updateStroke(skid, { size: next });
-    } else if (st.drawMode === "free") {
-      const cur = stroke?.size ?? st.penSize;
-      const next = step(cur, PEN_SIZE_RANGE);
-      if (next === cur) return;
-      st.setPenSize(next);
-      if (skid != null) st.updateStroke(skid, { size: next });
-    } else {
-      // Shape modes: the border width shares the pen's default but lives in
-      // the narrower shape range (the pill clamps the same way).
-      const sid = activeShapeObjectId(st);
-      const shape =
-        sid != null ? st.board.objects.find((o) => o.id === sid) : undefined;
-      const cur =
-        (shape?.strokeWidth as number | undefined) ??
-        Math.min(st.penSize, SHAPE_WIDTH_RANGE.max);
-      const next = step(cur, SHAPE_WIDTH_RANGE);
-      if (next === cur) return;
-      st.setPenSize(next);
-      if (sid != null) st.updateObject(sid, { strokeWidth: next });
-    }
-    return;
-  }
-
-  if (st.tool === "eraser") {
-    st.setEraserSize(step(st.eraserSize, ERASER_SIZE_RANGE));
-    return;
-  }
-
-  if (st.tool === "text") {
-    const tid = activeTextObjectId(st);
-    const obj = tid != null ? st.board.objects.find((o) => o.id === tid) : undefined;
-    const cur = (obj?.size as number | undefined) ?? st.textSize;
-    const next = step(cur, TEXT_SIZE_RANGE);
-    if (next === cur) return;
-    st.setTextSize(next);
-    // Re-measure the live object so its box tracks the new size (keeping any
-    // fixed wrap width so a text box doesn't revert to auto-size).
-    if (obj) {
-      const text = (obj.text as string) ?? "";
-      const { w, h } = textSizeOf(text, next, obj.boxW as number | undefined);
-      st.updateObject(obj.id, { size: next, w, h });
-    }
-    return;
-  }
-
-  if (st.tool === "math") {
-    const mid = activeMathObjectId(st);
-    const obj = mid != null ? st.board.objects.find((o) => o.id === mid) : undefined;
-    // Maths size = the uniform resize scale (26 = scale 1), so the current
-    // value is derived from the live object's box, like the pill shows.
-    const cur = obj ? Math.round(scaleOf(obj) * MATH_BASE_PX) : st.mathSize;
-    const next = step(cur, MATH_SIZE_RANGE);
-    if (next === cur) return;
-    st.setMathSize(next);
-    if (obj) {
-      const box = sizedBox("mathtext", paramsOf(obj), next / MATH_BASE_PX);
-      if (box) st.updateObject(obj.id, { w: box.w, h: box.h });
-    }
-  }
+  const b = sizeBinding(st);
+  const cur = sizeValue(st);
+  if (!b || cur == null) return;
+  const next = Math.min(b.range.max, Math.max(b.range.min, cur + dir * b.range.step));
+  if (next === cur) return;
+  applyStyle("size", next);
 }
 
 // --- arrow-nudge ----------------------------------------------------------

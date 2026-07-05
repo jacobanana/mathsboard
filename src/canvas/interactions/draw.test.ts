@@ -44,7 +44,7 @@ describe("freehand mode (unchanged pen behaviour)", () => {
 describe("highlighter mode (roadmap A4)", () => {
   it("a drag commits a highlighter stroke sized from highlighterSize", () => {
     st().setDrawMode("highlighter");
-    st().setHighlighterSize(20);
+    st().setSize("highlighter", 20);
     down(10, 10);
     move(60, 40);
     up(60, 40);

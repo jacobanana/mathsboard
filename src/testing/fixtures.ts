@@ -19,6 +19,7 @@
 import { useBoardStore } from "@/board/store";
 import * as session from "@/collab/session";
 import { screenToWorld } from "@/board/geometry";
+import { defaultSizes } from "@/ui/constants";
 import { id as newId, newBoardDocument } from "@/board/types";
 import type { AnyBoardObject, BoardDocument, Stroke } from "@/board/types";
 import type { InputCtx } from "@/canvas/interactions/types";
@@ -40,12 +41,8 @@ export function freshBoard(partial: Partial<BoardDocument> = {}): BoardDocument 
     camera: { x: 0, y: 0, scale: 1 },
     tool: "pen",
     color: theme.ink,
-    penSize: 6,
-    highlighterSize: 20,
-    textSize: 26,
+    sizes: defaultSizes(),
     textAlign: "left",
-    mathSize: 26,
-    eraserSize: 45,
     drawMode: "free",
     drawEditMode: false,
     fillColor: "none",

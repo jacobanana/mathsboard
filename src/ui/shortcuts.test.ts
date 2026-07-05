@@ -357,16 +357,16 @@ describe("arrow nudge", () => {
 describe("active-tool options", () => {
   it("+/- nudge the pen size within its range and clamp at the edges", () => {
     st().setTool("pen");
-    st().setPenSize(PEN_SIZE_RANGE.max);
+    st().setSize("pen", PEN_SIZE_RANGE.max);
     expect(fire(keydown("+"))).toBe(true);
-    expect(st().penSize).toBe(PEN_SIZE_RANGE.max); // clamped
+    expect(st().sizes.pen).toBe(PEN_SIZE_RANGE.max); // clamped
 
     fire(keydown("-"));
-    expect(st().penSize).toBe(PEN_SIZE_RANGE.max - PEN_SIZE_RANGE.step);
+    expect(st().sizes.pen).toBe(PEN_SIZE_RANGE.max - PEN_SIZE_RANGE.step);
 
-    st().setPenSize(6);
+    st().setSize("pen", 6);
     fire(keydown("=")); // unshifted +/= key counts as +
-    expect(st().penSize).toBe(6 + PEN_SIZE_RANGE.step);
+    expect(st().sizes.pen).toBe(6 + PEN_SIZE_RANGE.step);
   });
 
   it("resizing text re-measures the live text object's box", () => {
@@ -428,8 +428,8 @@ describe("active-tool options", () => {
     st().setDrawMode("highlighter");
 
     fire(keydown("+"));
-    expect(st().highlighterSize).toBe(20 + HIGHLIGHTER_SIZE_RANGE.step);
-    expect(st().penSize).toBe(6); // untouched
+    expect(st().sizes.highlighter).toBe(20 + HIGHLIGHTER_SIZE_RANGE.step);
+    expect(st().sizes.pen).toBe(6); // untouched
   });
 
   it("+/- in a shape mode use the shape width range and restyle the selected shape", () => {
@@ -471,7 +471,7 @@ describe("active-tool options", () => {
 
     fire(keydown("+"));
     expect(st().board.strokes[0].size).toBe(6 + PEN_SIZE_RANGE.step);
-    expect(st().penSize).toBe(6 + PEN_SIZE_RANGE.step); // default follows too
+    expect(st().sizes.pen).toBe(6 + PEN_SIZE_RANGE.step); // default follows too
   });
 
   it("+/- resize a selected maths object from ITS current size, not the default", () => {
@@ -495,7 +495,7 @@ describe("active-tool options", () => {
 
     fire(keydown("+"));
     expect(st().board.objects[0].w).toBeCloseTo((200 * 54) / 26, 3);
-    expect(st().mathSize).toBe(54);
+    expect(st().sizes.math).toBe(54);
   });
 });
 

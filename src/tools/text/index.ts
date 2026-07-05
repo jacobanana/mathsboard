@@ -43,6 +43,27 @@ export const textTool = defineCanvasTool<TextParams>({
 
   size: (p) => textSizeOf(p.text, p.size, p.boxW),
 
+  // Live styling (options pill + shortcuts, via board/styling.ts). The size
+  // channel re-measures the box — keeping any fixed wrap width (boxW) so a
+  // dragged text box doesn't revert to auto-size.
+  styling: {
+    color: {
+      get: (o) => o.color,
+      patch: (_o, color) => ({ color }),
+    },
+    size: {
+      get: (o) => o.size,
+      patch: (o, size) => {
+        const { w, h } = textSizeOf(o.text, size, o.boxW);
+        return { size, w, h };
+      },
+    },
+    align: {
+      get: (o) => o.align ?? "left",
+      patch: (_o, align) => ({ align }),
+    },
+  },
+
   draw: ({ ctx, font }, o) => {
     // Defensive guard: never paint the object the canvas is actively editing.
     if ((o as { editing?: boolean }).editing) return;

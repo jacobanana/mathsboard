@@ -23,40 +23,31 @@
 // EDIT MODE. Restyling an existing object is done by EDITING IT WITH ITS OWN
 // TOOL: double-clicking an object switches to the tool that draws it (text ->
 // text, maths -> math, shape -> pen@its-kind, a pencil stroke -> pen freehand)
-// and keeps it selected — see select.ts editObjectAt. So when a TEXT / MATHS /
-// SHAPE object or a pen STROKE is the active edit target (a single selection of
-// that type, or a text/maths object open in its overlay), this pill both
-// reflects that target's own colour/size AND writes changes straight back to it
-// (updateObject / updateStroke), on top of updating the drawing defaults.
+// and keeps it selected — see select.ts editObjectAt. The live wiring is the
+// STYLING SERVICE (board/styling.ts): every control displays styleValue /
+// sizeValue (the edit target's own value, else the drawing default) and
+// writes through applyStyle — the same pipeline the keyboard shortcuts use,
+// with the per-type rules declared on the tools themselves (StyleChannels).
 
 import { useRef, useState } from "react";
-import {
-  useBoardStore,
-  activeTextObjectId,
-  activeMathObjectId,
-  activeShapeObjectId,
-  activeStrokeId as activeStrokeSel,
-} from "@/board/store";
+import { useBoardStore } from "@/board/store";
 import type { DrawMode } from "@/board/store";
+import {
+  applyStyle,
+  sizeBinding,
+  sizeValue,
+  styleValue,
+} from "@/board/styling";
 import { COLLAB_ENABLED } from "@/config";
 import { Popover } from "@/ui/Popover";
 import { keyHint } from "@/ui/shortcuts";
 import {
   FILL_PALETTE,
-  HIGHLIGHTER_SIZE_RANGE,
   LASER_PALETTE,
   PALETTE,
-  PEN_SIZE_RANGE,
   POLYGON_SIDES_RANGE,
-  SHAPE_WIDTH_RANGE,
-  TEXT_SIZE_RANGE,
-  MATH_SIZE_RANGE,
-  ERASER_SIZE_RANGE,
 } from "@/ui/constants";
-import { textSizeOf } from "@/canvas/drawHelpers";
 import { focusActiveTextEdit } from "@/canvas/textEditor";
-import { paramsOf, scaleOf, sizedBox } from "@/board/sizing";
-import { MATH_BASE_PX } from "@/tools/mathtext";
 import { isClosed } from "@/tools/shape/geometry";
 import type { ShapeKind } from "@/tools/shape/geometry";
 import {
@@ -273,62 +264,20 @@ export function OptionsStrip(): JSX.Element | null {
   const laserMode = useBoardStore((s) => s.laserMode);
   const drawMode = useBoardStore((s) => s.drawMode);
   const setDrawMode = useBoardStore((s) => s.setDrawMode);
-  const penSize = useBoardStore((s) => s.penSize);
-  const highlighterSize = useBoardStore((s) => s.highlighterSize);
-  const textSize = useBoardStore((s) => s.textSize);
-  const textAlign = useBoardStore((s) => s.textAlign);
-  const setTextAlign = useBoardStore((s) => s.setTextAlign);
-  const mathSize = useBoardStore((s) => s.mathSize);
-  const eraserSize = useBoardStore((s) => s.eraserSize);
-  const fillColor = useBoardStore((s) => s.fillColor);
   const polygonSides = useBoardStore((s) => s.polygonSides);
   const aspectLock = useBoardStore((s) => s.aspectLock);
   const setAspectLock = useBoardStore((s) => s.setAspectLock);
-  const color = useBoardStore((s) => s.color);
-  const setColor = useBoardStore((s) => s.setColor);
-  const setPenSize = useBoardStore((s) => s.setPenSize);
-  const setHighlighterSize = useBoardStore((s) => s.setHighlighterSize);
-  const setTextSize = useBoardStore((s) => s.setTextSize);
-  const setMathSize = useBoardStore((s) => s.setMathSize);
-  const setEraserSize = useBoardStore((s) => s.setEraserSize);
-  const setFillColor = useBoardStore((s) => s.setFillColor);
   const setPolygonSides = useBoardStore((s) => s.setPolygonSides);
-  const updateObject = useBoardStore((s) => s.updateObject);
-  const updateStroke = useBoardStore((s) => s.updateStroke);
-  const activeTextId = useBoardStore(activeTextObjectId);
-  const activeMathId = useBoardStore(activeMathObjectId);
-  const activeShapeId = useBoardStore(activeShapeObjectId);
-  const activeStrokeId = useBoardStore(activeStrokeSel);
-  const activeShape = useBoardStore((s) =>
-    activeShapeId != null
-      ? s.board.objects.find((o) => o.id === activeShapeId)
-      : undefined,
-  );
-  const activeText = useBoardStore((s) =>
-    activeTextId != null
-      ? s.board.objects.find((o) => o.id === activeTextId)
-      : undefined,
-  );
-  const activeMath = useBoardStore((s) =>
-    activeMathId != null
-      ? s.board.objects.find((o) => o.id === activeMathId)
-      : undefined,
-  );
-  const activeStroke = useBoardStore((s) =>
-    activeStrokeId != null
-      ? s.board.strokes.find((o) => o.id === activeStrokeId)
-      : undefined,
-  );
 
-  // The object/stroke the active tool is editing, if any, drives the pill's
-  // live values so the controls reflect what they edit (an object's own colour,
-  // not just the drawing defaults). At most one is ever set — the selection is a
-  // single object OR stroke of one type.
-  const editColor =
-    (activeStroke?.color as string | undefined) ??
-    (activeShape?.stroke as string | undefined) ??
-    (activeText?.color as string | undefined) ??
-    (activeMath?.color as string | undefined);
+  // Live control values via the styling service: the edit target's own value
+  // when one is bound, else the drawing default. applyStyle writes both back
+  // (default + target patch), so the pill and the keyboard shortcuts restyle
+  // through the SAME pipeline. The selectors return primitives, so these only
+  // re-render on real changes.
+  const colorValue = useBoardStore((s) => styleValue(s, "color"));
+  const fillValue = useBoardStore((s) => styleValue(s, "fill"));
+  const alignValue = useBoardStore((s) => styleValue(s, "align"));
+  const sliderValue = useBoardStore((s) => sizeValue(s));
 
   if (
     tool !== "pen" &&
@@ -340,65 +289,6 @@ export function OptionsStrip(): JSX.Element | null {
     // No options for this tool — the pill simply isn't there. It's a separate
     // floating layer, so nothing else moves when it comes and goes.
     return null;
-  }
-
-  function pickColour(hex: string): void {
-    setColor(hex);
-    if (activeTextId != null) updateObject(activeTextId, { color: hex });
-    if (activeMathId != null) updateObject(activeMathId, { color: hex });
-    if (activeShapeId != null) updateObject(activeShapeId, { stroke: hex });
-    if (activeStrokeId != null) updateStroke(activeStrokeId, { color: hex });
-  }
-
-  function pickFill(hex: string): void {
-    setFillColor(hex);
-    if (activeShapeId != null) updateObject(activeShapeId, { fill: hex });
-  }
-
-  function pickTextSize(px: number): void {
-    setTextSize(px);
-    if (activeTextId != null) {
-      // Re-measure so the bounding box stays correct (prototype autoSize),
-      // keeping any box wrap width so a text box doesn't revert to auto-size.
-      const obj = useBoardStore
-        .getState()
-        .board.objects.find((o) => o.id === activeTextId);
-      const text = (obj?.text as string) ?? "";
-      const boxW = obj?.boxW as number | undefined;
-      const { w, h } = textSizeOf(text, px, boxW);
-      updateObject(activeTextId, { size: px, w, h });
-    }
-  }
-
-  function pickAlign(a: "left" | "center" | "right"): void {
-    setTextAlign(a);
-    // Alignment shifts lines within the box; it doesn't change w/h.
-    if (activeTextId != null) updateObject(activeTextId, { align: a });
-  }
-
-  function pickMathSize(px: number): void {
-    setMathSize(px);
-    if (activeMathId != null) {
-      // Maths size = the uniform resize scale (26px = the natural layout
-      // size, scale 1) — re-derive the box like a handle-resize would.
-      const obj = useBoardStore
-        .getState()
-        .board.objects.find((o) => o.id === activeMathId);
-      if (!obj) return;
-      const box = sizedBox("mathtext", paramsOf(obj), px / MATH_BASE_PX);
-      if (box) updateObject(activeMathId, { w: box.w, h: box.h });
-    }
-  }
-
-  function pickPenSize(px: number): void {
-    setPenSize(px);
-    if (activeShapeId != null) updateObject(activeShapeId, { strokeWidth: px });
-    if (activeStrokeId != null) updateStroke(activeStrokeId, { size: px });
-  }
-
-  function pickHighlighterSize(px: number): void {
-    setHighlighterSize(px);
-    if (activeStrokeId != null) updateStroke(activeStrokeId, { size: px });
   }
 
   // --- SELECT tool in LASER mode: the laser toggle + the area-frame toggle.
@@ -430,46 +320,15 @@ export function OptionsStrip(): JSX.Element | null {
     );
   }
 
-  // In edit mode the size control reflects the edited target's own value (an
-  // object's width, a stroke's size), so the pill shows what it changes; with
-  // nothing under edit it shows the drawing default.
-  const [range, value, setValue] =
-    tool === "pen"
-      ? drawMode === "free"
-        ? ([
-            PEN_SIZE_RANGE,
-            (activeStroke?.size as number | undefined) ?? penSize,
-            pickPenSize,
-          ] as const)
-        : drawMode === "highlighter"
-          ? ([
-              HIGHLIGHTER_SIZE_RANGE,
-              (activeStroke?.size as number | undefined) ?? highlighterSize,
-              pickHighlighterSize,
-            ] as const)
-          : ([
-              SHAPE_WIDTH_RANGE,
-              (activeShape?.strokeWidth as number | undefined) ??
-                Math.min(penSize, SHAPE_WIDTH_RANGE.max),
-              pickPenSize,
-            ] as const)
-      : tool === "text"
-        ? ([
-            TEXT_SIZE_RANGE,
-            (activeText?.size as number | undefined) ?? textSize,
-            pickTextSize,
-          ] as const)
-        : tool === "math"
-          ? ([
-              MATH_SIZE_RANGE,
-              // Maths size = the uniform resize scale (26 = scale 1): derive
-              // the edit target's value from its box, like text shows its own.
-              activeMath
-                ? Math.round(scaleOf(activeMath) * MATH_BASE_PX)
-                : mathSize,
-              pickMathSize,
-            ] as const)
-          : ([ERASER_SIZE_RANGE, eraserSize, setEraserSize] as const);
+  // The size control's binding (channel + range + what it restyles) is the
+  // styling service's — the SAME one the +/- shortcuts use, so the slider and
+  // the keys cannot disagree. In edit mode the value reflects the edited
+  // target's own size; with nothing under edit, the drawing default.
+  const binding = sizeBinding({ tool, drawMode });
+  if (!binding) return null; // unreachable: every tool past the gate has a size
+  const range = binding.range;
+  const value = sliderValue ?? range.min;
+  const setValue = (px: number) => applyStyle("size", px);
 
   // Preview dot next to the slider: scaled into the 6-22px display band so the
   // 120px eraser doesn't blow the toolbar height.
@@ -601,9 +460,9 @@ export function OptionsStrip(): JSX.Element | null {
             (shapeMode ? "Border colour" : "Colour") +
             ` (${keyHint("cycleColor")})`
           }
-          value={editColor ?? color}
+          value={colorValue}
           palette={PALETTE}
-          onPick={pickColour}
+          onPick={(hex) => applyStyle("color", hex)}
         />
       )}
 
@@ -612,9 +471,9 @@ export function OptionsStrip(): JSX.Element | null {
         <SwatchPicker
           id="fillBtn"
           title="Background colour"
-          value={(activeShape?.fill as string | undefined) ?? fillColor}
+          value={fillValue}
           palette={FILL_PALETTE}
-          onPick={pickFill}
+          onPick={(hex) => applyStyle("fill", hex)}
         />
       )}
 
@@ -629,8 +488,7 @@ export function OptionsStrip(): JSX.Element | null {
                 ["right", "Align right", AlignRightIcon],
               ] as const
             ).map(([a, label, Icon]) => {
-              const on =
-                ((activeText?.align as string | undefined) ?? textAlign) === a;
+              const on = alignValue === a;
               return (
                 <button
                   key={a}
@@ -640,7 +498,7 @@ export function OptionsStrip(): JSX.Element | null {
                   aria-label={label}
                   aria-pressed={on}
                   onMouseDown={preventBlur}
-                  onClick={() => pickAlign(a)}
+                  onClick={() => applyStyle("align", a)}
                 >
                   <span className="ico">
                     <Icon />

@@ -209,6 +209,32 @@ export interface InputCapability<P> {
 }
 
 /**
+ * Optional LIVE STYLING capability: how one styleable property (a "channel")
+ * reads from and writes to an object of this type — including any box
+ * re-measure the change demands (text re-wraps, maths re-derives its scaled
+ * box). The styling service (board/styling.ts) drives these so the options
+ * pill and the keyboard shortcuts restyle an edit target IDENTICALLY; a tool
+ * without a channel simply isn't restyled by that control.
+ */
+export interface StyleChannel<P, V> {
+  /** The object's current value for this channel. */
+  get(obj: BoardObjectBase & P): V;
+  /** Object patch applying `v` (may re-derive w/h alongside). */
+  patch(obj: BoardObjectBase & P, v: V): Record<string, unknown>;
+}
+
+export interface ToolStyling<P> {
+  /** Ink colour (a text/maths colour, a shape's border). */
+  color?: StyleChannel<P, string>;
+  /** Background fill ("none" = transparent; closed shapes). */
+  fill?: StyleChannel<P, string>;
+  /** The tool's size notion (font px, border width, ...). */
+  size?: StyleChannel<P, number>;
+  /** Horizontal text alignment. */
+  align?: StyleChannel<P, "left" | "center" | "right">;
+}
+
+/**
  * Whether a typed answer matches the expected value, for input marking. Rounds
  * both to 6dp so float noise and clean decimals (0.75, 33.333333) compare
  * equal; non-numeric input never matches.
@@ -236,6 +262,8 @@ export interface CanvasTool<P = Record<string, unknown>> extends ToolMeta {
   inputs?: InputCapability<P>;
   /** Optional draggable-vertex editing (see VertexCapability). */
   vertices?: VertexCapability<P>;
+  /** Optional live styling channels (see ToolStyling). */
+  styling?: ToolStyling<P>;
   /**
    * Optional ROTATION: the patch that turns the object by `degrees` around
    * its box centre. Tools that support it get the select controller's rotate

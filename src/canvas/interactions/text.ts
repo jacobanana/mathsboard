@@ -95,7 +95,7 @@ export const textController: InteractionController = {
       return;
     }
     const st = c.store.getState();
-    const size = st.textSize;
+    const size = st.sizes.text;
     const align = st.textAlign;
 
     if (isDrag(pt)) {

@@ -444,6 +444,23 @@ export const shapeTool = defineCanvasTool<ShapeParams>({
 
   Dialog: ShapeDialog,
 
+  // Live styling (options pill + shortcuts, via board/styling.ts): the shape's
+  // "colour" is its border, its "size" the border width; fill is the background.
+  styling: {
+    color: {
+      get: (o) => o.stroke,
+      patch: (_o, stroke) => ({ stroke }),
+    },
+    fill: {
+      get: (o) => o.fill,
+      patch: (_o, fill) => ({ fill }),
+    },
+    size: {
+      get: (o) => o.strokeWidth,
+      patch: (_o, strokeWidth) => ({ strokeWidth }),
+    },
+  },
+
   // Parametric vertex editing (rendered generically by the select controller).
   vertices: {
     get(o: ShapeObject) {

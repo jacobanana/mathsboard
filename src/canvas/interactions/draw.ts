@@ -126,7 +126,10 @@ function shapeStyleParams(c: InputCtx, kind: ShapeKind): Omit<ShapeParams, "kind
   const st = c.store.getState();
   return {
     stroke: st.color,
-    strokeWidth: Math.min(Math.max(st.penSize, SHAPE_WIDTH_RANGE.min), SHAPE_WIDTH_RANGE.max),
+    strokeWidth: Math.min(
+      Math.max(st.sizes.pen, SHAPE_WIDTH_RANGE.min),
+      SHAPE_WIDTH_RANGE.max,
+    ),
     fill: isClosed(kind) ? st.fillColor : NO_FILL,
     dash: false,
     // The angle measures ARE the teaching content — on by default wherever
@@ -244,7 +247,7 @@ function commitPlacement(kind: Placing["kind"], pts: Pt[]): string {
     pts: n.pts,
     stroke: st.color,
     strokeWidth: Math.min(
-      Math.max(st.penSize, SHAPE_WIDTH_RANGE.min),
+      Math.max(st.sizes.pen, SHAPE_WIDTH_RANGE.min),
       SHAPE_WIDTH_RANGE.max,
     ),
     fill: shapeKind === "polygon" ? st.fillColor : NO_FILL,
