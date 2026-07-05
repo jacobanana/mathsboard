@@ -75,11 +75,14 @@ export function bakeFractionWalls(objects: AnyBoardObject[]): AnyBoardObject[] {
  * tool now draws. If the tool isn't registered (naturalSize null), the box is
  * left as-is and only the field rename happens. Idempotent: once no object
  * carries `fill`, the pass returns its input array unchanged (identity contract).
+ *
+ * SCOPE: only BOOLEAN fills. The legacy flag was a checkbox; the shape tool's
+ * `fill` is a background COLOUR string and must pass through untouched.
  */
 export function revealFromFill(objects: AnyBoardObject[]): AnyBoardObject[] {
-  if (!objects.some((o) => "fill" in o)) return objects;
+  if (!objects.some((o) => typeof o.fill === "boolean")) return objects;
   return objects.map((o) => {
-    if (!("fill" in o)) return o;
+    if (typeof o.fill !== "boolean") return o;
     const { fill, ...rest } = o;
     const next: AnyBoardObject = { ...rest };
     if (fill) next.revealed = true; // keep a shown worked example shown

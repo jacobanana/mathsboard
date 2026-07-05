@@ -22,13 +22,19 @@ import {
   useBoardStore,
   activeTextObjectId,
   activeMathObjectId,
+  activeShapeObjectId,
 } from "@/board/store";
+import type { DrawMode } from "@/board/store";
 import { useUiStore } from "@/ui/uiStore";
 import {
+  arrangeSelection,
   copySelection,
   duplicateSelection,
+  groupSelection,
   pasteClipboard,
+  ungroupSelection,
 } from "@/board/commands";
+import type { ArrangeAction } from "@/board/commands";
 import { textSizeOf } from "@/canvas/drawHelpers";
 import { paramsOf, sizedBox } from "@/board/sizing";
 import { MATH_BASE_PX } from "@/tools/mathtext";
@@ -100,7 +106,8 @@ const bare = (c: ShortcutCtx): boolean => !c.mod && !c.e.altKey && !c.inField;
 // --- colour + size (active-tool options) ----------------------------------
 
 /** Cycle the draw colour to the next palette entry (C). Also recolours a live
- *  text or maths object, matching a swatch click. */
+ *  text or maths object — or a selected shape's border — matching a swatch
+ *  click. */
 function cycleColor(): void {
   const st = useBoardStore.getState();
   const idx = PALETTE.findIndex(([, hex]) => hex === st.color);
@@ -108,7 +115,26 @@ function cycleColor(): void {
   st.setColor(next);
   const tid = activeTextObjectId(st) ?? activeMathObjectId(st);
   if (tid != null) st.updateObject(tid, { color: next });
+  const sid = activeShapeObjectId(st);
+  if (sid != null) st.updateObject(sid, { stroke: next });
 }
+
+/** Switch to the draw tool in the given mode (the shape keys, L / A / R /
+ *  O / Y / N / B / G, plus F for freehand). */
+function pickDrawMode(mode: DrawMode): void {
+  const st = useBoardStore.getState();
+  st.setTool("pen");
+  st.setDrawMode(mode);
+}
+
+/** The ] / [ physical keys, layout-safe: prefer e.code, fall back to the
+ *  produced character (some layouts shift them to } / {). */
+const bracketRight = (e: KeyboardEvent): boolean =>
+  e.code === "BracketRight" || e.key === "]" || e.key === "}";
+const bracketLeft = (e: KeyboardEvent): boolean =>
+  e.code === "BracketLeft" || e.key === "[" || e.key === "{";
+
+const arrange = (action: ArrangeAction) => () => arrangeSelection(action);
 
 /** Nudge the active tool's size one step (+/-), clamped to that tool's range.
  *  No-op unless a size-bearing tool (pen / eraser / text / maths) is active. */
@@ -253,6 +279,55 @@ export const SHORTCUTS: ShortcutSpec[] = [
     run: () => duplicateSelection(),
   },
   {
+    id: "ungroup",
+    group: "edit",
+    keys: [["Ctrl", "Shift", "G"]],
+    label: "Ungroup",
+    test: (c) => c.mod && c.key === "g" && c.e.shiftKey && c.hasSelection,
+    run: () => ungroupSelection(),
+  },
+  {
+    id: "group",
+    group: "edit",
+    keys: [["Ctrl", "G"]],
+    label: "Group the selection",
+    test: (c) => c.mod && c.key === "g" && !c.e.shiftKey && c.hasSelection,
+    run: () => groupSelection(),
+  },
+  // Z-order (front/back), the industry-standard bracket combos.
+  {
+    id: "toFront",
+    group: "edit",
+    keys: [["Ctrl", "Shift", "]"]],
+    label: "Bring to front",
+    test: (c) => c.mod && c.e.shiftKey && bracketRight(c.e) && c.hasSelection,
+    run: arrange("front"),
+  },
+  {
+    id: "toBack",
+    group: "edit",
+    keys: [["Ctrl", "Shift", "["]],
+    label: "Send to back",
+    test: (c) => c.mod && c.e.shiftKey && bracketLeft(c.e) && c.hasSelection,
+    run: arrange("back"),
+  },
+  {
+    id: "forward",
+    group: "edit",
+    keys: [["Ctrl", "]"]],
+    label: "Bring forward one step",
+    test: (c) => c.mod && !c.e.shiftKey && bracketRight(c.e) && c.hasSelection,
+    run: arrange("forward"),
+  },
+  {
+    id: "backward",
+    group: "edit",
+    keys: [["Ctrl", "["]],
+    label: "Send backward one step",
+    test: (c) => c.mod && !c.e.shiftKey && bracketLeft(c.e) && c.hasSelection,
+    run: arrange("backward"),
+  },
+  {
     id: "clearSelection",
     group: "edit",
     keys: [["Esc"]],
@@ -291,30 +366,105 @@ export const SHORTCUTS: ShortcutSpec[] = [
   },
 
   // Tools — bare keys. Digits mirror the toolbar order (1..6); the letters are
-  // mnemonic alternates (Draw / Eraser / Text / Maths).
+  // mnemonic alternates (V/H match Figma & Excalidraw; Draw / Eraser / Text /
+  // Maths keep their initials).
   {
     id: "tool-select",
     group: "tools",
-    keys: [["1"]],
+    keys: [["1"], ["V"]],
     label: "Select & move",
-    test: (c) => bare(c) && c.key === "1",
+    test: (c) => bare(c) && (c.key === "1" || c.key === "v"),
     run: (c) => c.st.setTool("select"),
   },
   {
     id: "tool-pan",
     group: "tools",
-    keys: [["2"]],
+    keys: [["2"], ["H"]],
     label: "Pan the view",
-    test: (c) => bare(c) && c.key === "2",
+    test: (c) => bare(c) && (c.key === "2" || c.key === "h"),
     run: (c) => c.st.setTool("pan"),
   },
   {
     id: "tool-draw",
     group: "tools",
     keys: [["3"], ["D"]],
-    label: "Draw",
+    label: "Draw (in its current mode)",
     test: (c) => bare(c) && (c.key === "3" || c.key === "d"),
     run: (c) => c.st.setTool("pen"),
+  },
+  // Draw modes — one key per shape (roadmap A2): pressing it activates the
+  // draw tool in that mode from anywhere.
+  {
+    id: "mode-free",
+    group: "tools",
+    keys: [["F"]],
+    label: "Freehand pen",
+    test: (c) => bare(c) && c.key === "f",
+    run: () => pickDrawMode("free"),
+  },
+  {
+    id: "mode-line",
+    group: "tools",
+    keys: [["L"]],
+    label: "Line (Shift: 15° steps)",
+    test: (c) => bare(c) && c.key === "l",
+    run: () => pickDrawMode("line"),
+  },
+  {
+    id: "mode-arrow",
+    group: "tools",
+    keys: [["A"]],
+    label: "Arrow (Shift: 15° steps)",
+    test: (c) => bare(c) && c.key === "a",
+    run: () => pickDrawMode("arrow"),
+  },
+  {
+    id: "mode-rect",
+    group: "tools",
+    keys: [["R"]],
+    label: "Rectangle (Shift: square)",
+    test: (c) => bare(c) && c.key === "r",
+    run: () => pickDrawMode("rect"),
+  },
+  {
+    id: "mode-ellipse",
+    group: "tools",
+    keys: [["O"]],
+    label: "Ellipse (Shift: circle)",
+    test: (c) => bare(c) && c.key === "o",
+    run: () => pickDrawMode("ellipse"),
+  },
+  {
+    id: "mode-triangle",
+    group: "tools",
+    keys: [["Y"]],
+    label: "Triangle (drag corners to change its angles)",
+    test: (c) => bare(c) && c.key === "y",
+    run: () => pickDrawMode("triangle"),
+  },
+  {
+    id: "mode-polygon",
+    group: "tools",
+    keys: [["N"]],
+    label: "Polygon (n-gon — sides in the options pill)",
+    test: (c) => bare(c) && c.key === "n",
+    run: () => pickDrawMode("polygon"),
+  },
+  {
+    id: "mode-curve",
+    group: "tools",
+    keys: [["B"]],
+    label: "Curve (Bézier — drag its control points)",
+    test: (c) => bare(c) && c.key === "b",
+    run: () => pickDrawMode("curve"),
+  },
+  {
+    id: "mode-angle",
+    group: "tools",
+    keys: [["G"]],
+    label: "Angle (drag to open it, like a protractor)",
+    test: (c) => bare(c) && c.key === "g",
+    run: () => pickDrawMode("angle"),
   },
   {
     id: "tool-eraser",
@@ -391,6 +541,14 @@ export const SHORTCUTS: ShortcutSpec[] = [
     label: "Smaller pen / text / maths / eraser",
     test: (c) => bare(c) && (c.e.key === "-" || c.e.key === "_"),
     run: () => adjustSize(-1),
+  },
+  {
+    id: "snap",
+    group: "options",
+    keys: [["S"]],
+    label: "Toggle grid snapping (squared paper; hold Alt to bypass)",
+    test: (c) => bare(c) && c.key === "s",
+    run: (c) => c.st.setSnap(!c.st.snap),
   },
 
   // Help.

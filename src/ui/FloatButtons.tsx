@@ -22,7 +22,20 @@
 import { createPortal } from "react-dom";
 import { useBoardStore } from "@/board/store";
 import { worldToScreen, clamp, strokeBounds } from "@/board/geometry";
-import { DrawIcon, GLYPH } from "@/ui/icons";
+import {
+  arrangeSelection,
+  groupSelection,
+  ungroupSelection,
+} from "@/board/commands";
+import { keyHint } from "@/ui/shortcuts";
+import {
+  BringToFrontIcon,
+  DrawIcon,
+  GroupIcon,
+  SendToBackIcon,
+  UngroupIcon,
+  GLYPH,
+} from "@/ui/icons";
 
 interface FloatButtonsProps {
   /** The #stage element to portal into (null until BoardCanvas has mounted). */
@@ -69,6 +82,12 @@ export function FloatButtons({
   // Editing settings only makes sense for a single placed object.
   const canEdit =
     selection.objectIds.length === 1 && selection.strokeIds.length === 0;
+  const count = selection.objectIds.length + selection.strokeIds.length;
+  // Group when 2+ shapes are selected; ungroup when any selected shape is
+  // grouped (the two swap — a selected group offers ungroup).
+  const anyGrouped =
+    selection.objectIds.some((id) => objects.find((o) => o.id === id)?.groupId) ||
+    selection.strokeIds.some((id) => strokes.find((s) => s.id === id)?.groupId);
 
   const r = container.getBoundingClientRect();
   const W = r.width;
@@ -76,28 +95,77 @@ export function FloatButtons({
   const tr = worldToScreen(camera, x2, y1);
   const top = clamp(tr.y - 34, 2, H - 36);
 
+  // Right-to-left stack from the selection's top-right corner: delete, edit,
+  // front, back, group/ungroup. Each slot is 38px wide (matches the old
+  // delete/edit spacing); positions clamp into the stage individually.
+  const buttons: {
+    id: string;
+    title: string;
+    body: JSX.Element | string;
+    onClick: () => void;
+  }[] = [
+    {
+      id: "floatDel",
+      title: "Delete selection",
+      body: GLYPH.delete,
+      onClick: () => deleteSelection(),
+    },
+  ];
+  if (canEdit) {
+    buttons.push({
+      id: "floatEdit",
+      title: "Edit this object",
+      body: <DrawIcon />,
+      onClick: onEditSelected,
+    });
+  }
+  buttons.push(
+    {
+      id: "floatFront",
+      title: `Bring to front (${keyHint("toFront")})`,
+      body: <BringToFrontIcon />,
+      onClick: () => arrangeSelection("front"),
+    },
+    {
+      id: "floatBack",
+      title: `Send to back (${keyHint("toBack")})`,
+      body: <SendToBackIcon />,
+      onClick: () => arrangeSelection("back"),
+    },
+  );
+  if (anyGrouped) {
+    buttons.push({
+      id: "floatGroup",
+      title: `Ungroup (${keyHint("ungroup")})`,
+      body: <UngroupIcon />,
+      onClick: () => ungroupSelection(),
+    });
+  } else if (count > 1) {
+    buttons.push({
+      id: "floatGroup",
+      title: `Group the selection (${keyHint("group")})`,
+      body: <GroupIcon />,
+      onClick: () => groupSelection(),
+    });
+  }
+
   return createPortal(
     <>
-      {canEdit && (
+      {buttons.map((b, i) => (
         <button
+          key={b.id}
           className="floatbtn show"
-          id="floatEdit"
-          title="Edit this object"
-          style={{ left: clamp(tr.x - 44, 2, W - 76), top }}
-          onClick={onEditSelected}
+          id={b.id}
+          title={b.title}
+          style={{
+            left: clamp(tr.x - 6 - i * 38, 2, W - 36),
+            top,
+          }}
+          onClick={b.onClick}
         >
-          <DrawIcon />
+          {b.body}
         </button>
-      )}
-      <button
-        className="floatbtn show"
-        id="floatDel"
-        title="Delete selection"
-        style={{ left: clamp(tr.x - 6, 42, W - 36), top }}
-        onClick={() => deleteSelection()}
-      >
-        {GLYPH.delete}
-      </button>
+      ))}
     </>,
     container,
   );

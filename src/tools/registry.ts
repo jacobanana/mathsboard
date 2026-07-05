@@ -87,6 +87,39 @@ export interface ToolMeta {
   answer?: boolean;
 }
 
+/**
+ * Optional VERTEX-EDITING capability for parametric canvas tools (the shape
+ * tool's draggable triangle corners, line endpoints, Bézier control points).
+ * The select controller renders and drives these generically: it draws a
+ * round handle at each point `get` returns, and a drag on one applies the
+ * patch `move` computes — so a new parametric tool gets interactive vertices
+ * with zero controller edits.
+ */
+export interface VertexCapability<P> {
+  /** World-space position of every editable vertex, in a stable order. */
+  get(obj: BoardObjectBase & P): { x: number; y: number }[];
+  /**
+   * Object patch for dragging vertex `i` to world point (wx, wy). `opts`
+   * carries the active snapping intents (Alt bypasses both): `gridSnap` when
+   * grid snapping applies, `angleSnap` for the tool's own magnetic angle
+   * values (right angles, 15° multiples) — the tool decides which wins.
+   */
+  move(
+    obj: BoardObjectBase & P,
+    i: number,
+    wx: number,
+    wy: number,
+    opts?: { gridSnap?: boolean; angleSnap?: boolean },
+  ): Record<string, unknown>;
+  /** True when the vertices REPLACE the box resize handles (line-like shapes
+   *  whose points are their whole geometry). Default: both are shown. */
+  replacesResize?(obj: BoardObjectBase & P): boolean;
+  /** Light guide segments drawn with the handles (Bézier control arms). */
+  guides?(
+    obj: BoardObjectBase & P,
+  ): [{ x: number; y: number }, { x: number; y: number }][];
+}
+
 /** A tool drawn onto the board canvas. */
 export interface CanvasTool<P = Record<string, unknown>> extends ToolMeta {
   kind: "canvas";
@@ -98,6 +131,8 @@ export interface CanvasTool<P = Record<string, unknown>> extends ToolMeta {
   draw: (kit: DrawKit, obj: BoardObjectBase & P) => void;
   /** Optional settings dialog. Omit for click-to-place tools (e.g. text). */
   Dialog?: React.FC<ToolDialogProps<P>>;
+  /** Optional draggable-vertex editing (see VertexCapability). */
+  vertices?: VertexCapability<P>;
 }
 
 /** Props an interactive widget component receives. */

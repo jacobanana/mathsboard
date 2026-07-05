@@ -19,7 +19,7 @@ import { useUiStore } from "@/ui/uiStore";
 import { resetClipboard } from "@/board/commands";
 import { id as newId } from "@/board/types";
 import { PALETTE, PEN_SIZE_RANGE } from "@/ui/constants";
-import { aStroke, freshBoard, keydown } from "@/testing/fixtures";
+import { anObject, aStroke, freshBoard, keydown } from "@/testing/fixtures";
 
 const st = () => useBoardStore.getState();
 
@@ -150,6 +150,106 @@ describe("dispatch", () => {
     expect(fire(keydown("i"))).toBe(true);
     expect(fire(keydown("7"))).toBe(true); // picture (collab build)
     expect(hostCalls).toEqual(["openHelp", "openInsert", "openImage"]);
+  });
+});
+
+describe("shapes, arrange & grouping", () => {
+  it("shape keys switch to the draw tool in that mode; F is freehand", () => {
+    const cases: [string, string][] = [
+      ["l", "line"],
+      ["a", "arrow"],
+      ["r", "rect"],
+      ["o", "ellipse"],
+      ["y", "triangle"],
+      ["n", "polygon"],
+      ["b", "curve"],
+      ["g", "angle"],
+      ["f", "free"],
+    ];
+    for (const [key, mode] of cases) {
+      st().setTool("select");
+      expect(fire(keydown(key)), `key ${key}`).toBe(true);
+      expect(st().tool, `key ${key}`).toBe("pen");
+      expect(st().drawMode, `key ${key}`).toBe(mode);
+    }
+  });
+
+  it("V and H are the industry-standard select / pan alternates", () => {
+    st().setTool("pen");
+    expect(fire(keydown("v"))).toBe(true);
+    expect(st().tool).toBe("select");
+    expect(fire(keydown("h"))).toBe(true);
+    expect(st().tool).toBe("pan");
+  });
+
+  it("S toggles grid snapping", () => {
+    expect(st().snap).toBe(true);
+    expect(fire(keydown("s"))).toBe(true);
+    expect(st().snap).toBe(false);
+    fire(keydown("s"));
+    expect(st().snap).toBe(true);
+  });
+
+  it("Ctrl+G groups, Ctrl+Shift+G ungroups", () => {
+    freshBoard({ objects: [anObject(), anObject()] });
+    st().selectAll();
+    expect(fire(keydown("g", { ctrl: true }))).toBe(true);
+    const gid = st().board.objects[0].groupId;
+    expect(typeof gid).toBe("string");
+    expect(st().board.objects[1].groupId).toBe(gid);
+
+    expect(fire(keydown("g", { ctrl: true, shift: true }))).toBe(true);
+    expect(st().board.objects[0].groupId).toBeUndefined();
+  });
+
+  it("the bracket combos arrange the selection (physical-key codes)", () => {
+    const A = anObject();
+    const B = anObject();
+    freshBoard({ objects: [A, B] });
+    st().select(A.id);
+    const order = () => st().board.objects.map((o) => o.id);
+
+    expect(
+      fire(keydown("]", { ctrl: true, shift: true, code: "BracketRight" })),
+    ).toBe(true); // bring to front
+    expect(order()).toEqual([B.id, A.id]);
+
+    expect(
+      fire(keydown("[", { ctrl: true, shift: true, code: "BracketLeft" })),
+    ).toBe(true); // send to back
+    expect(order()).toEqual([A.id, B.id]);
+
+    expect(fire(keydown("]", { ctrl: true, code: "BracketRight" }))).toBe(true);
+    expect(order()).toEqual([B.id, A.id]); // forward one step
+
+    expect(fire(keydown("[", { ctrl: true, code: "BracketLeft" }))).toBe(true);
+    expect(order()).toEqual([A.id, B.id]); // backward one step
+  });
+
+  it("C also recolours a selected shape's border", () => {
+    const s = {
+      id: newId(),
+      type: "shape",
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 60,
+      kind: "rect",
+      nw: 100,
+      nh: 60,
+      pts: [],
+      stroke: PALETTE[0][1],
+      strokeWidth: 3,
+      fill: "none",
+      dash: false,
+      showAngles: false,
+      both: false,
+    };
+    freshBoard({ objects: [s] });
+    st().setColor(PALETTE[0][1]);
+    st().select(s.id);
+    fire(keydown("c"));
+    expect(st().board.objects[0].stroke).toBe(PALETTE[1][1]);
   });
 });
 

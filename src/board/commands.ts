@@ -93,6 +93,109 @@ export function editObject(objId: string, params: Params): void {
   track("tool_action", { tool: existing.type, action: "edited" });
 }
 
+// --- z-order (ARRANGE, roadmap A5) -------------------------------------------
+// Bring to front / send to back / one step either way, matching the industry
+// convention (Ctrl+] / Ctrl+[ and their Shift variants). Objects and strokes
+// render on separate canvas layers (ink always above the template), so each
+// list is rearranged within itself; a selection spanning both arranges both.
+
+export type ArrangeAction = "front" | "forward" | "backward" | "back";
+
+/**
+ * The list rearranged by `action`: selected items keep their relative order.
+ * front/back move the whole selected block to the end/start; forward/backward
+ * step each selected item past its nearest unselected neighbour (a selected
+ * item already at the boundary stays put).
+ */
+export function rearrange<T extends { id: string }>(
+  items: T[],
+  selected: ReadonlySet<string>,
+  action: ArrangeAction,
+): T[] {
+  const arr = [...items];
+  if (action === "front" || action === "back") {
+    const sel = arr.filter((i) => selected.has(i.id));
+    const rest = arr.filter((i) => !selected.has(i.id));
+    return action === "front" ? [...rest, ...sel] : [...sel, ...rest];
+  }
+  if (action === "forward") {
+    for (let i = arr.length - 2; i >= 0; i--) {
+      if (selected.has(arr[i].id) && !selected.has(arr[i + 1].id)) {
+        [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+      }
+    }
+  } else {
+    for (let i = 1; i < arr.length; i++) {
+      if (selected.has(arr[i].id) && !selected.has(arr[i - 1].id)) {
+        [arr[i], arr[i - 1]] = [arr[i - 1], arr[i]];
+      }
+    }
+  }
+  return arr;
+}
+
+/** New order keys after rearranging: every shape is renumbered to its array
+ *  index, but only CHANGED keys are returned (and written). */
+function reorderedKeys<T extends { id: string; order?: unknown }>(
+  items: T[],
+  selected: ReadonlySet<string>,
+  action: ArrangeAction,
+): Record<string, number> {
+  const next = rearrange(items, selected, action);
+  const out: Record<string, number> = {};
+  next.forEach((item, i) => {
+    if (item.order !== i) out[item.id] = i;
+  });
+  return out;
+}
+
+/** Apply a z-order action to the current selection (one undoable step). */
+export function arrangeSelection(action: ArrangeAction): void {
+  const st = useBoardStore.getState();
+  const { selection, board } = st;
+  if (selection.objectIds.length + selection.strokeIds.length === 0) return;
+  const objectOrders = reorderedKeys(
+    board.objects,
+    new Set(selection.objectIds),
+    action,
+  );
+  const strokeOrders = reorderedKeys(
+    board.strokes,
+    new Set(selection.strokeIds),
+    action,
+  );
+  if (
+    Object.keys(objectOrders).length === 0 &&
+    Object.keys(strokeOrders).length === 0
+  ) {
+    return; // already there — no empty undo step
+  }
+  st.setShapeOrders(objectOrders, strokeOrders);
+}
+
+// --- grouping (Ctrl+G / Ctrl+Shift+G) ----------------------------------------
+// Tag the selected shapes with a fresh shared groupId; from then on hitting
+// any member selects the whole group (board/selection.ts). Ungrouping clears
+// the tag. Both are single undoable steps.
+
+export function groupSelection(): void {
+  const st = useBoardStore.getState();
+  const sel = st.selection;
+  if (sel.objectIds.length + sel.strokeIds.length < 2) return;
+  st.setGroup(sel.objectIds, sel.strokeIds, makeId());
+}
+
+export function ungroupSelection(): void {
+  const st = useBoardStore.getState();
+  const sel = st.selection;
+  const { objects, strokes } = st.board;
+  const grouped =
+    sel.objectIds.some((id) => objects.find((o) => o.id === id)?.groupId) ||
+    sel.strokeIds.some((id) => strokes.find((s) => s.id === id)?.groupId);
+  if (!grouped) return;
+  st.setGroup(sel.objectIds, sel.strokeIds, null);
+}
+
 // --- internal clipboard (copy / cut / paste / duplicate) ---------------------
 // An INTERNAL clipboard (not the OS clipboard): Ctrl+C/X snapshot the selected
 // shapes here, Ctrl+V / Ctrl+D re-insert clones with fresh ids and a cascading
@@ -129,18 +232,39 @@ function selectedShapes(): ShapeBag {
 }
 
 /** Deep-clone shapes with fresh ids and a world offset; strips `order` so the
- *  batch re-inserts on top (insertShapes assigns fresh order keys). */
+ *  batch re-inserts on top (insertShapes assigns fresh order keys). Group tags
+ *  are REMAPPED to fresh ids — clones of a group stay grouped with each other,
+ *  never with their source. */
 function cloneShapes(src: ShapeBag, dx: number, dy: number): ShapeBag {
+  const groupMap = new Map<string, string>();
+  const remapGroup = (gid: unknown): string | undefined => {
+    if (typeof gid !== "string" || gid === "") return undefined;
+    let fresh = groupMap.get(gid);
+    if (!fresh) {
+      fresh = makeId();
+      groupMap.set(gid, fresh);
+    }
+    return fresh;
+  };
   const objects = src.objects.map((o) => {
-    const { order, ...rest } = structuredClone(o);
+    const { order, groupId, ...rest } = structuredClone(o);
     void order;
-    return { ...rest, id: makeId(), x: o.x + dx, y: o.y + dy };
-  });
-  const strokes = src.strokes.map((s) => {
-    const { order, ...rest } = structuredClone(s);
-    void order;
+    const gid = remapGroup(groupId);
     return {
       ...rest,
+      ...(gid ? { groupId: gid } : {}),
+      id: makeId(),
+      x: o.x + dx,
+      y: o.y + dy,
+    };
+  });
+  const strokes = src.strokes.map((s) => {
+    const { order, groupId, ...rest } = structuredClone(s);
+    void order;
+    const gid = remapGroup(groupId);
+    return {
+      ...rest,
+      ...(gid ? { groupId: gid } : {}),
       id: makeId(),
       points: rest.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
     };

@@ -3,13 +3,16 @@
 // file + one registerInteraction(...) call here — no BoardCanvas edits.
 
 import { registerInteraction } from "@/canvas/interactions/registry";
-import { penController, eraserController } from "@/canvas/interactions/brush";
+import { eraserController } from "@/canvas/interactions/brush";
+import { drawController } from "@/canvas/interactions/draw";
 import { selectController } from "@/canvas/interactions/select";
 import { panController } from "@/canvas/interactions/pan";
 import { textController } from "@/canvas/interactions/text";
 import { mathController } from "@/canvas/interactions/math";
 
-registerInteraction(penController);
+// The draw controller owns the "pen" tool: freehand delegates to the brush
+// controller, the shape modes drag-create shape objects (roadmap A2).
+registerInteraction(drawController);
 registerInteraction(eraserController);
 registerInteraction(selectController);
 registerInteraction(panController);

@@ -45,6 +45,12 @@ export interface Stroke {
    * same key via their open Record type. Optional for legacy documents.
    */
   order?: number;
+  /**
+   * GROUPING. Shapes sharing a groupId select/move/delete as one unit
+   * (Ctrl+G / Ctrl+Shift+G, board/commands.ts). Objects carry the same key
+   * via their open Record type. Absent = ungrouped.
+   */
+  groupId?: string;
 }
 
 export type Background = "squared" | "lined" | "blank";

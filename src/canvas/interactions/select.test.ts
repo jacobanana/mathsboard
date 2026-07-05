@@ -81,6 +81,7 @@ describe("click selection", () => {
 describe("drag to move", () => {
   it("moves the whole selection as ONE undo step and never collapses it", () => {
     st().setSelection({ objectIds: [O.id], strokeIds: [S.id] });
+    st().setSnap(false); // raw move mechanics; grid snapping has its own suite
 
     down(120, 105);
     move(170, 135); // +50, +30
@@ -95,6 +96,44 @@ describe("drag to move", () => {
     st().undo(); // the entire drag reverts at once
     expect(st().board.objects[0]).toMatchObject({ x: 100, y: 100 });
     expect(st().board.strokes[0].points[0]).toEqual({ x: 150, y: 120 });
+  });
+});
+
+describe("grid snapping (roadmap A3)", () => {
+  it("dragging an object snaps its origin to the 30px grid on squared paper", () => {
+    st().select(O.id); // O at (100,100); snap defaults on, background squared
+    down(120, 105);
+    move(178, 143); // raw target (158, 138) -> nearest grid (150, 150)
+    up(178, 143);
+    expect(st().board.objects[0]).toMatchObject({ x: 150, y: 150 });
+  });
+
+  it("holding Alt bypasses the snap for the gesture", () => {
+    st().select(O.id);
+    down(120, 105);
+    selectController.onPointerMove(
+      pointer(178, 143, { type: "pointermove", altKey: true }),
+      ctx,
+    );
+    up(178, 143);
+    expect(st().board.objects[0]).toMatchObject({ x: 158, y: 138 });
+  });
+
+  it("dragging a stroke never snaps (handwriting must not jump)", () => {
+    st().setSelection({ objectIds: [], strokeIds: [S.id] });
+    down(200, 120); // on S's line
+    move(207, 131); // +7, +11 — nowhere near a grid multiple
+    up(207, 131);
+    expect(st().board.strokes[0].points[0]).toEqual({ x: 157, y: 131 });
+  });
+
+  it("snapping is inert on non-squared paper", () => {
+    st().setBackground("lined");
+    st().select(O.id);
+    down(120, 105);
+    move(178, 143);
+    up(178, 143);
+    expect(st().board.objects[0]).toMatchObject({ x: 158, y: 138 });
   });
 });
 
