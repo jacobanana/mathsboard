@@ -87,6 +87,15 @@ describe("drawSelectionOutlines (the dashed frame)", () => {
   });
 });
 
+describe("selection chrome (host-drawn)", () => {
+  it("is suppressed only while the laser aims (the one declared opt-out)", () => {
+    st().select(O.id);
+    expect(selectController.suppressSelectionChrome!(st())).toBe(false);
+    st().setLaserMode(true);
+    expect(selectController.suppressSelectionChrome!(st())).toBe(true);
+  });
+});
+
 describe("click selection", () => {
   it("clicking an object selects exactly it", () => {
     down(120, 105); // on O, 15px away from S (outside its 9px halo)

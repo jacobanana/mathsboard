@@ -18,9 +18,11 @@
 //   - entries are tried in ARRAY ORDER, the first whose test() matches wins,
 //     preventDefault() is called, and dispatch stops.
 
-import { useBoardStore, DRAW_MODE_ORDER } from "@/board/store";
+import { useBoardStore, DRAW_MODES } from "@/board/store";
 import type { DrawMode } from "@/board/store";
 import { applyStyle, sizeBinding, sizeValue } from "@/board/styling";
+import { TOOL_UI } from "@/ui/toolSpecs";
+import type { ToolUiSpec } from "@/ui/toolSpecs";
 import {
   cancelPlacement,
   finishPlacement,
@@ -121,24 +123,12 @@ function cycleFillColor(): void {
   applyStyle("fill", FILL_PALETTE[(idx + 1) % FILL_PALETTE.length][1]);
 }
 
-/** Switch to the draw tool in the given mode (the shape keys, L / A / R /
- *  O / Y / N / Q / B / G, plus F for freehand). */
+/** Switch to the draw tool in the given mode (the per-mode keys from the
+ *  DRAW_MODES table: F for freehand, L / A / R / O / Y / N / Q / G ...). */
 function pickDrawMode(mode: DrawMode): void {
   const st = useBoardStore.getState();
   st.setTool("pen");
   st.setDrawMode(mode);
-}
-
-/** The draw key (3 / D): first press activates the draw tool in its current
- *  mode; pressing it AGAIN cycles through the drawing modes. */
-function drawOrCycle(): void {
-  const st = useBoardStore.getState();
-  if (st.tool !== "pen") {
-    st.setTool("pen");
-    return;
-  }
-  const i = DRAW_MODE_ORDER.indexOf(st.drawMode);
-  st.setDrawMode(DRAW_MODE_ORDER[(i + 1) % DRAW_MODE_ORDER.length]);
 }
 
 /** The ] / [ physical keys, layout-safe: prefer e.code, fall back to the
@@ -183,27 +173,54 @@ function nudgeSelection(c: ShortcutCtx): void {
   st.nudgeSelection(dx, dy);
 }
 
-/** The pointer key (1 / V): select the pointer, or — when it is ALREADY the
- *  active tool — toggle the laser pointer on/off. The laser is a mode of the
- *  pointer, not a tool of its own (canvas/interactions/laser.ts). */
-function selectOrToggleLaser(st: BoardState): void {
-  // Arriving at the pointer gives the NORMAL pointer; a second press arms the
-  // laser, a third disarms it. So "1" is always a reliable way back to select.
-  // The laser is a collaboration feature (like sharing) — only togglable in
-  // collab builds; otherwise the key just selects the pointer.
-  if (st.tool === "select" && COLLAB_ENABLED) st.toggleLaserMode();
-  else {
-    st.setTool("select");
-    st.setLaserMode(false);
-  }
-}
+// --- generated entries ------------------------------------------------------
+// The tool keys come from the TOOL_UI table (ui/toolSpecs.tsx) and the draw-
+// mode keys from DRAW_MODES (board/store.ts) — the same tables that drive the
+// dock and the options pill, so a tool's button, tooltip, pill and key can't
+// drift apart. Tool keys are bare single keys, so their relative order can't
+// change dispatch; the modes ride directly behind the draw tool for the help
+// page's reading order.
+
+const toolEntry = (t: ToolUiSpec): ShortcutSpec => ({
+  id: t.shortcut.id,
+  group: "tools",
+  keys: t.shortcut.keys,
+  label: t.shortcut.label,
+  test: (c) =>
+    bare(c) && t.shortcut.keys.some((combo) => combo[0].toLowerCase() === c.key),
+  run: (c) => {
+    if (t.shortcut.run) t.shortcut.run();
+    else c.st.setTool(t.tool);
+  },
+});
+
+const modeEntries = (): ShortcutSpec[] =>
+  DRAW_MODES.filter((m) => m.key != null).map((m) => ({
+    id: "mode-" + m.mode,
+    group: "tools",
+    keys: [[m.key!.toUpperCase()]],
+    label: m.hint ?? m.label,
+    test: (c) => bare(c) && c.key === m.key,
+    run: () => pickDrawMode(m.mode),
+  }));
+
+const toolAndModeEntries = (): ShortcutSpec[] =>
+  TOOL_UI.flatMap((t) => [
+    toolEntry(t),
+    ...(t.tool === "pen" ? modeEntries() : []),
+  ]);
 
 // --- the catalog ----------------------------------------------------------
 // ORDER IS BEHAVIOUR: dispatch runs the first matching entry, so keep the
 // precedence of the old inline handler (Save first; selection/history combos
 // before bare keys). Groups only affect help-page layout, not dispatch.
+//
+// Built LAZILY (first use) because the tool entries read TOOL_UI, whose
+// module transitively imports this one for keyHint — a module-init read
+// would be order-dependent; a first-keydown/first-render read never is.
 
-export const SHORTCUTS: ShortcutSpec[] = [
+function buildCatalog(): ShortcutSpec[] {
+  return [
   // Board — work even mid-text-edit; only an open modal defers them.
   {
     id: "saveAs",
@@ -396,143 +413,9 @@ export const SHORTCUTS: ShortcutSpec[] = [
     run: (c) => nudgeSelection(c),
   },
 
-  // Tools — bare keys. Digits mirror the toolbar order (1..6); the letters are
-  // mnemonic alternates (V/H match Figma & Excalidraw; Draw / Eraser / Text /
-  // Maths keep their initials).
-  {
-    id: "tool-select",
-    group: "tools",
-    keys: [["1"], ["V"]],
-    // Pressing the pointer key when it's already active toggles the laser
-    // pointer (like pressing Draw again cycles modes). See laser.ts.
-    label: "Select & move (press again for the laser pointer)",
-    test: (c) => bare(c) && (c.key === "1" || c.key === "v"),
-    run: (c) => selectOrToggleLaser(c.st),
-  },
-  {
-    id: "tool-pan",
-    group: "tools",
-    keys: [["2"], ["H"]],
-    label: "Pan the view",
-    test: (c) => bare(c) && (c.key === "2" || c.key === "h"),
-    run: (c) => c.st.setTool("pan"),
-  },
-  {
-    id: "tool-draw",
-    group: "tools",
-    keys: [["3"], ["D"]],
-    label: "Draw — press again to cycle the drawing modes",
-    test: (c) => bare(c) && (c.key === "3" || c.key === "d"),
-    run: () => drawOrCycle(),
-  },
-  // Draw modes — one key per shape (roadmap A2): pressing it activates the
-  // draw tool in that mode from anywhere.
-  {
-    id: "mode-free",
-    group: "tools",
-    keys: [["F"]],
-    label: "Freehand pen",
-    test: (c) => bare(c) && c.key === "f",
-    run: () => pickDrawMode("free"),
-  },
-  {
-    id: "mode-highlighter",
-    group: "tools",
-    keys: [["K"]],
-    label: "Highlighter (translucent marker)",
-    test: (c) => bare(c) && c.key === "k",
-    run: () => pickDrawMode("highlighter"),
-  },
-  {
-    id: "mode-line",
-    group: "tools",
-    keys: [["L"]],
-    label: "Line (clicks onto 15° directions)",
-    test: (c) => bare(c) && c.key === "l",
-    run: () => pickDrawMode("line"),
-  },
-  {
-    id: "mode-arrow",
-    group: "tools",
-    keys: [["A"]],
-    label: "Arrow (clicks onto 15° directions)",
-    test: (c) => bare(c) && c.key === "a",
-    run: () => pickDrawMode("arrow"),
-  },
-  {
-    id: "mode-rect",
-    group: "tools",
-    keys: [["R"]],
-    label: "Rectangle (square via the lock toggle)",
-    test: (c) => bare(c) && c.key === "r",
-    run: () => pickDrawMode("rect"),
-  },
-  {
-    id: "mode-ellipse",
-    group: "tools",
-    keys: [["O"]],
-    label: "Ellipse (circle via the lock toggle)",
-    test: (c) => bare(c) && c.key === "o",
-    run: () => pickDrawMode("ellipse"),
-  },
-  {
-    id: "mode-triangle",
-    group: "tools",
-    keys: [["Y"]],
-    label: "Triangle (drag corners to change its angles)",
-    test: (c) => bare(c) && c.key === "y",
-    run: () => pickDrawMode("triangle"),
-  },
-  {
-    id: "mode-polygon",
-    group: "tools",
-    keys: [["N"]],
-    label: "Polygon (n-gon — sides in the options pill)",
-    test: (c) => bare(c) && c.key === "n",
-    run: () => pickDrawMode("polygon"),
-  },
-  {
-    id: "mode-freepoly",
-    group: "tools",
-    keys: [["Q"]],
-    label: "Point-by-point polygon (click corners; close on the first one)",
-    test: (c) => bare(c) && c.key === "q",
-    run: () => pickDrawMode("freepoly"),
-  },
-  // Curve has no key: B is the background-colour cycle (see cycleFill). Curve
-  // is still reachable from the draw-mode options row.
-  {
-    id: "mode-angle",
-    group: "tools",
-    keys: [["G"]],
-    label: "Angle (drag to open it, like a protractor)",
-    test: (c) => bare(c) && c.key === "g",
-    run: () => pickDrawMode("angle"),
-  },
-  {
-    id: "tool-eraser",
-    group: "tools",
-    keys: [["4"], ["E"]],
-    label: "Eraser",
-    test: (c) => bare(c) && (c.key === "4" || c.key === "e"),
-    run: (c) => c.st.setTool("eraser"),
-  },
-  {
-    id: "tool-text",
-    group: "tools",
-    keys: [["5"], ["T"]],
-    label: "Text",
-    test: (c) => bare(c) && (c.key === "5" || c.key === "t"),
-    run: (c) => c.st.setTool("text"),
-  },
-  {
-    id: "tool-math",
-    group: "tools",
-    keys: [["6"], ["M"]],
-    label: "Maths notation",
-    test: (c) => bare(c) && (c.key === "6" || c.key === "m"),
-    run: (c) => c.st.setTool("math"),
-  },
+  // Tools + draw modes — bare keys, generated from the TOOL_UI and
+  // DRAW_MODES tables (see "generated entries" above).
+  ...toolAndModeEntries(),
 
   // Insert. ("6" moved to the maths tool when it became the sixth dock mode;
   // "0" is the digit-row stand-in since 7 belongs to Picture.)
@@ -612,7 +495,15 @@ export const SHORTCUTS: ShortcutSpec[] = [
     test: (c) => bare(c) && c.e.key === "?",
     run: (c) => c.host.openHelp(),
   },
-];
+  ];
+}
+
+let CATALOG: ShortcutSpec[] | null = null;
+
+/** The full shortcut catalog (built once, on first use). */
+export function shortcutCatalog(): ShortcutSpec[] {
+  return (CATALOG ??= buildCatalog());
+}
 
 // --- dispatch -------------------------------------------------------------
 
@@ -638,7 +529,7 @@ export function handleShortcut(e: KeyboardEvent, host: ShortcutHost): boolean {
       ) != null,
     host,
   };
-  for (const s of SHORTCUTS) {
+  for (const s of shortcutCatalog()) {
     if (editing && !s.whileEditing) continue;
     if (!s.test(ctx)) continue;
     e.preventDefault();
@@ -654,7 +545,7 @@ export function handleShortcut(e: KeyboardEvent, host: ShortcutHost): boolean {
  *  never restate a shortcut: e.g. "3 / D", "Ctrl+Shift+S", "6 / M". Empty
  *  string for an unknown / build-gated id, so callers can interpolate freely. */
 export function keyHint(id: string): string {
-  const spec = SHORTCUTS.find((s) => s.id === id);
+  const spec = shortcutCatalog().find((s) => s.id === id);
   if (!spec) return "";
   return spec.keys.map((combo) => combo.join("+")).join(" / ");
 }
@@ -689,6 +580,6 @@ export function shortcutsByGroup(): {
   return SHORTCUT_GROUP_ORDER.map((group) => ({
     group,
     label: SHORTCUT_GROUP_LABELS[group],
-    items: SHORTCUTS.filter((s) => s.group === group),
+    items: shortcutCatalog().filter((s) => s.group === group),
   })).filter((g) => g.items.length > 0);
 }

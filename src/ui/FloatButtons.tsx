@@ -52,15 +52,20 @@ export function FloatButtons({
   container,
   onEditSelected,
 }: FloatButtonsProps): JSX.Element | null {
-  const tool = useBoardStore((s) => s.tool);
   const camera = useBoardStore((s) => s.camera);
   const selection = useBoardStore((s) => s.selection);
   const objects = useBoardStore((s) => s.board.objects);
   const strokes = useBoardStore((s) => s.board.strokes);
+  const laserMode = useBoardStore((s) => s.laserMode);
+  const editingId = useBoardStore((s) => s.editingId);
   const deleteSelection = useBoardStore((s) => s.deleteSelection);
 
   if (container == null) return null;
-  if (tool !== "select") return null;
+  // Chrome follows the SELECTION, not the tool: the bar shows in every tool
+  // (Delete and arrow-nudge already worked everywhere, so the affordances
+  // should too). Two declared exceptions: the laser is aiming, not selecting;
+  // and an open in-place editor is its own chrome (the bar would sit on it).
+  if (laserMode || editingId != null) return null;
   if (selection.objectIds.length + selection.strokeIds.length === 0) return null;
 
   // Combined bounding box of everything selected (world coords).

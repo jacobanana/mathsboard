@@ -98,4 +98,14 @@ export interface InteractionController {
   onPointerLeave?(c: InputCtx): void;
   /** Contribute a preview overlay, drawn after the scene in world space. */
   drawOverlay?(kit: OverlayKit, c: InputCtx): void;
+  /**
+   * Selection chrome FOLLOWS THE SELECTION: the host draws the dashed
+   * outlines for every tool (right after the scene, under the controller's
+   * own overlay). A tool opts OUT by returning true here while its state
+   * says so — the laser aims instead of selecting, so the select controller
+   * suppresses the chrome in laser mode. Default: never suppressed.
+   */
+  suppressSelectionChrome?(
+    st: ReturnType<InputCtx["store"]["getState"]>,
+  ): boolean;
 }

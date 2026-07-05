@@ -20,7 +20,6 @@
 
 import { hitTest } from "@/board/geometry";
 import { createObject } from "@/board/commands";
-import { drawSelectionOutlines } from "@/canvas/interactions/select";
 import type { AnyBoardObject, ToolName } from "@/board/types";
 import type {
   InputCtx,
@@ -138,11 +137,9 @@ export function makeTapEditController(
       createAndEdit(c, spec.create(st, { x: pt.wx, y: pt.wy }));
     },
 
-    // A selected (but not actively edited) object reads as editable via its
-    // dashed frame, like a shape in the draw tool; plus the rubber-band
-    // rectangle while dragging a new box.
-    drawOverlay(kit, c) {
-      drawSelectionOutlines(kit, c.store.getState());
+    // The rubber-band rectangle while dragging a new box. (The dashed frame
+    // that marks a selected object as editable is host-drawn chrome.)
+    drawOverlay(kit, _c) {
       if (!pending || !isDrag(pending)) return;
       const { back, camera, theme } = kit;
       const x = Math.min(pending.wx, pending.cur!.x);

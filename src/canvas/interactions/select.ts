@@ -790,18 +790,20 @@ export const selectController: InteractionController = {
     editObjectAt(e, c);
   },
 
-  // Selection outlines + resize handles + vertex handles + live lasso, on the
+  // The dashed outlines are HOST-drawn for every tool (chrome follows the
+  // selection); in laser mode the whole chrome is suppressed — the laser aims
+  // instead of selecting (the underlying selection is preserved, just hidden).
+  suppressSelectionChrome: (st) => st.laserMode,
+
+  // Resize handles + vertex handles + rotate lollipop + live lasso, on the
   // template layer (under the committed ink), exactly as renderBack drew them.
   drawOverlay(kit, c) {
     const st = c.store.getState();
-    // Laser mode: draw the aiming comet / framed area instead of the selection
-    // chrome (the underlying selection is preserved, just hidden while aiming).
+    // Laser mode: draw the aiming comet / framed area instead.
     if (st.laserMode) return drawLaserOverlay(kit);
     const { camera, theme } = kit;
     const tctx = kit.back;
     const pad = 8 / camera.scale;
-
-    drawSelectionOutlines(kit, st);
 
     // Resize handles for a single selected canvas object (constant on-screen
     // size). Drawn on the same padded box as the selection outline. Skipped

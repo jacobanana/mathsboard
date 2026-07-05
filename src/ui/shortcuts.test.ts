@@ -10,7 +10,7 @@ import "@/tools";
 import {
   handleShortcut,
   keyHint,
-  SHORTCUTS,
+  shortcutCatalog,
   shortcutsByGroup,
   type ShortcutHost,
 } from "@/ui/shortcuts";
@@ -501,9 +501,10 @@ describe("active-tool options", () => {
 
 describe("catalog invariants (the help page's single source of truth)", () => {
   it("every entry has a unique id, at least one key combo, and a label", () => {
-    const ids = SHORTCUTS.map((s) => s.id);
+    const catalog = shortcutCatalog();
+    const ids = catalog.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const s of SHORTCUTS) {
+    for (const s of catalog) {
       expect(s.keys.length, s.id).toBeGreaterThan(0);
       expect(s.keys.every((combo) => combo.length > 0), s.id).toBe(true);
       expect(s.label, s.id).not.toBe("");
@@ -520,6 +521,6 @@ describe("catalog invariants (the help page's single source of truth)", () => {
     const groups = shortcutsByGroup();
     expect(groups.every((g) => g.items.length > 0)).toBe(true);
     const total = groups.reduce((n, g) => n + g.items.length, 0);
-    expect(total).toBe(SHORTCUTS.length);
+    expect(total).toBe(shortcutCatalog().length);
   });
 });

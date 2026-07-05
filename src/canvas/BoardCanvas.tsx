@@ -32,6 +32,7 @@ import {
 } from "@/canvas/editors";
 import { registerExportLayers } from "@/canvas/export";
 import { getInteraction } from "@/canvas/interactions";
+import { drawSelectionOutlines } from "@/canvas/interactions/select";
 import * as viewport from "@/canvas/viewport";
 import { theme } from "@/styles/theme";
 import type { AnyBoardObject } from "@/board/types";
@@ -157,8 +158,10 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     [store, requestRender],
   );
 
-  // --- draw: scene (grid + objects + committed ink), then the controller's
-  // preview overlay in the same camera space ---------------------------------
+  // --- draw: scene (grid + objects + committed ink), then the selection
+  // chrome (host-drawn — it follows the selection in EVERY tool unless the
+  // controller opts out, e.g. the laser), then the controller's preview
+  // overlay in the same camera space ------------------------------------------
   const renderNow = useCallback(() => {
     const tCanvas = tCanvasRef.current;
     const iCanvas = iCanvasRef.current;
@@ -168,11 +171,10 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     if (!tctx || !ictx) return;
     const st = store.getState();
     renderScene(tctx, ictx, viewRef.current, st);
+    const kit = { back: tctx, ink: ictx, camera: st.camera, theme };
     const ctrl = activeRef.current ?? getInteraction(st.tool);
-    ctrl?.drawOverlay?.(
-      { back: tctx, ink: ictx, camera: st.camera, theme },
-      inputCtx,
-    );
+    if (!ctrl?.suppressSelectionChrome?.(st)) drawSelectionOutlines(kit, st);
+    ctrl?.drawOverlay?.(kit, inputCtx);
   }, [store, inputCtx]);
   renderNowRef.current = renderNow;
 

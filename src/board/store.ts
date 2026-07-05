@@ -67,21 +67,50 @@ const EMPTY_SELECTION: Selection = { objectIds: [], strokeIds: [] };
  */
 export type DrawMode = "free" | "highlighter" | "freepoly" | ShapeKind;
 
-/** Every draw mode in its UI order — the options pill's row and the cycle
- *  the draw shortcut (3 / D) steps through when pressed again. */
-export const DRAW_MODE_ORDER: DrawMode[] = [
-  "free",
-  "highlighter",
-  "line",
-  "arrow",
-  "rect",
-  "ellipse",
-  "triangle",
-  "polygon",
-  "freepoly",
-  "curve",
-  "angle",
+/**
+ * THE draw-mode table, in UI order. One list drives everything mode-shaped:
+ * the options pill's mode row (label + tooltip; icons live UI-side in
+ * ui/toolSpecs), the `mode-<x>` shortcut entries (key + help label,
+ * generated in ui/shortcuts.ts) and the cycle the draw key (3 / D) steps
+ * through. Adding a draw mode = one row here (+ its icon and geometry).
+ */
+export interface DrawModeSpec {
+  mode: DrawMode;
+  /** Pill tooltip / aria-label. */
+  label: string;
+  /** Bare shortcut key (lowercase), or null for none (curve: B is taken by
+   *  the background-colour cycle; it stays reachable from the pill). */
+  key: string | null;
+  /** Help-page description (defaults to `label`). */
+  hint?: string;
+}
+
+export const DRAW_MODES: DrawModeSpec[] = [
+  { mode: "free", label: "Freehand", key: "f", hint: "Freehand pen" },
+  {
+    mode: "highlighter",
+    label: "Highlighter",
+    key: "k",
+    hint: "Highlighter (translucent marker)",
+  },
+  { mode: "line", label: "Line", key: "l", hint: "Line (clicks onto 15° directions)" },
+  { mode: "arrow", label: "Arrow", key: "a", hint: "Arrow (clicks onto 15° directions)" },
+  { mode: "rect", label: "Rectangle", key: "r", hint: "Rectangle (square via the lock toggle)" },
+  { mode: "ellipse", label: "Ellipse", key: "o", hint: "Ellipse (circle via the lock toggle)" },
+  { mode: "triangle", label: "Triangle", key: "y", hint: "Triangle (drag corners to change its angles)" },
+  { mode: "polygon", label: "Polygon", key: "n", hint: "Polygon (n-gon — sides in the options pill)" },
+  {
+    mode: "freepoly",
+    label: "Point-by-point polygon",
+    key: "q",
+    hint: "Point-by-point polygon (click corners; close on the first one)",
+  },
+  { mode: "curve", label: "Curve", key: null },
+  { mode: "angle", label: "Angle", key: "g", hint: "Angle (drag to open it, like a protractor)" },
 ];
+
+/** The cycle order (derived — never a second hand-kept list). */
+export const DRAW_MODE_ORDER: DrawMode[] = DRAW_MODES.map((m) => m.mode);
 
 /**
  * How a shared board was joined, for the `board_joined` analytics event:

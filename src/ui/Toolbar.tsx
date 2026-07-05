@@ -31,18 +31,12 @@
 import { isSavedBoard, useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
 import { COLLAB_ENABLED } from "@/config";
-import type { ToolName } from "@/board/types";
 import { OptionsStrip } from "@/ui/OptionsStrip";
 import { OverflowMenu } from "@/ui/OverflowMenu";
 import { keyHint } from "@/ui/shortcuts";
+import { TOOL_UI } from "@/ui/toolSpecs";
 import {
-  DrawIcon,
-  TextIcon,
-  MathIcon,
-  EraserIcon,
   ImageIcon,
-  SelectIcon,
-  HandIcon,
   UndoIcon,
   RedoIcon,
   PlusIcon,
@@ -69,7 +63,6 @@ export interface ToolbarCallbacks {
 export function Toolbar(props: ToolbarCallbacks): JSX.Element {
   const tool = useBoardStore((s) => s.tool);
   const setTool = useBoardStore((s) => s.setTool);
-  const setLaserMode = useBoardStore((s) => s.setLaserMode);
   const undo = useBoardStore((s) => s.undo);
   const redo = useBoardStore((s) => s.redo);
   const canUndo = useBoardStore((s) => s.canUndo);
@@ -81,7 +74,6 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
   const collabStatus = useCollabStore((s) => s.status);
   const peerCount = useCollabStore((s) => s.peers.length);
 
-  const isMode = (t: ToolName) => tool === t;
   // Show the board name whenever it's a saved board — a SHARED board is named
   // in the online store and every collaborator sees that name (even though they
   // have no local `sourceId` for it).
@@ -175,78 +167,28 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
       <OptionsStrip />
 
       {/* --- bottom dock: the tools --------------------------------------
-          Icon-only: the title tooltips + aria-labels carry the names. */}
+          Icon-only (title tooltips + aria-labels carry the names), MAPPED
+          from the TOOL_UI table — a new dock tool is a spec in
+          ui/toolSpecs.tsx, not a hand-written button here. */}
       <nav id="dock" aria-label="Tools">
         <div className="island dock-inner">
-          <button
-            className={"btn small" + (isMode("select") ? " active" : "")}
-            id="selectBtn"
-            title={`Select & move (${keyHint("tool-select")}) — click a shape or drawing, drag empty space to lasso, ${keyHint("selectAll")} for all`}
-            aria-label="Select"
-            onClick={() => {
-              setTool("select");
-              setLaserMode(false); // the arrow always returns the normal pointer
-            }}
-          >
-            <span className="ico">
-              <SelectIcon />
-            </span>
-          </button>
-          <button
-            className={"btn small" + (isMode("pan") ? " active" : "")}
-            id="panBtn"
-            title={`Move the view (${keyHint("tool-pan")})`}
-            aria-label="Pan"
-            onClick={() => setTool("pan")}
-          >
-            <span className="ico">
-              <HandIcon />
-            </span>
-          </button>
-          <button
-            className={"btn small" + (isMode("pen") ? " active" : "")}
-            id="drawBtn"
-            title={`Draw (${keyHint("tool-draw")} — press again to cycle the modes)`}
-            aria-label="Draw"
-            onClick={() => setTool("pen")}
-          >
-            <span className="ico" id="drawIco">
-              <DrawIcon />
-            </span>
-          </button>
-          <button
-            className={"btn small" + (isMode("eraser") ? " active" : "")}
-            id="eraserBtn"
-            title={`Eraser (${keyHint("tool-eraser")})`}
-            aria-label="Eraser"
-            onClick={() => setTool("eraser")}
-          >
-            <span className="ico" id="eraserIco">
-              <EraserIcon />
-            </span>
-          </button>
-          <button
-            className={"btn small" + (isMode("text") ? " active" : "")}
-            id="textBtn"
-            title={`Type text (${keyHint("tool-text")})`}
-            aria-label="Text"
-            onClick={() => setTool("text")}
-          >
-            <span className="ico" id="textIco">
-              <TextIcon />
-            </span>
-          </button>
-          <button
-            className={"btn small" + (isMode("math") ? " active" : "")}
-            id="mathBtn"
-            title={`Type maths — fractions, powers, roots (${keyHint("tool-math")})`}
-            aria-label="Maths notation"
-            onClick={() => setTool("math")}
-          >
-            <span className="ico" id="mathIco">
-              <MathIcon />
-            </span>
-          </button>
+          {TOOL_UI.map((t) => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.tool}
+                className={"btn small" + (tool === t.tool ? " active" : "")}
+                id={t.domId}
+                title={t.title(keyHint(t.shortcut.id))}
+                aria-label={t.label}
+                onClick={() => (t.pick ? t.pick() : setTool(t.tool))}
+              >
+                <span className="ico">
+                  <Icon />
+                </span>
+              </button>
+            );
+          })}
 
           {/* Picture insert — a first-class button since adding a photo or
               diagram is a common action (cf. Excalidraw/Miro). Sits with the

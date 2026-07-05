@@ -30,7 +30,6 @@ import { snapPt } from "@/board/geometry";
 import { useBoardStore } from "@/board/store";
 import type { DrawMode } from "@/board/store";
 import { penController, highlighterController } from "@/canvas/interactions/brush";
-import { drawSelectionOutlines } from "@/canvas/interactions/select";
 import {
   hasAngles,
   isClosed,
@@ -472,10 +471,8 @@ export const drawController: InteractionController = {
       brush.drawOverlay!(kit, c);
       return;
     }
-    // Freshly committed shapes stay selected while the draw tool is active:
-    // their frame marks them as editable (shared with the select controller).
-    drawSelectionOutlines(kit, st);
-
+    // (Freshly committed shapes stay selected while the draw tool is active;
+    // their editable-marking frame is HOST-drawn chrome now.)
     if (placementMode(mode) && placing) {
       // The committed part of the shape renders as the REAL object via the
       // scene (creation is editing). The overlay adds only the session
