@@ -41,7 +41,6 @@ import {
 } from "@/board/resize";
 import { getTool } from "@/tools/registry";
 import type { VertexCapability } from "@/tools/registry";
-import type { DrawMode } from "@/board/store";
 import { niceAngleTarget } from "@/tools/shape/geometry";
 import {
   laserDown,
@@ -293,12 +292,12 @@ function anchorOrigin(
 
 /**
  * Double-click edit, shared with the pan controller. EDITING AN OBJECT MEANS
- * EDITING IT WITH ITS OWN TOOL: switch to the tool that draws this kind and
- * keep the object selected, so the options pill styles it live (rather than the
- * select tool carrying a styling panel). Free text / maths also re-open their
- * in-place overlay editor; a pencil stroke edits in the freehand pen tool.
- * Widget/canvas tools with a settings dialog (numberline, clock, ...) have no
- * drawing tool of their own, so they still route to that dialog.
+ * EDITING IT WITH ITS OWN TOOL: the object's registry entry declares the
+ * route (`editWith` — which tool, which draw sub-mode, whether its in-place
+ * editor opens, whether it's a double-click-to-exit session) and this just
+ * applies it, keeping the object selected so the options pill styles it live.
+ * Types without a route (numberline, clock, ...) have no drawing tool of
+ * their own and go to their settings Dialog instead.
  */
 export function editObjectAt(e: MouseEvent, c: InputCtx): void {
   const st = c.store.getState();
@@ -306,12 +305,12 @@ export function editObjectAt(e: MouseEvent, c: InputCtx): void {
   const w = c.toWorld(pp.x, pp.y);
 
   // Strokes sit above objects on the ink layer (as in single-click selection),
-  // so a double-click on a pencil stroke wins: edit it in the freehand pen tool.
+  // so a double-click on a pencil stroke wins. Strokes aren't registry
+  // objects; their route is the pen tool's built-in rule: edit with the brush
+  // that drew them (highlighter vs freehand), as an edit session.
   const stroke = hitTestStroke(st.board.strokes, w.x, w.y);
   if (stroke) {
     st.setSelection({ objectIds: [], strokeIds: [stroke.id] });
-    // Edit it with the tool that drew it: a highlighter stroke in highlighter
-    // mode, an ordinary pencil stroke in freehand — so the pill styles it live.
     st.setDrawMode(stroke.mode === "highlighter" ? "highlighter" : "free");
     st.setTool("pen");
     st.setDrawEditMode(true); // double-click again (anywhere) to exit
@@ -321,21 +320,17 @@ export function editObjectAt(e: MouseEvent, c: InputCtx): void {
   const hit = hitTest(st.board.objects, w.x, w.y);
   if (!hit) return;
   st.select(hit.id);
-  if (hit.type === "text") {
-    st.setTool("text");
-    c.editor.open(hit, false);
-  } else if (hit.type === "mathtext") {
-    st.setTool("math");
-    c.mathEditor.open(hit, false);
-  } else if (hit.type === "shape") {
-    // Match the draw mode to the shape's kind so the pill shows the right
-    // controls (fill for closed shapes, sides for polygons, ...).
-    st.setDrawMode(hit.kind as DrawMode);
-    st.setTool("pen");
-    st.setDrawEditMode(true); // double-click again (anywhere) to exit
-  } else {
-    c.editObject(hit);
+  const t = getTool(hit.type);
+  const route =
+    t && t.kind === "canvas" ? t.editWith?.(hit as never) : undefined;
+  if (!route) {
+    c.editObject(hit); // the settings-Dialog fallback
+    return;
   }
+  if (route.drawMode) st.setDrawMode(route.drawMode);
+  st.setTool(route.tool); // clears any stale edit session…
+  if (route.editSession) st.setDrawEditMode(true); // …before arming this one
+  if (route.inPlace) c.editors.open(hit, false);
 }
 
 /**

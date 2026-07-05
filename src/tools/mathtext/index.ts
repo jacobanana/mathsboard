@@ -67,6 +67,9 @@ export const mathTextTool = defineCanvasTool<MathTextParams>({
     };
   },
 
+  // Double-click: edit with the maths tool, in the in-place MathLive overlay.
+  editWith: () => ({ tool: "math", inPlace: true }),
+
   // Live styling (options pill + shortcuts, via board/styling.ts). The maths
   // "size" IS the uniform resize scale expressed in font px (MATH_BASE_PX =
   // scale 1), so the size channel maps px <-> box exactly like a handle-resize.

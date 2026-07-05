@@ -303,10 +303,10 @@ describe("double-click edit routing", () => {
     const editedInPlace: string[] = [];
     const editedViaDialog: string[] = [];
     const spyCtx = fakeInputCtx({
-      editor: {
+      editors: {
         open: (obj) => editedInPlace.push(obj.id),
-        commit: () => {},
-        isOpen: () => false,
+        commitAll: () => {},
+        anyOpen: () => false,
       },
       editObject: (obj) => editedViaDialog.push(obj.id),
     });
@@ -329,9 +329,7 @@ describe("double-click edit routing", () => {
       stroke: "#000", strokeWidth: 3, fill: "none", nw: 60, nh: 40, pts: [],
     };
     freshBoard({ objects: [T, Sh] });
-    const spyCtx = fakeInputCtx({
-      editor: { open: () => {}, commit: () => {}, isOpen: () => false },
-    });
+    const spyCtx = fakeInputCtx();
 
     editObjectAt(pointer(410, 310), spyCtx); // the text object
     expect(st().tool).toBe("text");
@@ -343,6 +341,27 @@ describe("double-click edit routing", () => {
     expect(st().drawMode).toBe("rect");
     expect(st().selection.objectIds).toEqual([Sh.id]);
     expect(st().drawEditMode).toBe(true); // double-click again to exit
+  });
+
+  it("routes a maths object to the maths tool's in-place editor", () => {
+    const M: AnyBoardObject = {
+      id: newId(), type: "mathtext", x: 400, y: 300, w: 200, h: 60,
+      latex: "1+1", natW: 200, natH: 60, color: "#000",
+    };
+    freshBoard({ objects: [M] });
+    const opened: string[] = [];
+    const spyCtx = fakeInputCtx({
+      editors: {
+        open: (obj) => opened.push(obj.id),
+        commitAll: () => {},
+        anyOpen: () => false,
+      },
+    });
+
+    editObjectAt(pointer(410, 310), spyCtx);
+    expect(st().tool).toBe("math");
+    expect(st().selection.objectIds).toEqual([M.id]);
+    expect(opened).toEqual([M.id]);
   });
 
   it("edits a pencil stroke in the freehand pen tool", () => {

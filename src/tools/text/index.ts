@@ -43,6 +43,9 @@ export const textTool = defineCanvasTool<TextParams>({
 
   size: (p) => textSizeOf(p.text, p.size, p.boxW),
 
+  // Double-click: edit with the text tool, in the in-place textarea overlay.
+  editWith: () => ({ tool: "text", inPlace: true }),
+
   // Live styling (options pill + shortcuts, via board/styling.ts). The size
   // channel re-measures the box — keeping any fixed wrap width (boxW) so a
   // dragged text box doesn't revert to auto-size.

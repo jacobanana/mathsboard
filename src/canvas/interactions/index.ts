@@ -32,4 +32,5 @@ export type {
   OverlayKit,
   Pt,
   InPlaceEditorHandle,
+  EditorsHandle,
 } from "@/canvas/interactions/types";
