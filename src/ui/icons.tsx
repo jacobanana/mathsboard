@@ -54,6 +54,33 @@ export function MathIcon(): JSX.Element {
   );
 }
 
+/** A shining point — the laser pointer. Filled centre dot with radiating
+ *  beams, so it reads as "point / emit" rather than a plain target. */
+export function LaserIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none" />
+      <path d="M12 3v2.4" />
+      <path d="M12 18.6V21" />
+      <path d="M3 12h2.4" />
+      <path d="M18.6 12H21" />
+      <path d="m5.6 5.6 1.7 1.7" />
+      <path d="m16.7 16.7 1.7 1.7" />
+      <path d="m18.4 5.6-1.7 1.7" />
+      <path d="m7.3 16.7-1.7 1.7" />
+    </svg>
+  );
+}
+
+/** A dashed marquee box — the laser's "frame an area to zoom everyone" toggle. */
+export function FrameIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="4 3.5" />
+    </svg>
+  );
+}
+
 export function ImageIcon(): JSX.Element {
   return (
     <svg {...svgProps}>
@@ -213,6 +240,195 @@ export function EyeOffIcon(): JSX.Element {
       <path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3.5 7 10 7a9.1 9.1 0 0 0 5.39-1.61" />
       <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
       <line x1="2" y1="2" x2="22" y2="22" />
+    </svg>
+  );
+}
+
+// --- draw-mode + arrange icons (shape tool, roadmap A2/A5) ------------------
+
+/** Freehand mode: a loose scribble. */
+export function ScribbleIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M3 17c2.5-6 4.5-8.5 6-7.5s-1.5 8 .5 8.5 4-9.5 6-8.5-.5 8 1.5 8.5 3-3 4-5" />
+    </svg>
+  );
+}
+
+export function LineIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <line x1="5" y1="19" x2="19" y2="5" />
+    </svg>
+  );
+}
+
+export function ArrowIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <line x1="5" y1="19" x2="19" y2="5" />
+      <polyline points="11 5 19 5 19 13" />
+    </svg>
+  );
+}
+
+export function RectIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="4" y="6" width="16" height="12" rx="1" />
+    </svg>
+  );
+}
+
+export function EllipseIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <ellipse cx="12" cy="12" rx="8.5" ry="6.5" />
+    </svg>
+  );
+}
+
+export function TriangleIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M12 4.5 20.5 19h-17Z" />
+    </svg>
+  );
+}
+
+/** A hexagon standing in for "any regular polygon". */
+export function PolygonIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9Z" />
+    </svg>
+  );
+}
+
+/** An irregular polygon with corner dots — the point-by-point polygon. */
+export function FreePolyIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M5 9 12 4l8 4-2 9-9 4Z" />
+      <circle cx="5" cy="9" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="4" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="20" cy="8" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="17" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="21" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** A square — the rectangle mode's aspect lock. */
+export function SquareIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="5" y="5" width="14" height="14" rx="1" />
+    </svg>
+  );
+}
+
+/** A circle — the ellipse mode's aspect lock. */
+export function CircleIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <circle cx="12" cy="12" r="7.5" />
+    </svg>
+  );
+}
+
+/** Rotate anticlockwise by a step. */
+export function RotateLeftIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
+  );
+}
+
+/** Rotate clockwise by a step. */
+export function RotateRightIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+    </svg>
+  );
+}
+
+/** A Bézier curve with its two control handles. */
+export function CurveIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M4 19C7 6 17 18 20 5" />
+      <circle cx="4" cy="19" r="1.4" />
+      <circle cx="20" cy="5" r="1.4" />
+    </svg>
+  );
+}
+
+/** Two rays and an arc — the angle tool. */
+export function AngleIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M4 19h16" />
+      <path d="M4 19 15 6" />
+      <path d="M11 19a7.5 7.5 0 0 0-2.5-5.5" />
+    </svg>
+  );
+}
+
+/** A magnet — the grid-snapping toggle. */
+export function SnapIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="m6 15-4-4 6.75-6.77a7.79 7.79 0 0 1 11 11L13 22l-4-4 6.39-6.36a2.14 2.14 0 0 0-3-3L6 15" />
+      <path d="m5 8 4 4" />
+      <path d="m12 15 4 4" />
+    </svg>
+  );
+}
+
+export function BringToFrontIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="8" y="8" width="8" height="8" rx="2" />
+      <path d="M4 10a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2" />
+      <path d="M14 20a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2" />
+    </svg>
+  );
+}
+
+export function SendToBackIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="14" y="14" width="8" height="8" rx="2" />
+      <rect x="2" y="2" width="8" height="8" rx="2" />
+      <path d="M7 14v1a2 2 0 0 0 2 2h1" />
+      <path d="M14 7h1a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+export function GroupIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+      <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+      <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+      <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+      <rect x="7" y="7" width="6" height="6" rx="1" />
+      <rect x="12" y="12" width="5" height="5" rx="1" />
+    </svg>
+  );
+}
+
+export function UngroupIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="4" y="4" width="7" height="7" rx="1" />
+      <rect x="13" y="13" width="7" height="7" rx="1" />
     </svg>
   );
 }

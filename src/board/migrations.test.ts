@@ -87,6 +87,13 @@ describe("revealFromFill", () => {
     expect(revealFromFill(objs)).toBe(objs);
   });
 
+  it("ignores STRING fills — the shape tool's background colour, not the flag", () => {
+    const objs = [anObject({ type: "shape", fill: "none" })];
+    expect(revealFromFill(objs)).toBe(objs);
+    const mixed = revealFromFill([anObject({ fill: true }), ...objs]);
+    expect(mixed[1].fill).toBe("none"); // untouched alongside a real migration
+  });
+
   it("re-reserves the box for a legacy hidden 'grow-when-filled' tool", () => {
     // A chunking saved HIDDEN carried the short 86px box; the tool now reserves
     // the full ladder height always (34 + 2*52 + 54 = 192 for 196 ÷ 14), so the

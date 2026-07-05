@@ -22,19 +22,33 @@ import {
   useBoardStore,
   activeTextObjectId,
   activeMathObjectId,
+  activeShapeObjectId,
+  DRAW_MODE_ORDER,
 } from "@/board/store";
+import type { DrawMode } from "@/board/store";
+import {
+  cancelPlacement,
+  finishPlacement,
+  placementActive,
+} from "@/canvas/interactions/draw";
 import { useUiStore } from "@/ui/uiStore";
 import {
+  arrangeSelection,
   copySelection,
   duplicateSelection,
+  groupSelection,
   pasteClipboard,
+  ungroupSelection,
 } from "@/board/commands";
+import type { ArrangeAction } from "@/board/commands";
 import { textSizeOf } from "@/canvas/drawHelpers";
 import { paramsOf, sizedBox } from "@/board/sizing";
 import { MATH_BASE_PX } from "@/tools/mathtext";
 import { COLLAB_ENABLED } from "@/config";
 import {
   PALETTE,
+  FILL_PALETTE,
+  LASER_PALETTE,
   PEN_SIZE_RANGE,
   TEXT_SIZE_RANGE,
   MATH_SIZE_RANGE,
@@ -99,16 +113,66 @@ const bare = (c: ShortcutCtx): boolean => !c.mod && !c.e.altKey && !c.inField;
 
 // --- colour + size (active-tool options) ----------------------------------
 
-/** Cycle the draw colour to the next palette entry (C). Also recolours a live
- *  text or maths object, matching a swatch click. */
+/** Cycle the colour of whatever palette is active (C). In laser mode that's the
+ *  laser's own palette; otherwise the draw palette — also recolouring a live
+ *  text or maths object, or a selected shape's border, matching a swatch click. */
 function cycleColor(): void {
   const st = useBoardStore.getState();
+  // Laser mode shows its own vivid palette; C cycles that instead.
+  if (st.laserMode) {
+    const li = LASER_PALETTE.findIndex(([, hex]) => hex === st.laserColor);
+    st.setLaserColor(LASER_PALETTE[(li + 1) % LASER_PALETTE.length][1]);
+    return;
+  }
   const idx = PALETTE.findIndex(([, hex]) => hex === st.color);
   const [, next] = PALETTE[(idx + 1) % PALETTE.length];
   st.setColor(next);
   const tid = activeTextObjectId(st) ?? activeMathObjectId(st);
   if (tid != null) st.updateObject(tid, { color: next });
+  const sid = activeShapeObjectId(st);
+  if (sid != null) st.updateObject(sid, { stroke: next });
 }
+
+/** Cycle the BACKGROUND (fill) palette (B). Sets the default fill for new
+ *  shapes and recolours a selected shape's background, matching the fill
+ *  swatch. Includes the "none" (transparent) entry. */
+function cycleFillColor(): void {
+  const st = useBoardStore.getState();
+  const idx = FILL_PALETTE.findIndex(([, hex]) => hex === st.fillColor);
+  const next = FILL_PALETTE[(idx + 1) % FILL_PALETTE.length][1];
+  st.setFillColor(next);
+  const sid = activeShapeObjectId(st);
+  if (sid != null) st.updateObject(sid, { fill: next });
+}
+
+/** Switch to the draw tool in the given mode (the shape keys, L / A / R /
+ *  O / Y / N / Q / B / G, plus F for freehand). */
+function pickDrawMode(mode: DrawMode): void {
+  const st = useBoardStore.getState();
+  st.setTool("pen");
+  st.setDrawMode(mode);
+}
+
+/** The draw key (3 / D): first press activates the draw tool in its current
+ *  mode; pressing it AGAIN cycles through the drawing modes. */
+function drawOrCycle(): void {
+  const st = useBoardStore.getState();
+  if (st.tool !== "pen") {
+    st.setTool("pen");
+    return;
+  }
+  const i = DRAW_MODE_ORDER.indexOf(st.drawMode);
+  st.setDrawMode(DRAW_MODE_ORDER[(i + 1) % DRAW_MODE_ORDER.length]);
+}
+
+/** The ] / [ physical keys, layout-safe: prefer e.code, fall back to the
+ *  produced character (some layouts shift them to } / {). */
+const bracketRight = (e: KeyboardEvent): boolean =>
+  e.code === "BracketRight" || e.key === "]" || e.key === "}";
+const bracketLeft = (e: KeyboardEvent): boolean =>
+  e.code === "BracketLeft" || e.key === "[" || e.key === "{";
+
+const arrange = (action: ArrangeAction) => () => arrangeSelection(action);
 
 /** Nudge the active tool's size one step (+/-), clamped to that tool's range.
  *  No-op unless a size-bearing tool (pen / eraser / text / maths) is active. */
@@ -170,6 +234,21 @@ function nudgeSelection(c: ShortcutCtx): void {
   st.nudgeSelection(dx, dy);
 }
 
+/** The pointer key (1 / V): select the pointer, or — when it is ALREADY the
+ *  active tool — toggle the laser pointer on/off. The laser is a mode of the
+ *  pointer, not a tool of its own (canvas/interactions/laser.ts). */
+function selectOrToggleLaser(st: BoardState): void {
+  // Arriving at the pointer gives the NORMAL pointer; a second press arms the
+  // laser, a third disarms it. So "1" is always a reliable way back to select.
+  // The laser is a collaboration feature (like sharing) — only togglable in
+  // collab builds; otherwise the key just selects the pointer.
+  if (st.tool === "select" && COLLAB_ENABLED) st.toggleLaserMode();
+  else {
+    st.setTool("select");
+    st.setLaserMode(false);
+  }
+}
+
 // --- the catalog ----------------------------------------------------------
 // ORDER IS BEHAVIOUR: dispatch runs the first matching entry, so keep the
 // precedence of the old inline handler (Save first; selection/history combos
@@ -196,6 +275,34 @@ export const SHORTCUTS: ShortcutSpec[] = [
     run: (c) => c.host.save(),
   },
 
+  // The in-progress click-to-place shape (point polygon / curve) owns
+  // Enter/Escape while it's live (before the selection's own Escape below).
+  {
+    id: "place-finish",
+    group: "tools",
+    keys: [["Enter"]],
+    label: "Stop adding points (curve / point polygon)",
+    test: (c) =>
+      bare(c) &&
+      c.e.key === "Enter" &&
+      c.st.tool === "pen" &&
+      (c.st.drawMode === "freepoly" || c.st.drawMode === "curve") &&
+      placementActive(),
+    run: () => finishPlacement(),
+  },
+  {
+    id: "place-cancel",
+    group: "tools",
+    keys: [["Esc"]],
+    label: "Stop adding points (each added point undoes individually)",
+    test: (c) =>
+      c.e.key === "Escape" &&
+      c.st.tool === "pen" &&
+      (c.st.drawMode === "freepoly" || c.st.drawMode === "curve") &&
+      placementActive(),
+    run: () => cancelPlacement(),
+  },
+
   // Selection & editing.
   {
     id: "delete",
@@ -214,6 +321,7 @@ export const SHORTCUTS: ShortcutSpec[] = [
     test: (c) => c.mod && c.key === "a",
     run: (c) => {
       c.st.setTool("select");
+      c.st.setLaserMode(false); // selecting all implies the normal pointer
       c.st.selectAll();
     },
   },
@@ -251,6 +359,55 @@ export const SHORTCUTS: ShortcutSpec[] = [
     label: "Duplicate selection",
     test: (c) => c.mod && c.key === "d" && c.hasSelection && !c.inField,
     run: () => duplicateSelection(),
+  },
+  {
+    id: "ungroup",
+    group: "edit",
+    keys: [["Ctrl", "Shift", "G"]],
+    label: "Ungroup",
+    test: (c) => c.mod && c.key === "g" && c.e.shiftKey && c.hasSelection,
+    run: () => ungroupSelection(),
+  },
+  {
+    id: "group",
+    group: "edit",
+    keys: [["Ctrl", "G"]],
+    label: "Group the selection",
+    test: (c) => c.mod && c.key === "g" && !c.e.shiftKey && c.hasSelection,
+    run: () => groupSelection(),
+  },
+  // Z-order (front/back), the industry-standard bracket combos.
+  {
+    id: "toFront",
+    group: "edit",
+    keys: [["Ctrl", "Shift", "]"]],
+    label: "Bring to front",
+    test: (c) => c.mod && c.e.shiftKey && bracketRight(c.e) && c.hasSelection,
+    run: arrange("front"),
+  },
+  {
+    id: "toBack",
+    group: "edit",
+    keys: [["Ctrl", "Shift", "["]],
+    label: "Send to back",
+    test: (c) => c.mod && c.e.shiftKey && bracketLeft(c.e) && c.hasSelection,
+    run: arrange("back"),
+  },
+  {
+    id: "forward",
+    group: "edit",
+    keys: [["Ctrl", "]"]],
+    label: "Bring forward one step",
+    test: (c) => c.mod && !c.e.shiftKey && bracketRight(c.e) && c.hasSelection,
+    run: arrange("forward"),
+  },
+  {
+    id: "backward",
+    group: "edit",
+    keys: [["Ctrl", "["]],
+    label: "Send backward one step",
+    test: (c) => c.mod && !c.e.shiftKey && bracketLeft(c.e) && c.hasSelection,
+    run: arrange("backward"),
   },
   {
     id: "clearSelection",
@@ -291,30 +448,109 @@ export const SHORTCUTS: ShortcutSpec[] = [
   },
 
   // Tools — bare keys. Digits mirror the toolbar order (1..6); the letters are
-  // mnemonic alternates (Draw / Eraser / Text / Maths).
+  // mnemonic alternates (V/H match Figma & Excalidraw; Draw / Eraser / Text /
+  // Maths keep their initials).
   {
     id: "tool-select",
     group: "tools",
-    keys: [["1"]],
-    label: "Select & move",
-    test: (c) => bare(c) && c.key === "1",
-    run: (c) => c.st.setTool("select"),
+    keys: [["1"], ["V"]],
+    // Pressing the pointer key when it's already active toggles the laser
+    // pointer (like pressing Draw again cycles modes). See laser.ts.
+    label: "Select & move (press again for the laser pointer)",
+    test: (c) => bare(c) && (c.key === "1" || c.key === "v"),
+    run: (c) => selectOrToggleLaser(c.st),
   },
   {
     id: "tool-pan",
     group: "tools",
-    keys: [["2"]],
+    keys: [["2"], ["H"]],
     label: "Pan the view",
-    test: (c) => bare(c) && c.key === "2",
+    test: (c) => bare(c) && (c.key === "2" || c.key === "h"),
     run: (c) => c.st.setTool("pan"),
   },
   {
     id: "tool-draw",
     group: "tools",
     keys: [["3"], ["D"]],
-    label: "Draw",
+    label: "Draw — press again to cycle the drawing modes",
     test: (c) => bare(c) && (c.key === "3" || c.key === "d"),
-    run: (c) => c.st.setTool("pen"),
+    run: () => drawOrCycle(),
+  },
+  // Draw modes — one key per shape (roadmap A2): pressing it activates the
+  // draw tool in that mode from anywhere.
+  {
+    id: "mode-free",
+    group: "tools",
+    keys: [["F"]],
+    label: "Freehand pen",
+    test: (c) => bare(c) && c.key === "f",
+    run: () => pickDrawMode("free"),
+  },
+  {
+    id: "mode-line",
+    group: "tools",
+    keys: [["L"]],
+    label: "Line (clicks onto 15° directions)",
+    test: (c) => bare(c) && c.key === "l",
+    run: () => pickDrawMode("line"),
+  },
+  {
+    id: "mode-arrow",
+    group: "tools",
+    keys: [["A"]],
+    label: "Arrow (clicks onto 15° directions)",
+    test: (c) => bare(c) && c.key === "a",
+    run: () => pickDrawMode("arrow"),
+  },
+  {
+    id: "mode-rect",
+    group: "tools",
+    keys: [["R"]],
+    label: "Rectangle (square via the lock toggle)",
+    test: (c) => bare(c) && c.key === "r",
+    run: () => pickDrawMode("rect"),
+  },
+  {
+    id: "mode-ellipse",
+    group: "tools",
+    keys: [["O"]],
+    label: "Ellipse (circle via the lock toggle)",
+    test: (c) => bare(c) && c.key === "o",
+    run: () => pickDrawMode("ellipse"),
+  },
+  {
+    id: "mode-triangle",
+    group: "tools",
+    keys: [["Y"]],
+    label: "Triangle (drag corners to change its angles)",
+    test: (c) => bare(c) && c.key === "y",
+    run: () => pickDrawMode("triangle"),
+  },
+  {
+    id: "mode-polygon",
+    group: "tools",
+    keys: [["N"]],
+    label: "Polygon (n-gon — sides in the options pill)",
+    test: (c) => bare(c) && c.key === "n",
+    run: () => pickDrawMode("polygon"),
+  },
+  {
+    id: "mode-freepoly",
+    group: "tools",
+    keys: [["Q"]],
+    label: "Point-by-point polygon (click corners; close on the first one)",
+    test: (c) => bare(c) && c.key === "q",
+    run: () => pickDrawMode("freepoly"),
+  },
+  // Curve has no key: B is the background-colour cycle (see cycleFill). Curve
+  // is still reachable from the draw-mode options row.
+  {
+    id: "mode-angle",
+    group: "tools",
+    keys: [["G"]],
+    label: "Angle (drag to open it, like a protractor)",
+    test: (c) => bare(c) && c.key === "g",
+    run: () => pickDrawMode("angle"),
   },
   {
     id: "tool-eraser",
@@ -371,9 +607,17 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "cycleColor",
     group: "options",
     keys: [["C"]],
-    label: "Cycle the draw colour",
+    label: "Cycle the colour (draw / shape / laser)",
     test: (c) => bare(c) && c.key === "c",
     run: () => cycleColor(),
+  },
+  {
+    id: "cycleFill",
+    group: "options",
+    keys: [["B"]],
+    label: "Cycle the background (fill) colour",
+    test: (c) => bare(c) && c.key === "b",
+    run: () => cycleFillColor(),
   },
   {
     id: "sizeUp",
@@ -391,6 +635,15 @@ export const SHORTCUTS: ShortcutSpec[] = [
     label: "Smaller pen / text / maths / eraser",
     test: (c) => bare(c) && (c.e.key === "-" || c.e.key === "_"),
     run: () => adjustSize(-1),
+  },
+  {
+    id: "snap",
+    group: "options",
+    keys: [["S"]],
+    label:
+      "Toggle grid snapping (squared paper; hold Shift to flip it mid-gesture, Alt to bypass)",
+    test: (c) => bare(c) && c.key === "s",
+    run: (c) => c.st.setSnap(!c.st.snap),
   },
 
   // Help.

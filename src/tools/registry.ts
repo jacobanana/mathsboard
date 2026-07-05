@@ -87,6 +87,87 @@ export interface ToolMeta {
   answer?: boolean;
 }
 
+/**
+ * Optional VERTEX-EDITING capability for parametric canvas tools (the shape
+ * tool's draggable triangle corners, line endpoints, Bézier control points).
+ * The select controller renders and drives these generically: it draws a
+ * round handle at each point `get` returns, and a drag on one applies the
+ * patch `move` computes — so a new parametric tool gets interactive vertices
+ * with zero controller edits.
+ */
+export interface VertexCapability<P> {
+  /** World-space position of every editable vertex, in a stable order. */
+  get(obj: BoardObjectBase & P): { x: number; y: number }[];
+  /**
+   * Object patch for dragging vertex `i` to world point (wx, wy). `opts`
+   * carries the active snapping intents (Alt bypasses both): `gridSnap` when
+   * grid snapping applies, `angleSnap` for the tool's own magnetic angle
+   * values (right angles, 15° multiples) — the tool decides which wins.
+   */
+  move(
+    obj: BoardObjectBase & P,
+    i: number,
+    wx: number,
+    wy: number,
+    opts?: { gridSnap?: boolean; angleSnap?: boolean },
+  ): Record<string, unknown>;
+  /** True when the vertices REPLACE the box resize handles (line-like shapes
+   *  whose points are their whole geometry). Default: both are shown. */
+  replacesResize?(obj: BoardObjectBase & P): boolean;
+  /** Light guide segments drawn with the handles (Bézier control arms). */
+  guides?(
+    obj: BoardObjectBase & P,
+  ): [{ x: number; y: number }, { x: number; y: number }][];
+  /**
+   * Optional POINT INSERTION: world positions for "add a point" handles, one
+   * per insertable segment/edge, in a stable order. The select controller
+   * draws these as small hollow handles; pressing one calls `insert` and
+   * hands the fresh vertex straight to a drag.
+   */
+  midpoints?(obj: BoardObjectBase & P): { x: number; y: number }[];
+  /** Insert a vertex on segment `seg` at world (wx, wy). Returns the object
+   *  patch plus the new vertex's index (for the follow-on drag), or null when
+   *  the segment can't take a point. */
+  insert?(
+    obj: BoardObjectBase & P,
+    seg: number,
+    wx: number,
+    wy: number,
+  ): { patch: Record<string, unknown>; index: number } | null;
+  /** Patch that removes vertex `i` (double-click), or null when the shape is
+   *  already at its minimum point count. */
+  remove?(obj: BoardObjectBase & P, i: number): Record<string, unknown> | null;
+  /**
+   * Insert a vertex ON the shape's drawn path nearest to world (wx, wy),
+   * within `tol` world px — the CAD "double-click the line to add a point"
+   * gesture. Returns the patch plus the new vertex's index, or null when the
+   * click wasn't on the path (or the tool doesn't support it for this kind).
+   */
+  insertOnPath?(
+    obj: BoardObjectBase & P,
+    wx: number,
+    wy: number,
+    tol: number,
+  ): { patch: Record<string, unknown>; index: number } | null;
+  /**
+   * BÉZIER ARMS: the draggable tangent handles shown when vertex `i` is
+   * focused (clicked once) — world positions plus which side of the vertex
+   * each sits on. Empty/omitted = no arms for this vertex.
+   */
+  arms?(
+    obj: BoardObjectBase & P,
+    i: number,
+  ): { x: number; y: number; side: 1 | -1 }[];
+  /** Patch for dragging vertex `i`'s arm on `side` to world (wx, wy). */
+  moveArm?(
+    obj: BoardObjectBase & P,
+    i: number,
+    side: 1 | -1,
+    wx: number,
+    wy: number,
+  ): Record<string, unknown>;
+}
+
 /** A tool drawn onto the board canvas. */
 export interface CanvasTool<P = Record<string, unknown>> extends ToolMeta {
   kind: "canvas";
@@ -98,6 +179,15 @@ export interface CanvasTool<P = Record<string, unknown>> extends ToolMeta {
   draw: (kit: DrawKit, obj: BoardObjectBase & P) => void;
   /** Optional settings dialog. Omit for click-to-place tools (e.g. text). */
   Dialog?: React.FC<ToolDialogProps<P>>;
+  /** Optional draggable-vertex editing (see VertexCapability). */
+  vertices?: VertexCapability<P>;
+  /**
+   * Optional ROTATION: the patch that turns the object by `degrees` around
+   * its box centre. Tools that support it get the select controller's rotate
+   * handle and the selection's rotate buttons; how the turn is stored (baked
+   * into points, a rotation param, ...) is the tool's business.
+   */
+  rotate?: (obj: BoardObjectBase & P, degrees: number) => Record<string, unknown>;
 }
 
 /** Props an interactive widget component receives. */

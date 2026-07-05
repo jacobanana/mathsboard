@@ -44,6 +44,14 @@ export function freshBoard(partial: Partial<BoardDocument> = {}): BoardDocument 
     textSize: 26,
     mathSize: 26,
     eraserSize: 45,
+    drawMode: "free",
+    fillColor: "none",
+    polygonSides: 5,
+    aspectLock: false,
+    snap: true,
+    laserMode: false,
+    laserFrame: false,
+    laserColor: "#ff2b2b",
     selection: { objectIds: [], strokeIds: [] },
     editingId: null,
     canUndo: false,
@@ -109,13 +117,19 @@ export function fakeInputCtx(over: Partial<InputCtx> = {}): InputCtx {
 export function pointer(
   x: number,
   y: number,
-  over: { pointerId?: number; shiftKey?: boolean; type?: string } = {},
+  over: {
+    pointerId?: number;
+    shiftKey?: boolean;
+    altKey?: boolean;
+    type?: string;
+  } = {},
 ): PointerEvent {
   return {
     pointerId: over.pointerId ?? 1,
     clientX: x,
     clientY: y,
     shiftKey: over.shiftKey ?? false,
+    altKey: over.altKey ?? false,
     type: over.type ?? "pointerdown",
     preventDefault: () => {},
   } as unknown as PointerEvent;
@@ -130,11 +144,14 @@ export function keydown(
     meta?: boolean;
     shift?: boolean;
     alt?: boolean;
+    /** Physical-key code for layout-safe shortcuts (e.g. "BracketRight"). */
+    code?: string;
     target?: EventTarget | null;
   } = {},
 ): KeyboardEvent {
   return {
     key,
+    code: mods.code ?? "",
     ctrlKey: mods.ctrl ?? false,
     metaKey: mods.meta ?? false,
     shiftKey: mods.shift ?? false,

@@ -81,6 +81,7 @@ describe("click selection", () => {
 describe("drag to move", () => {
   it("moves the whole selection as ONE undo step and never collapses it", () => {
     st().setSelection({ objectIds: [O.id], strokeIds: [S.id] });
+    st().setSnap(false); // raw move mechanics; grid snapping has its own suite
 
     down(120, 105);
     move(170, 135); // +50, +30
@@ -95,6 +96,44 @@ describe("drag to move", () => {
     st().undo(); // the entire drag reverts at once
     expect(st().board.objects[0]).toMatchObject({ x: 100, y: 100 });
     expect(st().board.strokes[0].points[0]).toEqual({ x: 150, y: 120 });
+  });
+});
+
+describe("grid snapping (roadmap A3)", () => {
+  it("dragging an object snaps its origin to the 30px grid on squared paper", () => {
+    st().select(O.id); // O at (100,100); snap defaults on, background squared
+    down(120, 105);
+    move(178, 143); // raw target (158, 138) -> nearest grid (150, 150)
+    up(178, 143);
+    expect(st().board.objects[0]).toMatchObject({ x: 150, y: 150 });
+  });
+
+  it("holding Alt bypasses the snap for the gesture", () => {
+    st().select(O.id);
+    down(120, 105);
+    selectController.onPointerMove(
+      pointer(178, 143, { type: "pointermove", altKey: true }),
+      ctx,
+    );
+    up(178, 143);
+    expect(st().board.objects[0]).toMatchObject({ x: 158, y: 138 });
+  });
+
+  it("dragging a stroke never snaps (handwriting must not jump)", () => {
+    st().setSelection({ objectIds: [], strokeIds: [S.id] });
+    down(200, 120); // on S's line
+    move(207, 131); // +7, +11 — nowhere near a grid multiple
+    up(207, 131);
+    expect(st().board.strokes[0].points[0]).toEqual({ x: 157, y: 131 });
+  });
+
+  it("snapping is inert on non-squared paper", () => {
+    st().setBackground("lined");
+    st().select(O.id);
+    down(120, 105);
+    move(178, 143);
+    up(178, 143);
+    expect(st().board.objects[0]).toMatchObject({ x: 158, y: 138 });
   });
 });
 
@@ -153,6 +192,40 @@ describe("resize", () => {
 
     st().undo();
     expect(st().board.objects[0]).toMatchObject({ w: 540, h: 64 });
+  });
+
+  it("snaps the dragged handle to the grid on squared paper", () => {
+    st().select(O.id); // snap defaults on, background squared; SE handle at (648,172)
+    down(648, 172);
+    move(700, 158); // raw SE ~ (700,158) -> snapped to grid (690, 150)
+    up(700, 158);
+
+    const o = st().board.objects[0];
+    expect(o.x).toBe(100); // NW corner anchored
+    expect(o.y).toBe(100);
+    // Width drove and landed on a grid multiple relative to the anchored left.
+    expect(o.x + o.w).toBe(690);
+  });
+
+  it("holding Alt bypasses the resize snap", () => {
+    st().select(O.id);
+    down(648, 172);
+    selectController.onPointerMove(
+      pointer(700, 158, { type: "pointermove", altKey: true }),
+      ctx,
+    );
+    up(700, 158);
+    // Raw SE corner: right edge at the un-snapped pointer x.
+    expect(st().board.objects[0].x + st().board.objects[0].w).toBe(700);
+  });
+
+  it("does not snap resize on non-squared paper", () => {
+    st().setBackground("lined");
+    st().select(O.id);
+    down(648, 172);
+    move(700, 158);
+    up(700, 158);
+    expect(st().board.objects[0].x + st().board.objects[0].w).toBe(700);
   });
 
   it("hovering a handle of the selected object shows its resize cursor", () => {

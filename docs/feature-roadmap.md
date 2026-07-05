@@ -50,14 +50,14 @@ library itself.
 | Undo–redo, copy/cut/paste/duplicate | ✅ | ✅ | Have it (per-user in collab) |
 | Live collab, presence, share links | ✅ | ✅ | Have it |
 | PNG export | ✅ | ✅ | Have it (canvas layers only — see §5) |
-| **Geometric shapes** (rect, ellipse, line) | ✅ core | ❌ | **Add — minimal** (Track A) |
-| **Arrows / connectors** | ✅ core | ❌ | **Add — non-binding** (Track A) |
-| **Grid snapping / smart guides** | ✅ | ❌ | **Add — high fit** (Track A) |
+| **Geometric shapes** (rect, ellipse, line) | ✅ core | ✅ | **Shipped** — draw-tool shape modes, parametric vertices (A2) |
+| **Arrows / connectors** | ✅ core | ✅ | **Shipped** — non-binding arrows (A2) |
+| **Grid snapping / smart guides** | ✅ | ✅ | **Shipped** — grid snap + magnetic angles (A3); smart guides later |
 | **Laser pointer** | ✅ (Excalidraw) | ❌ | **Add — highest fit** (Track A) |
 | Highlighter pen | ✅ | ❌ | Add — cheap (Track A) |
-| Z-order, align/distribute, group, lock | ✅ | ❌ | Minor / opportunistic |
+| Z-order, align/distribute, group, lock | ✅ | 🟡 | Z-order + group/ungroup shipped (A5); align/lock later |
 | Rich text (bold, fonts, align) | ✅ | ❌ | Mostly skip |
-| Shape fill/stroke/opacity/dash styling | ✅ | ❌ | Skip — keep it simple |
+| Shape fill/stroke/opacity/dash styling | ✅ | 🟡 | Fill + border colour/width/dash shipped with A2 (kept shallow) |
 | SVG export, export-selection | ✅ | ❌ | Nice-to-have |
 | **Rendered maths notation (LaTeX/KaTeX)** | ❌ | ❌ | **Add — biggest maths win** (Track B) |
 | **Labelled tape / bar model** (quantities, unknowns, braces) | ❌ | 🟡 | **Extend fraction bars** (Track B) |
@@ -175,10 +175,10 @@ extend the `ToolName` union (`board/types.ts`), add a dock button
 | # | Feature | Slots into | Effort | Risk | Priority |
 |---|---------|-----------|:------:|:----:|:--------:|
 | A1 | **Laser pointer** | new controller + `PresenceLayer` + awareness | low-med | low | **1st** |
-| A2 | **Shape tool** (rect / ellipse / line / arrow) | new controller + `shape` canvas tool | medium | med | **2nd** |
-| A3 | **Grid snapping** | `geometry` helper, opted into by controllers | low-med | low | **3rd** |
+| A2 | **Shape tool** ✅ SHIPPED (line / arrow / rect / ellipse / triangle / polygon / Bézier / angle) | `tools/shape` + `canvas/interactions/draw` | medium | med | done |
+| A3 | **Grid snapping** ✅ SHIPPED (+ magnetic angle snapping) | `board/geometry.snapPt`, opted into by controllers | low-med | low | done |
 | A4 | **Highlighter** | pen controller variant (alpha + width) | low | low | 4th |
-| A5 | Z-order + simple align buttons | `board/commands` + FloatButtons | low-med | low | later |
+| A5 | Z-order + grouping ✅ SHIPPED (align buttons still open) | `board/commands` + FloatButtons | low-med | low | done |
 
 ### A1. Laser pointer — highest value-to-effort
 
@@ -194,6 +194,15 @@ shared screen, and we have nothing for it today. Design:
 - No persistence path, so it can't corrupt the CRDT doc — lowest-risk new tool.
 
 ### A2. Shape tool — the one real primitive gap
+
+> **Shipped.** The pen became the DRAW tool: its options pill toggles freehand
+> vs. shape modes (line, arrow, rect, ellipse, triangle, regular polygon,
+> Bézier curve, angle mark), each with a bare-key shortcut. Shapes are canvas
+> objects (`tools/shape`) with draggable vertex handles — triangle/polygon
+> corners re-shape live with angle labels and magnetic right-angle snapping,
+> the angle tool reads whole degrees like a protractor — plus fill/border
+> styling, dashes, z-order (Ctrl+[ / Ctrl+]) and grouping (Ctrl+G). The
+> original sketch below is kept for context.
 
 Unlocks part-whole boxes, jottings, comparison rectangles, simple geometry.
 Follow the **text** precedent: `textTool` is a canvas tool (draw + size,
