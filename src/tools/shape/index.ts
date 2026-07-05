@@ -26,6 +26,8 @@ import {
   renormalize,
   rotateAround,
   snapVertexAngle,
+  splineMidpoint,
+  splineSegments,
   vertexOnlyResize,
 } from "@/tools/shape/geometry";
 import type { Pt, ShapeKind } from "@/tools/shape/geometry";
@@ -50,6 +52,14 @@ export interface ShapeParams {
   showAngles: boolean;
   /** Arrow: draw a head at both ends. */
   both: boolean;
+  /** Ellipse only: rotation in degrees (0-180). Other kinds bake rotation
+   *  into their points instead (see the tool's `rotate`). */
+  rot?: number;
+  /** Ellipse only: natural radii, remembered once rotated (the natural box
+   *  nw/nh becomes the rotated ellipse's AABB, so the radii need their own
+   *  fields from then on). */
+  erx?: number;
+  ery?: number;
 }
 
 export type ShapeObject = BoardObjectBase & ShapeParams;
@@ -57,7 +67,27 @@ export type ShapeObject = BoardObjectBase & ShapeParams;
 /** Fill value meaning "no background". */
 export const NO_FILL = "none";
 
-const LABEL_FONT_PX = 13;
+// Angle labels are teaching content read from across a classroom: big bold
+// digits with a paper-coloured halo so they stay legible over grid lines,
+// fills and the shape's own border.
+const LABEL_FONT_PX = 17;
+
+/** Degree text with a halo: an outlined pass in the paper colour under the
+ *  filled pass, so the label reads over any background. */
+function drawLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+): void {
+  ctx.save();
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "rgba(251,250,247,0.9)";
+  ctx.strokeText(text, x, y);
+  ctx.restore();
+  ctx.fillText(text, x, y);
+}
 
 // --- drawing --------------------------------------------------------------
 
@@ -130,7 +160,7 @@ function drawPolygonAngles(
     if (!u1 || !u2) continue;
     const e1 = Math.hypot(pts[(i - 1 + n) % n].x - v.x, pts[(i - 1 + n) % n].y - v.y);
     const e2 = Math.hypot(pts[(i + 1) % n].x - v.x, pts[(i + 1) % n].y - v.y);
-    const r = Math.min(16, e1 * 0.4, e2 * 0.4);
+    const r = Math.min(22, e1 * 0.4, e2 * 0.4);
     const right = Math.abs(angles[i] - 90) < 0.75;
     if (right) {
       // Square right-angle mark along the two edges.
@@ -160,10 +190,11 @@ function drawPolygonAngles(
       bx /= bl;
       by /= bl;
     }
-    ctx.fillText(
+    drawLabel(
+      ctx,
       Math.round(angles[i]) + "°",
-      v.x + bx * (r + 13),
-      v.y + by * (r + 13),
+      v.x + bx * (r + 16),
+      v.y + by * (r + 16),
     );
   }
   ctx.restore();
@@ -188,7 +219,7 @@ function drawAngleMark(
   const sweep = angleSweepDeg(v, a, b);
   const la = Math.hypot(a.x - v.x, a.y - v.y);
   const lb = Math.hypot(b.x - v.x, b.y - v.y);
-  const r = Math.min(Math.max(Math.min(la, lb) * 0.32, 14), 44);
+  const r = Math.min(Math.max(Math.min(la, lb) * 0.32, 18), 52);
   const angA = Math.atan2(a.y - v.y, a.x - v.x);
   const angB = Math.atan2(b.y - v.y, b.x - v.x);
 
@@ -218,10 +249,11 @@ function drawAngleMark(
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = p.stroke;
-    ctx.fillText(
+    drawLabel(
+      ctx,
       Math.round(sweep) + "°",
-      v.x + Math.cos(mid) * (r + 16),
-      v.y + Math.sin(mid) * (r + 16),
+      v.x + Math.cos(mid) * (r + 20),
+      v.y + Math.sin(mid) * (r + 20),
     );
   }
   ctx.restore();
@@ -249,8 +281,21 @@ export function drawShapeGeometry(
       break;
     }
     case "ellipse": {
+      // Once rotated, the natural box is the rotated ellipse's AABB and the
+      // true radii live in erx/ery (see ShapeParams).
+      const rot = p.rot ?? 0;
+      const rx = rot !== 0 ? (p.erx ?? p.nw / 2) : p.nw / 2;
+      const ry = rot !== 0 ? (p.ery ?? p.nh / 2) : p.nh / 2;
       ctx.beginPath();
-      ctx.ellipse(ox + p.nw / 2, oy + p.nh / 2, p.nw / 2, p.nh / 2, 0, 0, Math.PI * 2);
+      ctx.ellipse(
+        ox + p.nw / 2,
+        oy + p.nh / 2,
+        rx,
+        ry,
+        (rot * Math.PI) / 180,
+        0,
+        Math.PI * 2,
+      );
       fillIfAny(ctx, p);
       ctx.stroke();
       break;
@@ -293,11 +338,15 @@ export function drawShapeGeometry(
       break;
     }
     case "curve": {
-      const [p0, c1, c2, p1] = p.pts.map((q) => ({ x: ox + q.x, y: oy + q.y }));
-      if (!p0 || !c1 || !c2 || !p1) break;
+      // A smooth spline THROUGH every stored point (n ≥ 2) — each handle sits
+      // on the curve itself; midpoint handles insert more (see vertices).
+      const pts = p.pts.map((q) => ({ x: ox + q.x, y: oy + q.y }));
+      if (pts.length < 2) break;
       ctx.beginPath();
-      ctx.moveTo(p0.x, p0.y);
-      ctx.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, p1.x, p1.y);
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (const s of splineSegments(pts)) {
+        ctx.bezierCurveTo(s.c1.x, s.c1.y, s.c2.x, s.c2.y, s.to.x, s.to.y);
+      }
       ctx.stroke();
       break;
     }
@@ -405,17 +454,112 @@ export const shapeTool = defineCanvasTool<ShapeParams>({
     replacesResize(o: ShapeObject) {
       return vertexOnlyResize(o.kind);
     },
-    guides(o: ShapeObject) {
-      if (o.kind !== "curve") return [];
+
+    // ADD / REMOVE points (curves and polygons). Midpoint "+" handles sit
+    // halfway along each segment/edge; pressing one inserts a vertex there
+    // and immediately drags it. Double-clicking a vertex removes it (down to
+    // each kind's minimum). Inserting into a triangle makes it a polygon —
+    // it stops being a triangle the moment it has four corners.
+    midpoints(o: ShapeObject) {
       const s = o.w / Math.max(o.nw, 1);
-      const w = o.pts.map((p) => ({ x: o.x + p.x * s, y: o.y + p.y * s }));
-      if (w.length !== 4) return [];
-      // Control arms: end point -> its control point.
-      return [
-        [w[0], w[1]],
-        [w[3], w[2]],
-      ] as [Pt, Pt][];
+      const world = o.pts.map((p) => ({ x: o.x + p.x * s, y: o.y + p.y * s }));
+      if (o.kind === "curve" && world.length >= 2) {
+        return world.slice(0, -1).map((_, i) => splineMidpoint(world, i));
+      }
+      if (
+        (o.kind === "polygon" || o.kind === "triangle") &&
+        world.length >= 3
+      ) {
+        // One handle per edge, including the closing edge (last -> first).
+        return world.map((p, i) => {
+          const q = world[(i + 1) % world.length];
+          return { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
+        });
+      }
+      return [];
     },
+    insert(o: ShapeObject, seg: number, wx: number, wy: number) {
+      const s = o.w / Math.max(o.nw, 1);
+      const world = o.pts.map((p) => ({ x: o.x + p.x * s, y: o.y + p.y * s }));
+      if (seg < 0 || seg >= world.length) return null;
+      const index = seg + 1; // also right for the closing edge: append
+      world.splice(index, 0, { x: wx, y: wy });
+      const n = renormalize(world);
+      const patch: Record<string, unknown> = {
+        pts: n.pts,
+        nw: n.nw,
+        nh: n.nh,
+        x: n.ox,
+        y: n.oy,
+        w: n.nw,
+        h: n.nh,
+      };
+      if (o.kind === "triangle") patch.kind = "polygon";
+      return { patch, index };
+    },
+    remove(o: ShapeObject, i: number) {
+      const min = o.kind === "curve" ? 2 : 3;
+      if (o.pts.length <= min || i < 0 || i >= o.pts.length) return null;
+      const s = o.w / Math.max(o.nw, 1);
+      const world = o.pts.map((p) => ({ x: o.x + p.x * s, y: o.y + p.y * s }));
+      world.splice(i, 1);
+      const n = renormalize(world);
+      return { pts: n.pts, nw: n.nw, nh: n.nh, x: n.ox, y: n.oy, w: n.nw, h: n.nh };
+    },
+  },
+
+  // ROTATION. Point kinds bake the turn into their geometry (rotate the world
+  // points about the box centre, renormalise — angle labels stay live). A
+  // rectangle becomes the 4-gon it visually is; an ellipse keeps parametric
+  // radii plus a `rot` angle and its box becomes the rotated AABB.
+  rotate(o: ShapeObject, degrees: number) {
+    const c = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
+    if (o.kind === "rect") {
+      const corners = [
+        { x: o.x, y: o.y },
+        { x: o.x + o.w, y: o.y },
+        { x: o.x + o.w, y: o.y + o.h },
+        { x: o.x, y: o.y + o.h },
+      ].map((p) => rotateAround(p, c, degrees));
+      const n = renormalize(corners);
+      return {
+        kind: "polygon",
+        pts: n.pts,
+        nw: n.nw,
+        nh: n.nh,
+        x: n.ox,
+        y: n.oy,
+        w: n.nw,
+        h: n.nh,
+      };
+    }
+    if (o.kind === "ellipse") {
+      const s = o.w / Math.max(o.nw, 1);
+      const erx = o.erx ?? o.nw / 2;
+      const ery = o.ery ?? o.nh / 2;
+      // An ellipse repeats every 180°.
+      const rot = (((o.rot ?? 0) + degrees) % 180 + 180) % 180;
+      const t = (rot * Math.PI) / 180;
+      const hw = Math.hypot(erx * Math.cos(t), ery * Math.sin(t));
+      const hh = Math.hypot(erx * Math.sin(t), ery * Math.cos(t));
+      return {
+        rot,
+        erx,
+        ery,
+        nw: hw * 2,
+        nh: hh * 2,
+        w: hw * 2 * s,
+        h: hh * 2 * s,
+        x: c.x - hw * s,
+        y: c.y - hh * s,
+      };
+    }
+    const s = o.w / Math.max(o.nw, 1);
+    const world = o.pts.map((p) =>
+      rotateAround({ x: o.x + p.x * s, y: o.y + p.y * s }, c, degrees),
+    );
+    const n = renormalize(world);
+    return { pts: n.pts, nw: n.nw, nh: n.nh, x: n.ox, y: n.oy, w: n.nw, h: n.nh };
   },
 });
 

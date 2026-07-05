@@ -278,6 +278,58 @@ export function PolygonIcon(): JSX.Element {
   );
 }
 
+/** An irregular polygon with corner dots — the point-by-point polygon. */
+export function FreePolyIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M5 9 12 4l8 4-2 9-9 4Z" />
+      <circle cx="5" cy="9" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="4" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="20" cy="8" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="17" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="21" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** A square — the rectangle mode's aspect lock. */
+export function SquareIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <rect x="5" y="5" width="14" height="14" rx="1" />
+    </svg>
+  );
+}
+
+/** A circle — the ellipse mode's aspect lock. */
+export function CircleIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <circle cx="12" cy="12" r="7.5" />
+    </svg>
+  );
+}
+
+/** Rotate anticlockwise by a step. */
+export function RotateLeftIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
+  );
+}
+
+/** Rotate clockwise by a step. */
+export function RotateRightIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+    </svg>
+  );
+}
+
 /** A Bézier curve with its two control handles. */
 export function CurveIcon(): JSX.Element {
   return (

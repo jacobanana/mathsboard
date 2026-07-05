@@ -23,8 +23,14 @@ import {
   activeTextObjectId,
   activeMathObjectId,
   activeShapeObjectId,
+  DRAW_MODE_ORDER,
 } from "@/board/store";
 import type { DrawMode } from "@/board/store";
+import {
+  cancelFreePoly,
+  finishFreePoly,
+  freePolyActive,
+} from "@/canvas/interactions/draw";
 import { useUiStore } from "@/ui/uiStore";
 import {
   arrangeSelection,
@@ -120,11 +126,23 @@ function cycleColor(): void {
 }
 
 /** Switch to the draw tool in the given mode (the shape keys, L / A / R /
- *  O / Y / N / B / G, plus F for freehand). */
+ *  O / Y / N / Q / B / G, plus F for freehand). */
 function pickDrawMode(mode: DrawMode): void {
   const st = useBoardStore.getState();
   st.setTool("pen");
   st.setDrawMode(mode);
+}
+
+/** The draw key (3 / D): first press activates the draw tool in its current
+ *  mode; pressing it AGAIN cycles through the drawing modes. */
+function drawOrCycle(): void {
+  const st = useBoardStore.getState();
+  if (st.tool !== "pen") {
+    st.setTool("pen");
+    return;
+  }
+  const i = DRAW_MODE_ORDER.indexOf(st.drawMode);
+  st.setDrawMode(DRAW_MODE_ORDER[(i + 1) % DRAW_MODE_ORDER.length]);
 }
 
 /** The ] / [ physical keys, layout-safe: prefer e.code, fall back to the
@@ -220,6 +238,34 @@ export const SHORTCUTS: ShortcutSpec[] = [
     whileEditing: true,
     test: (c) => c.mod && c.key === "s" && !c.e.shiftKey,
     run: (c) => c.host.save(),
+  },
+
+  // The in-progress point-by-point polygon owns Enter/Escape while it's live
+  // (before the selection's own Escape entry below).
+  {
+    id: "freepoly-finish",
+    group: "tools",
+    keys: [["Enter"]],
+    label: "Close the point-by-point polygon",
+    test: (c) =>
+      bare(c) &&
+      c.e.key === "Enter" &&
+      c.st.tool === "pen" &&
+      c.st.drawMode === "freepoly" &&
+      freePolyActive(),
+    run: () => finishFreePoly(),
+  },
+  {
+    id: "freepoly-cancel",
+    group: "tools",
+    keys: [["Esc"]],
+    label: "Abandon the point-by-point polygon",
+    test: (c) =>
+      c.e.key === "Escape" &&
+      c.st.tool === "pen" &&
+      c.st.drawMode === "freepoly" &&
+      freePolyActive(),
+    run: () => cancelFreePoly(),
   },
 
   // Selection & editing.
@@ -388,9 +434,9 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "tool-draw",
     group: "tools",
     keys: [["3"], ["D"]],
-    label: "Draw (in its current mode)",
+    label: "Draw — press again to cycle the drawing modes",
     test: (c) => bare(c) && (c.key === "3" || c.key === "d"),
-    run: (c) => c.st.setTool("pen"),
+    run: () => drawOrCycle(),
   },
   // Draw modes — one key per shape (roadmap A2): pressing it activates the
   // draw tool in that mode from anywhere.
@@ -406,7 +452,7 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "mode-line",
     group: "tools",
     keys: [["L"]],
-    label: "Line (Shift: 15° steps)",
+    label: "Line (clicks onto 15° directions)",
     test: (c) => bare(c) && c.key === "l",
     run: () => pickDrawMode("line"),
   },
@@ -414,7 +460,7 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "mode-arrow",
     group: "tools",
     keys: [["A"]],
-    label: "Arrow (Shift: 15° steps)",
+    label: "Arrow (clicks onto 15° directions)",
     test: (c) => bare(c) && c.key === "a",
     run: () => pickDrawMode("arrow"),
   },
@@ -422,7 +468,7 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "mode-rect",
     group: "tools",
     keys: [["R"]],
-    label: "Rectangle (Shift: square)",
+    label: "Rectangle (square via the lock toggle)",
     test: (c) => bare(c) && c.key === "r",
     run: () => pickDrawMode("rect"),
   },
@@ -430,7 +476,7 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "mode-ellipse",
     group: "tools",
     keys: [["O"]],
-    label: "Ellipse (Shift: circle)",
+    label: "Ellipse (circle via the lock toggle)",
     test: (c) => bare(c) && c.key === "o",
     run: () => pickDrawMode("ellipse"),
   },
@@ -451,10 +497,18 @@ export const SHORTCUTS: ShortcutSpec[] = [
     run: () => pickDrawMode("polygon"),
   },
   {
+    id: "mode-freepoly",
+    group: "tools",
+    keys: [["Q"]],
+    label: "Point-by-point polygon (click corners; close on the first one)",
+    test: (c) => bare(c) && c.key === "q",
+    run: () => pickDrawMode("freepoly"),
+  },
+  {
     id: "mode-curve",
     group: "tools",
     keys: [["B"]],
-    label: "Curve (Bézier — drag its control points)",
+    label: "Curve (drag its points; press + handles to add more)",
     test: (c) => bare(c) && c.key === "b",
     run: () => pickDrawMode("curve"),
   },
@@ -546,7 +600,8 @@ export const SHORTCUTS: ShortcutSpec[] = [
     id: "snap",
     group: "options",
     keys: [["S"]],
-    label: "Toggle grid snapping (squared paper; hold Alt to bypass)",
+    label:
+      "Toggle grid snapping (squared paper; hold Shift to flip it mid-gesture, Alt to bypass)",
     test: (c) => bare(c) && c.key === "s",
     run: (c) => c.st.setSnap(!c.st.snap),
   },

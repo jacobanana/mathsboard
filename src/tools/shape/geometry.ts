@@ -272,7 +272,7 @@ export function apexFromBaseAngles(
   return { x: bl.x + dx * arm, y: bl.y + dy * arm };
 }
 
-/** Direction snap for Shift-drawing lines/arrows: `b` moved onto the nearest
+/** Direction snap for drawing lines/arrows: `b` moved onto the nearest
  *  multiple of `stepDeg` around `a`, keeping the drag length. */
 export function snapDirection(a: Pt, b: Pt, stepDeg = 15): Pt {
   const len = Math.hypot(b.x - a.x, b.y - a.y);
@@ -282,6 +282,64 @@ export function snapDirection(a: Pt, b: Pt, stepDeg = 15): Pt {
   return {
     x: a.x + len * Math.cos(rad(snapped)),
     y: a.y + len * Math.sin(rad(snapped)),
+  };
+}
+
+/**
+ * MAGNETIC direction snap while drawing lines/arrows: when the drag direction
+ * is within `tolDeg` of a 15° multiple, return `b` clicked exactly onto it,
+ * else null (free drawing). The line-drawing sibling of niceAngleTarget —
+ * always on, weak enough to draw any angle, Alt bypasses (in the controller).
+ */
+export function magneticDirection(a: Pt, b: Pt, tolDeg = 3): Pt | null {
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  if (len === 0) return null;
+  const ang = deg(Math.atan2(b.y - a.y, b.x - a.x));
+  const nearest = Math.round(ang / 15) * 15;
+  if (Math.abs(ang - nearest) > tolDeg) return null;
+  return snapDirection(a, b);
+}
+
+// --- smooth curves through N points (Catmull-Rom -> cubic Bézier) -----------
+// The curve tool stores THROUGH-points: the drawn spline passes through every
+// stored point, so its handles are directly on the curve (drag to reshape,
+// midpoint handles to add detail). Rendering converts each consecutive pair to
+// one cubic Bézier segment with the standard uniform Catmull-Rom tangents.
+
+export interface BezierSegment {
+  c1: Pt;
+  c2: Pt;
+  to: Pt;
+}
+
+/** Cubic Bézier segments of the Catmull-Rom spline through `pts` (n ≥ 2),
+ *  one per consecutive pair, endpoints clamped. */
+export function splineSegments(pts: Pt[]): BezierSegment[] {
+  const n = pts.length;
+  const out: BezierSegment[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = pts[Math.max(i - 1, 0)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(i + 2, n - 1)];
+    out.push({
+      c1: { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 },
+      c2: { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 },
+      to: p2,
+    });
+  }
+  return out;
+}
+
+/** The on-curve point halfway along spline segment `seg` (where the "add a
+ *  point" handle sits — inserting there leaves the curve's shape intact). */
+export function splineMidpoint(pts: Pt[], seg: number): Pt {
+  const s = splineSegments(pts)[seg];
+  const p1 = pts[seg];
+  // Cubic Bézier at t = 0.5: (P1 + 3·C1 + 3·C2 + P2) / 8.
+  return {
+    x: (p1.x + 3 * s.c1.x + 3 * s.c2.x + s.to.x) / 8,
+    y: (p1.y + 3 * s.c1.y + 3 * s.c2.y + s.to.y) / 8,
   };
 }
 
@@ -339,16 +397,12 @@ export function shapeFromDrag(
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const len = Math.hypot(dx, dy) || 1;
-    // Perpendicular bulge (a quarter of the length) so the control points are
-    // discoverable — a straight "curve" hides what the tool does.
+    // A third THROUGH-point bulging perpendicular from the midpoint, so the
+    // fresh object visibly IS a curve (drag any point to reshape; midpoint
+    // handles add more points).
     const px = (dy / len) * (len / 4);
     const py = (-dx / len) * (len / 4);
-    const raw = [
-      a,
-      { x: a.x + dx / 3 + px, y: a.y + dy / 3 + py },
-      { x: a.x + (2 * dx) / 3 + px, y: a.y + (2 * dy) / 3 + py },
-      b,
-    ];
+    const raw = [a, { x: a.x + dx / 2 + px, y: a.y + dy / 2 + py }, b];
     const n = renormalize(raw);
     return { x: n.ox, y: n.oy, nw: n.nw, nh: n.nh, pts: n.pts };
   }

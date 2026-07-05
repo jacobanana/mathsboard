@@ -118,6 +118,25 @@ export interface VertexCapability<P> {
   guides?(
     obj: BoardObjectBase & P,
   ): [{ x: number; y: number }, { x: number; y: number }][];
+  /**
+   * Optional POINT INSERTION: world positions for "add a point" handles, one
+   * per insertable segment/edge, in a stable order. The select controller
+   * draws these as small hollow handles; pressing one calls `insert` and
+   * hands the fresh vertex straight to a drag.
+   */
+  midpoints?(obj: BoardObjectBase & P): { x: number; y: number }[];
+  /** Insert a vertex on segment `seg` at world (wx, wy). Returns the object
+   *  patch plus the new vertex's index (for the follow-on drag), or null when
+   *  the segment can't take a point. */
+  insert?(
+    obj: BoardObjectBase & P,
+    seg: number,
+    wx: number,
+    wy: number,
+  ): { patch: Record<string, unknown>; index: number } | null;
+  /** Patch that removes vertex `i` (double-click), or null when the shape is
+   *  already at its minimum point count. */
+  remove?(obj: BoardObjectBase & P, i: number): Record<string, unknown> | null;
 }
 
 /** A tool drawn onto the board canvas. */
@@ -133,6 +152,13 @@ export interface CanvasTool<P = Record<string, unknown>> extends ToolMeta {
   Dialog?: React.FC<ToolDialogProps<P>>;
   /** Optional draggable-vertex editing (see VertexCapability). */
   vertices?: VertexCapability<P>;
+  /**
+   * Optional ROTATION: the patch that turns the object by `degrees` around
+   * its box centre. Tools that support it get the select controller's rotate
+   * handle and the selection's rotate buttons; how the turn is stored (baked
+   * into points, a rotation param, ...) is the tool's business.
+   */
+  rotate?: (obj: BoardObjectBase & P, degrees: number) => Record<string, unknown>;
 }
 
 /** Props an interactive widget component receives. */

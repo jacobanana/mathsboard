@@ -47,6 +47,7 @@ export function freshBoard(partial: Partial<BoardDocument> = {}): BoardDocument 
     drawMode: "free",
     fillColor: "none",
     polygonSides: 5,
+    aspectLock: false,
     snap: true,
     selection: { objectIds: [], strokeIds: [] },
     editingId: null,
