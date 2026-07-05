@@ -28,12 +28,19 @@ its three sub-categories.
 
 ### 1.1 The two layers of the app
 
-- **Whiteboard primitives** — pen, text, eraser, select, pan. This is the layer
-  Miro/Excalidraw are built on, and it's the **thin** part of our app.
-- **Maths content** — ~22 registry tools (numberline, long division, fraction
-  wall, bar-method arithmetic, clock, protractor, coordinate grid, …) plus the
-  systemic answer-reveal toggle. This is the **moat**; neither incumbent comes
-  close here.
+- **Whiteboard primitives** — pen, text, eraser, select, pan, **shapes**
+  (lines / arrows / rect / ellipse / triangle / polygon / Bézier / angle, with
+  draggable vertices, rotation and z-order / grouping), **grid snapping**, and a
+  **laser pointer**. This is the layer Miro/Excalidraw are built on; it used to
+  be the **thin** part of our app but the Track-A parity floor (A1–A3, A5) is now
+  shipped.
+- **Maths content** — ~24 registry tools (numberline, long division, fraction
+  wall, bar-method arithmetic, clock, protractor, coordinate grid, rendered
+  **KaTeX notation**, …) plus two systemic interaction layers: the
+  **answer-reveal toggle** and **type-in answer boxes** (pupils type into method
+  cells — times-table, grid-method, area/lattice, arrays, fraction/percentage of
+  an amount — with live green/red self-marking). This is the **moat**; neither
+  incumbent comes close here.
 
 We already beat both incumbents on a few things worth protecting: the eraser
 *trims* strokes into surviving fragments instead of deleting whole elements;
@@ -53,13 +60,13 @@ library itself.
 | **Geometric shapes** (rect, ellipse, line) | ✅ core | ✅ | **Shipped** — draw-tool shape modes, parametric vertices (A2) |
 | **Arrows / connectors** | ✅ core | ✅ | **Shipped** — non-binding arrows (A2) |
 | **Grid snapping / smart guides** | ✅ | ✅ | **Shipped** — grid snap + magnetic angles (A3); smart guides later |
-| **Laser pointer** | ✅ (Excalidraw) | ❌ | **Add — highest fit** (Track A) |
-| Highlighter pen | ✅ | ❌ | Add — cheap (Track A) |
+| **Laser pointer** | ✅ (Excalidraw) | ✅ | **Shipped** — fading trail + view-follow director model (A1) |
+| Highlighter pen | ✅ | ❌ | Add — cheap (Track A); top remaining parity gap |
 | Z-order, align/distribute, group, lock | ✅ | 🟡 | Z-order + group/ungroup shipped (A5); align/lock later |
 | Rich text (bold, fonts, align) | ✅ | ❌ | Mostly skip |
 | Shape fill/stroke/opacity/dash styling | ✅ | 🟡 | Fill + border colour/width/dash shipped with A2 (kept shallow) |
 | SVG export, export-selection | ✅ | ❌ | Nice-to-have |
-| **Rendered maths notation (LaTeX/KaTeX)** | ❌ | ❌ | **Add — biggest maths win** (Track B) |
+| **Rendered maths notation (LaTeX/KaTeX)** | ❌ | ✅ | **Shipped** — MathLive in-place editor → KaTeX raster (B1) |
 | **Labelled tape / bar model** (quantities, unknowns, braces) | ❌ | 🟡 | **Extend fraction bars** (Track B) |
 | **Ten-frames, base-ten blocks, hundred square** | ❌ | ❌ | **Add — the moat** (Track B) |
 | Frames, comments, timers, voting, kanban, tables, templates gallery | ✅ Miro | ❌ | **Leave out** — wrong audience |
@@ -88,10 +95,10 @@ a collaborative canvas.
 
 | Capability | **You** | Polypad | MathsBot | MLC apps | GeoGebra/Desmos | Tutoring WBs |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Written-method scaffolds + reveal** | ✅✅ | ❌ | 🟡 gen. | ❌ | ❌ | ❌ |
+| **Written-method scaffolds + reveal + type-in check** | ✅✅ | ❌ | 🟡 gen. | ❌ | ❌ | ❌ |
 | Static pictorial widgets (num line, fraction wall, clock) | ✅ | ✅ | ✅ | ✅ | 🟡 | ❌ |
 | **Dynamic draggable manipulatives** (Dienes, rekenrek, tiles) | ❌ | ✅✅ | ✅ | ✅✅ | ❌ | ❌ |
-| Equation / notation rendering (LaTeX) | ❌ *(planned B1)* | ✅ | ❌ | ❌ | ✅✅ | ✅ |
+| Equation / notation rendering (LaTeX) | ✅ *(B1 shipped)* | ✅ | ❌ | ❌ | ✅✅ | ✅ |
 | Function graphing / plotting | ❌ | 🟡 | 🟡 | ❌ | ✅✅ | 🟡 embed |
 | Dynamic geometry (constructions) | ❌ | 🟡 | ❌ | ❌ | ✅✅ | ❌ |
 | Probability (dice / spinner) | ❌ | ✅ | ✅ | ❌ | 🟡 | ❌ |
@@ -105,8 +112,10 @@ a collaborative canvas.
 
 **Lead (protect):**
 
-- **Formal written-method templates with live answer-reveal** — unique across
-  all three sub-categories; aimed squarely at UK procedural fluency.
+- **Formal written-method templates with live answer-reveal and type-in
+  self-marking** — unique across all three sub-categories; aimed squarely at UK
+  procedural fluency. A pupil can now type into the method's own cells and get
+  live green/red feedback, not just watch the reveal.
 - **Real-time collaboration in the manipulative/method space** — Polypad has it;
   MathsBot and the MLC apps essentially don't (single-device projection tools).
   Our Yjs live-collab + per-user undo is a real edge for a learner acting on
@@ -134,11 +143,21 @@ strong on Abstract (written methods) and Pictorial (fraction wall, number line),
 and absent on Concrete — the half a *learner-acts-on-a-tablet* product benefits
 from most.
 
+**Partial progress: type-in cells.** The **type-in answer boxes**
+(`InputOverlayLayer` + a tool's `inputs` capability) are the first case of a
+learner *acting on* a canvas tool rather than watching it: a canvas tool
+declares per-cell input boxes, an HTML overlay floats real `<input>`s over them
+that track pan/zoom/resize, and the typed values are baked into the PNG export.
+That is interaction, but it is still **Abstract/Pictorial** (type a number into a
+box) — not the **Concrete** drag-a-bead manipulation below.
+
 **Architecture fork (settle once, reuse).** A dynamic manipulative is *not*
 another `defineCanvasTool`. Individually draggable sub-pieces (each bead, each
 ten-block) need their own hit-testing and state. That is either a **widget tool**
 (React overlay — but invisible to PNG export, §5) or a **canvas tool with
-internal sub-piece hit-testing**. This decision gates the entire Concrete
+internal sub-piece hit-testing**. The type-in overlay above suggests a third
+path — a canvas tool with an HTML overlay for its sub-pieces — but drag physics
+(not just typing) is the open question. This decision gates the entire Concrete
 category; make it on the first manipulative (B4) and reuse it. See §4.
 
 ---
@@ -174,24 +193,32 @@ extend the `ToolName` union (`board/types.ts`), add a dock button
 
 | # | Feature | Slots into | Effort | Risk | Priority |
 |---|---------|-----------|:------:|:----:|:--------:|
-| A1 | **Laser pointer** | new controller + `PresenceLayer` + awareness | low-med | low | **1st** |
-| A2 | **Shape tool** ✅ SHIPPED (line / arrow / rect / ellipse / triangle / polygon / Bézier / angle) | `tools/shape` + `canvas/interactions/draw` | medium | med | done |
+| A1 | **Laser pointer** ✅ SHIPPED (fading trail + view-follow director model) | `canvas/interactions/laser` (select-tool toggle) + `PresenceLayer` + awareness | low-med | low | done |
+| A2 | **Shape tool** ✅ SHIPPED (line / arrow / rect / ellipse / triangle / polygon / Bézier / angle; vertices, rotation, insert/remove points) | `tools/shape` + `canvas/interactions/draw` | medium | med | done |
 | A3 | **Grid snapping** ✅ SHIPPED (+ magnetic angle snapping) | `board/geometry.snapPt`, opted into by controllers | low-med | low | done |
-| A4 | **Highlighter** | pen controller variant (alpha + width) | low | low | 4th |
+| A4 | **Highlighter** | pen controller variant (alpha + width) | low | low | **next (only open Track-A item)** |
 | A5 | Z-order + grouping ✅ SHIPPED (align buttons still open) | `board/commands` + FloatButtons | low-med | low | done |
 
-### A1. Laser pointer — highest value-to-effort
+### A1. Laser pointer — ✅ SHIPPED
 
-"Look **here**" is the single most common gesture when demonstrating over a
-shared screen, and we have nothing for it today. Design:
+> **Shipped.** "Look **here**" is the single most common gesture when
+> demonstrating over a shared screen, and it now has a first-class gesture. What
+> landed (in `canvas/interactions/laser.ts`) is richer than the original sketch:
 
-- A `laser` interaction controller drawing an ephemeral, fading trail. It is
-  **not** written to the document (no object, no stroke, no undo).
-- Renders as a local overlay first (works in the static single-user build over
-  plain screen-share) and, when shared, also broadcasts through the Yjs
-  awareness channel we already use for cursors, so remote peers on tablets see
-  it too. `ui/PresenceLayer.tsx` is the render seam.
-- No persistence path, so it can't corrupt the CRDT doc — lowest-risk new tool.
+- A press-drag laser that leaves an ephemeral, fading comet trail. It is a
+  **toggle on the Select (pointer) tool** (`store.laserMode`), not a tool of its
+  own — press the pointer key again to arm it. It writes **nothing** to the
+  document (no object, no stroke, no undo), so it can't corrupt the CRDT doc.
+- The **local** trail draws on the canvas ink layer (works solo and over plain
+  screen-share). When shared, the trail broadcasts over the Yjs awareness
+  channel and remote peers render it in the pointer's own colour via
+  `ui/PresenceLayer.tsx`.
+- **Director model** (beyond the original plan): a plain laser click brings the
+  other users' cameras to that spot if it's off their screen; framing an area
+  (hold Shift, or arm the frame toggle on touch) zooms them to fit it. So the
+  laser doubles as "come look at this" over a call.
+- Collab-gated: in the static single-user build the pointer key just selects;
+  the laser toggle only exists when `COLLAB_ENABLED`.
 
 ### A2. Shape tool — the one real primitive gap
 
@@ -242,27 +269,50 @@ tag it with a `ToolCategory`), and **nothing on the market competes here.**
 
 | # | Feature | Kind | Slots into | Effort | Risk | Priority |
 |---|---------|------|-----------|:------:|:----:|:--------:|
-| B1 | **Maths notation (KaTeX)** | canvas tool | new `mathtext` tool (rasterize) | medium | med | **1st** |
-| B2 | **Labelled tape/bar model** | canvas tool | **extend** `fraction` bars (or sibling) | low-med | low | **2nd** |
-| B3 | **Ten-frame / part-whole / number bonds** | canvas tool | new tool(s) | low-med | low | **3rd** |
-| B4 | **Base-ten (Dienes) blocks** | canvas tool | extends `placevalue` idea | medium | low | 4th |
-| B5 | **Hundred square** (shadeable) | canvas tool | new tool | low-med | low | 4th |
+| B1 | **Maths notation (KaTeX)** ✅ SHIPPED | canvas tool | `mathtext` tool (MathLive editor → KaTeX raster) | medium | med | done |
+| B2 | **Labelled tape/bar model** | canvas tool | **extend** `fraction` bars (or sibling) | low-med | low | **1st (next)** |
+| B3 | **Ten-frame / part-whole / number bonds** | canvas tool | new tool(s) | low-med | low | **2nd** |
+| B4 | **Base-ten (Dienes) blocks** | canvas tool | extends `placevalue` idea | medium | low | 3rd |
+| B5 | **Hundred square** (shadeable) | canvas tool | new tool | low-med | low | 3rd |
 | B6 | **Ruler & compass** (constructions) | canvas tools | new geometry tools | medium | med | later |
 | B7 | **Dice / spinner / random** | canvas/widget | new `probability` tool | low | low | later |
 
-### B1. Maths notation rendering (KaTeX) — the biggest maths win
+### B0. Type-in answer boxes — ✅ SHIPPED (not originally on this roadmap)
 
-Our text is plain, so stacked fractions, exponents, √, proper × ÷, and mixed
-numbers all look wrong. Add a **math-text tool** that renders LaTeX / AsciiMath
-via KaTeX.
+A systemic interaction layer added since this doc was written, and a genuine
+moat-deepener: a canvas tool declares an `inputs` capability (per-cell boxes in
+its natural coords), and `InputOverlayLayer` floats real HTML `<input>`s over
+them that track pan / zoom / resize. Typed values persist as `ans:<key>` widget
+state (synced to collaborators, undo-invisible — the worksheet's model), get
+**live green/red marking** against each cell's expected answer, and are **baked
+into the PNG export**. Wired into the times-table, grid-method, area/lattice,
+arrays, and fraction/percentage-of-an-amount tools so far. It pairs with the
+answer-reveal toggle: reveal shows the worked answer, type-in lets the pupil
+attempt it first. See §1.6 for how this partially answers the static-vs-dynamic
+architecture fork.
 
-**Make it a canvas tool, not a React widget.** KaTeX naturally renders to
-HTML/SVG, which is why a `defineWidgetTool` overlay is tempting — but overlay
-widgets are invisible to PNG export (§5) and sit outside canvas z-order. Instead
-render KaTeX → SVG → `Image` → `ctx.drawImage`, exactly the pattern
-`tools/image` already uses (`getImageEl` + `drawImage`). The edit dialog is a
-LaTeX input with a live KaTeX preview. This is the highest-impact maths add
-after the Track-A basics.
+### B1. Maths notation rendering (KaTeX) — ✅ SHIPPED
+
+> **Shipped as the `mathtext` tool.** Our text is plain, so stacked fractions,
+> exponents, √, proper × ÷, and mixed numbers all looked wrong; the maths-notation
+> tool fixes that. Two deviations from the original sketch below, both for the
+> better:
+
+**It's a canvas tool, not a React widget** — as planned. KaTeX naturally renders
+to HTML/SVG, which made a `defineWidgetTool` overlay tempting, but overlay
+widgets are invisible to PNG export (§5) and sit outside canvas z-order. So it
+renders KaTeX → SVG → `Image` → `ctx.drawImage`, exactly the `tools/image`
+pattern (`render.ts` rasterises in the background and nudges a repaint; `draw()`
+paints a "Drawing maths…" placeholder until the image lands).
+
+**Editing is in-place via MathLive, not a LaTeX dialog.** Rather than a modal
+LaTeX box with a preview, an object is created by clicking the board with the
+**maths dock tool** (`math` mode, key `6` / `M`) and edited in place through a
+MathLive `<math-field>` overlay with its virtual maths keyboard
+(`canvas/interactions/math.ts` + the in-place editor). The stored format is just
+`{ latex, natW, natH, color }`; `natW/natH` are measured at commit time so
+`size()` stays synchronous and the standard uniform-resize machinery applies. It
+is a **dock tool** (`inGallery: false`), the text tool's sibling.
 
 ### B2. Labelled tape/bar model — extend the fraction bars, don't duplicate them
 
@@ -337,17 +387,20 @@ This is also the reason the shape tool (A2) is a canvas tool, not a widget.
 
 Two interleaved tracks. Track A removes the "feels primitive next to Excalidraw"
 impression; Track B builds the thing no competitor has. Alternate so each ship
-is either a visible parity win or a moat deepening.
+is either a visible parity win or a moat deepening. **Phase 1 is fully shipped,
+and Phase 2 is done bar A4 (highlighter) and B2 (bar model)** — a ✓ marks what
+has landed. The next ships are **A4, then B2**.
 
 ```mermaid
 flowchart LR
-  subgraph P1["Phase 1 — parity floor"]
-    A1["A1 Laser pointer"]
-    A2["A2 Shape tool"]
-    A3["A3 Grid snapping"]
+  subgraph P1["Phase 1 — parity floor ✓ done"]
+    A1["A1 Laser pointer ✓"]
+    A2["A2 Shape tool ✓"]
+    A3["A3 Grid snapping ✓"]
   end
   subgraph P2["Phase 2 — first moat depth"]
-    B1["B1 KaTeX math text"]
+    B1["B1 KaTeX math text ✓"]
+    B0["B0 Type-in answer boxes ✓"]
     B2["B2 Labelled bar model"]
     A4["A4 Highlighter"]
   end
@@ -359,27 +412,31 @@ flowchart LR
   subgraph P4["Phase 4 — round-out"]
     B6["B6 Ruler & compass"]
     B7["B7 Dice / spinner"]
-    A5["A5 Z-order / align"]
+    A5["A5 Z-order / align ✓ (z-order/group; align open)"]
   end
   P1 --> P2 --> P3 --> P4
 
   classDef a fill:#cfe2ff,stroke:#084298,color:#000;
   classDef b fill:#d1e7dd,stroke:#0f5132,color:#000;
+  classDef done stroke:#0f5132,stroke-width:3px,stroke-dasharray:4 2;
   class A1,A2,A3,A4,A5 a;
-  class B1,B2,B3,B4,B5,B6,B7 b;
+  class B0,B1,B2,B3,B4,B5,B6,B7 b;
+  class A1,A2,A3,A5,B0,B1 done;
 ```
 
-Rationale for the order:
+Rationale for the order (and what remains):
 
-1. **A1 → A2 → A3** first: laser is the cheapest high-value win and lowest risk
-   (no document writes); shapes are the one genuine primitive gap; snapping
-   makes shapes usable by a finger. This trio closes the credibility gap.
-2. **B1 (KaTeX) then B2 (labelled bar model)**: the two highest-impact maths
-   adds — B2 extends the existing fraction bars rather than duplicating them;
-   slot A4 (highlighter) in as a cheap breather.
-3. **B3–B5**: the manipulatives, in curriculum order.
+1. **A1 → A2 → A3 — shipped.** Laser was the cheapest high-value win and lowest
+   risk (no document writes); shapes were the one genuine primitive gap; snapping
+   makes shapes usable by a finger. This trio closed the credibility gap.
+2. **B1 (KaTeX) — shipped**, and **B0 (type-in answer boxes) shipped** as an
+   unplanned moat-deepener. Still open in this phase: **B2 (labelled bar model)**,
+   which extends the existing fraction bars rather than duplicating them, and
+   **A4 (highlighter)** as a cheap breather. These are the immediate next ships.
+3. **B3–B5**: the manipulatives, in curriculum order (all still open).
 4. **B6–B7 + A5**: geometry/probability round-out and the opportunistic
-   whiteboard niceties.
+   whiteboard niceties. A5's z-order + grouping shipped; **align/distribute and
+   lock remain**.
 
 ---
 
@@ -404,17 +461,19 @@ Left out on purpose — revisit only if a concrete user need appears:
 
 ## 8. One-line summary
 
-Close the whiteboard gap with the **minimum** that stops us looking primitive —
-**laser pointer, a simple shape tool, grid snapping** — and spend the real
-effort **deepening the maths moat**: render proper notation with **KaTeX** and
-add the manipulatives no general whiteboard has (**labelled bar models —
-extending the existing fraction bars — ten-frames, base-ten, hundred square**),
-and make a few of them **manipulable** — the static-vs-dynamic gap (§1.6) that
-separates us from Polypad and the Math Learning Center. We already **lead** the
-math-dedicated field on method scaffolds + reveal and hold our own on
-collaboration. Skip Mermaid, the Miro collaboration surface, and the
-GeoGebra/Desmos graphing tier; they don't serve one tutor teaching one child
-over a video call.
+The whiteboard-parity floor is now **shipped** — **laser pointer, a full shape
+tool, grid snapping, z-order/grouping** — so we no longer look primitive next to
+Excalidraw. On the maths moat, **KaTeX notation** (the biggest maths win) and an
+unplanned **type-in answer-box** layer (self-marking on the method scaffolds)
+have also landed. The **remaining** effort is the rest of the moat: the
+**labelled bar model** (extending the existing fraction bars), the manipulatives
+no general whiteboard has (**ten-frames, base-ten, hundred square**), and making
+a few of them **manipulable** — the static-vs-dynamic gap (§1.6) that separates
+us from Polypad and the Math Learning Center — plus the cheap **highlighter** to
+finish Track A. We already **lead** the math-dedicated field on method scaffolds
++ reveal + type-in and hold our own on collaboration. Skip Mermaid, the Miro
+collaboration surface, and the GeoGebra/Desmos graphing tier; they don't serve
+one tutor teaching one child over a video call.
 
 ---
 
