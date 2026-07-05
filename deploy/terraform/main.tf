@@ -110,6 +110,10 @@ resource "openstack_networking_secgroup_rule_v2" "https_h3" {
 # ---------------------------------------------------------------------------
 resource "openstack_objectstorage_container_v1" "bucket" {
   name = var.s3_bucket
+  # Purge objects on destroy/replace so a non-empty bucket doesn't 409 the
+  # delete. Contents (board docs, uploads, Umami backups/) go with it - the
+  # README's "back up first" warning applies.
+  force_destroy = true
 }
 
 resource "openstack_identity_ec2_credential_v3" "s3" {}
