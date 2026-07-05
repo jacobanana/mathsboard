@@ -22,15 +22,16 @@ import {
   angleSweepDeg,
   interiorAngles,
   isClosed,
+  nearestOnSpline,
   niceAngleTarget,
   renormalize,
   rotateAround,
   snapVertexAngle,
-  splineMidpoint,
   splineSegments,
+  splineTangents,
   vertexOnlyResize,
 } from "@/tools/shape/geometry";
-import type { Pt, ShapeKind } from "@/tools/shape/geometry";
+import type { Pt, ShapeKind, Tangents } from "@/tools/shape/geometry";
 import { ShapeDialog } from "@/tools/shape/Dialog";
 
 export interface ShapeParams {
@@ -52,6 +53,9 @@ export interface ShapeParams {
   showAngles: boolean;
   /** Arrow: draw a head at both ends. */
   both: boolean;
+  /** Curve only: per-point tangent overrides parallel to `pts` (null =
+   *  automatic Catmull-Rom tangent). Set by dragging a point's Bézier arms. */
+  tans?: (Pt | null)[];
   /** Ellipse only: rotation in degrees (0-180). Other kinds bake rotation
    *  into their points instead (see the tool's `rotate`). */
   rot?: number;
@@ -339,12 +343,12 @@ export function drawShapeGeometry(
     }
     case "curve": {
       // A smooth spline THROUGH every stored point (n ≥ 2) — each handle sits
-      // on the curve itself; midpoint handles insert more (see vertices).
+      // on the curve itself; tangent overrides (tans) bend it further.
       const pts = p.pts.map((q) => ({ x: ox + q.x, y: oy + q.y }));
       if (pts.length < 2) break;
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
-      for (const s of splineSegments(pts)) {
+      for (const s of splineSegments(pts, p.tans)) {
         ctx.bezierCurveTo(s.c1.x, s.c1.y, s.c2.x, s.c2.y, s.to.x, s.to.y);
       }
       ctx.stroke();
@@ -365,6 +369,39 @@ let labelFont = "system-ui, sans-serif";
 const FONT_OF = (_ctx: CanvasRenderingContext2D): string => labelFont;
 export function setShapeLabelFont(font: string): void {
   labelFont = font;
+}
+
+// --- vertex-capability helpers ----------------------------------------------
+
+/** World-space copies of an object's points (natural * uniform scale + origin). */
+function worldPts(o: ShapeObject): { s: number; pts: Pt[] } {
+  const s = o.w / Math.max(o.nw, 1);
+  return { s, pts: o.pts.map((p) => ({ x: o.x + p.x * s, y: o.y + p.y * s })) };
+}
+
+/** Tangent overrides scaled into world units (vectors: no origin shift). */
+function worldTans(o: ShapeObject, s: number): Tangents {
+  return o.tans?.map((t) => (t ? { x: t.x * s, y: t.y * s } : null));
+}
+
+/**
+ * The tangent list to store after a vertex edit that re-normalised the points
+ * (scale folds to 1): world-sized vectors, with the same splice the points
+ * got. Returns undefined when the object never had overrides, so the patch
+ * can omit the field entirely.
+ */
+function foldedTans(
+  o: ShapeObject,
+  s: number,
+  edit?: { insertAt?: number; removeAt?: number },
+): (Pt | null)[] | undefined {
+  if (!o.tans || o.tans.length === 0) return undefined;
+  const out: (Pt | null)[] = o.tans.map((t) =>
+    t ? { x: t.x * s, y: t.y * s } : null,
+  );
+  if (edit?.insertAt != null) out.splice(edit.insertAt, 0, null);
+  if (edit?.removeAt != null) out.splice(edit.removeAt, 1);
+  return out;
 }
 
 // --- the tool ---------------------------------------------------------------
@@ -447,25 +484,32 @@ export const shapeTool = defineCanvasTool<ShapeParams>({
       }
 
       // Re-normalise: the moved set becomes the new natural geometry at
-      // scale 1 (points absorb any previous uniform resize).
+      // scale 1 (points absorb any previous uniform resize; tangent overrides
+      // absorb the same fold).
       const n = renormalize(world);
-      return { pts: n.pts, nw: n.nw, nh: n.nh, x: n.ox, y: n.oy, w: n.nw, h: n.nh };
+      const tans = foldedTans(o, s);
+      return {
+        pts: n.pts,
+        nw: n.nw,
+        nh: n.nh,
+        x: n.ox,
+        y: n.oy,
+        w: n.nw,
+        h: n.nh,
+        ...(tans ? { tans } : {}),
+      };
     },
     replacesResize(o: ShapeObject) {
       return vertexOnlyResize(o.kind);
     },
 
-    // ADD / REMOVE points (curves and polygons). Midpoint "+" handles sit
-    // halfway along each segment/edge; pressing one inserts a vertex there
-    // and immediately drags it. Double-clicking a vertex removes it (down to
+    // ADD / REMOVE points. Polygons keep midpoint "+" handles on each edge;
+    // curves instead add points by DOUBLE-CLICKING the line itself
+    // (insertOnPath), CAD-style. Double-clicking a vertex removes it (down to
     // each kind's minimum). Inserting into a triangle makes it a polygon —
     // it stops being a triangle the moment it has four corners.
     midpoints(o: ShapeObject) {
-      const s = o.w / Math.max(o.nw, 1);
-      const world = o.pts.map((p) => ({ x: o.x + p.x * s, y: o.y + p.y * s }));
-      if (o.kind === "curve" && world.length >= 2) {
-        return world.slice(0, -1).map((_, i) => splineMidpoint(world, i));
-      }
+      const { pts: world } = worldPts(o);
       if (
         (o.kind === "polygon" || o.kind === "triangle") &&
         world.length >= 3
@@ -479,12 +523,12 @@ export const shapeTool = defineCanvasTool<ShapeParams>({
       return [];
     },
     insert(o: ShapeObject, seg: number, wx: number, wy: number) {
-      const s = o.w / Math.max(o.nw, 1);
-      const world = o.pts.map((p) => ({ x: o.x + p.x * s, y: o.y + p.y * s }));
+      const { s, pts: world } = worldPts(o);
       if (seg < 0 || seg >= world.length) return null;
       const index = seg + 1; // also right for the closing edge: append
       world.splice(index, 0, { x: wx, y: wy });
       const n = renormalize(world);
+      const tans = foldedTans(o, s, { insertAt: index });
       const patch: Record<string, unknown> = {
         pts: n.pts,
         nw: n.nw,
@@ -493,18 +537,82 @@ export const shapeTool = defineCanvasTool<ShapeParams>({
         y: n.oy,
         w: n.nw,
         h: n.nh,
+        ...(tans ? { tans } : {}),
       };
       if (o.kind === "triangle") patch.kind = "polygon";
       return { patch, index };
     },
+    insertOnPath(o: ShapeObject, wx: number, wy: number, tol: number) {
+      // Double-click on the drawn line: drop a new point right there. Curves
+      // only — polygons have their edge midpoint handles.
+      if (o.kind !== "curve" || o.pts.length < 2) return null;
+      const { s, pts: world } = worldPts(o);
+      const hit = nearestOnSpline(world, { x: wx, y: wy }, worldTans(o, s));
+      if (!hit || hit.dist > tol) return null;
+      const index = hit.seg + 1;
+      world.splice(index, 0, hit.pt);
+      const n = renormalize(world);
+      const tans = foldedTans(o, s, { insertAt: index });
+      return {
+        patch: {
+          pts: n.pts,
+          nw: n.nw,
+          nh: n.nh,
+          x: n.ox,
+          y: n.oy,
+          w: n.nw,
+          h: n.nh,
+          ...(tans ? { tans } : {}),
+        },
+        index,
+      };
+    },
     remove(o: ShapeObject, i: number) {
       const min = o.kind === "curve" ? 2 : 3;
       if (o.pts.length <= min || i < 0 || i >= o.pts.length) return null;
-      const s = o.w / Math.max(o.nw, 1);
-      const world = o.pts.map((p) => ({ x: o.x + p.x * s, y: o.y + p.y * s }));
+      const { s, pts: world } = worldPts(o);
       world.splice(i, 1);
       const n = renormalize(world);
-      return { pts: n.pts, nw: n.nw, nh: n.nh, x: n.ox, y: n.oy, w: n.nw, h: n.nh };
+      const tans = foldedTans(o, s, { removeAt: i });
+      return {
+        pts: n.pts,
+        nw: n.nw,
+        nh: n.nh,
+        x: n.ox,
+        y: n.oy,
+        w: n.nw,
+        h: n.nh,
+        ...(tans ? { tans } : {}),
+      };
+    },
+
+    // BÉZIER ARMS (curves): clicking a point exposes its tangent as one or
+    // two draggable arm handles — the segment control points either side.
+    // Dragging an arm writes a tangent OVERRIDE for that point (both arms
+    // stay mirrored, keeping the curve smooth through it).
+    arms(o: ShapeObject, i: number) {
+      if (o.kind !== "curve" || o.pts.length < 2) return [];
+      const { s, pts: world } = worldPts(o);
+      if (i < 0 || i >= world.length) return [];
+      const m = splineTangents(world, worldTans(o, s))[i];
+      const p = world[i];
+      const out: { x: number; y: number; side: 1 | -1 }[] = [];
+      if (i > 0) out.push({ x: p.x - m.x / 3, y: p.y - m.y / 3, side: -1 });
+      if (i < world.length - 1) {
+        out.push({ x: p.x + m.x / 3, y: p.y + m.y / 3, side: 1 });
+      }
+      return out;
+    },
+    moveArm(o: ShapeObject, i: number, side: 1 | -1, wx: number, wy: number) {
+      if (o.kind !== "curve") return {};
+      const { s, pts: world } = worldPts(o);
+      if (!world[i]) return {};
+      const p = world[i];
+      // Arm position -> tangent: the arm sits at P + side·m/3.
+      const mWorld = { x: side * (wx - p.x) * 3, y: side * (wy - p.y) * 3 };
+      const tans: (Pt | null)[] = o.pts.map((_, k) => o.tans?.[k] ?? null);
+      tans[i] = { x: mWorld.x / s, y: mWorld.y / s }; // back to natural units
+      return { tans };
     },
   },
 
@@ -559,7 +667,23 @@ export const shapeTool = defineCanvasTool<ShapeParams>({
       rotateAround({ x: o.x + p.x * s, y: o.y + p.y * s }, c, degrees),
     );
     const n = renormalize(world);
-    return { pts: n.pts, nw: n.nw, nh: n.nh, x: n.ox, y: n.oy, w: n.nw, h: n.nh };
+    // Tangent overrides are direction vectors: rotate them in place (and fold
+    // the uniform scale, like the points).
+    const tans = o.tans?.map((t) => {
+      if (!t) return null;
+      const r = rotateAround({ x: t.x * s, y: t.y * s }, { x: 0, y: 0 }, degrees);
+      return { x: r.x, y: r.y };
+    });
+    return {
+      pts: n.pts,
+      nw: n.nw,
+      nh: n.nh,
+      x: n.ox,
+      y: n.oy,
+      w: n.nw,
+      h: n.nh,
+      ...(tans ? { tans } : {}),
+    };
   },
 });
 

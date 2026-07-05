@@ -48,6 +48,7 @@ import type { AnyBoardObject } from "@/board/types";
 import type {
   InputCtx,
   InteractionController,
+  OverlayKit,
 } from "@/canvas/interactions/types";
 
 /** A drag that translates the whole current selection (objects + strokes). */
@@ -97,6 +98,22 @@ interface VertexDrag {
   moved: boolean;
 }
 
+/** A drag on a FOCUSED vertex's Bézier arm (curve tangent handles). */
+interface ArmDrag {
+  pid: number;
+  id: string;
+  index: number;
+  side: 1 | -1;
+  moved: boolean;
+}
+
+/**
+ * The vertex whose Bézier arms are showing: set by clicking a vertex handle,
+ * cleared by pressing anywhere that isn't one of its handles/arms. Only
+ * meaningful while its object is still the single selected vertex object.
+ */
+let focusedVertex: { id: string; index: number } | null = null;
+
 /** A drag on the ROTATE handle of the single selected rotatable object. All
  *  patches are derived from the object as it was at drag START (`base`), so
  *  the accumulated turn never drifts. */
@@ -126,6 +143,7 @@ interface Lasso {
 let moving: Moving | null = null;
 let resizing: Resizing | null = null;
 let vertexDrag: VertexDrag | null = null;
+let armDrag: ArmDrag | null = null;
 let rotating: Rotating | null = null;
 let lasso: Lasso | null = null;
 
@@ -172,6 +190,25 @@ function hitVertexHandle(
     }
   }
   return -1;
+}
+
+/** The focused vertex's arm handle within slop of the screen point, or null.
+ *  (Arms only exist while a vertex is focused and its tool exposes them.) */
+function hitArmHandle(
+  st: BoardState,
+  obj: AnyBoardObject,
+  cap: VertexCapability<never>,
+  sx: number,
+  sy: number,
+): { index: number; side: 1 | -1 } | null {
+  if (!focusedVertex || focusedVertex.id !== obj.id || !cap.arms) return null;
+  for (const arm of cap.arms(obj as never, focusedVertex.index)) {
+    const s = worldToScreen(st.camera, arm.x, arm.y);
+    if (Math.abs(s.x - sx) <= HANDLE_SLOP && Math.abs(s.y - sy) <= HANDLE_SLOP) {
+      return { index: focusedVertex.index, side: arm.side };
+    }
+  }
+  return null;
 }
 
 /** Index of the "add a point" midpoint handle within slop, or -1. */
@@ -265,6 +302,36 @@ export function editObjectAt(e: MouseEvent, c: InputCtx): void {
   else c.editObject(hit);
 }
 
+/**
+ * The dashed selection frame around every selected object and stroke. Shared:
+ * the select controller draws it, and the DRAW controller reuses it so a
+ * freshly committed (auto-selected) shape reads as editable straight away.
+ */
+export function drawSelectionOutlines(
+  kit: OverlayKit,
+  st: Pick<BoardState, "board" | "selection">,
+): void {
+  const { camera, theme } = kit;
+  const tctx = kit.back;
+  const pad = 8 / camera.scale;
+  tctx.save();
+  tctx.strokeStyle = theme.accent;
+  tctx.lineWidth = 2 / camera.scale;
+  tctx.setLineDash([8 / camera.scale, 6 / camera.scale]);
+  for (const sid of st.selection.objectIds) {
+    const o = st.board.objects.find((x) => x.id === sid);
+    if (o) tctx.strokeRect(o.x - pad, o.y - pad, o.w + pad * 2, o.h + pad * 2);
+  }
+  for (const sid of st.selection.strokeIds) {
+    const s = st.board.strokes.find((x) => x.id === sid);
+    if (s) {
+      const b = strokeBounds(s);
+      tctx.strokeRect(b.x - pad, b.y - pad, b.w + pad * 2, b.h + pad * 2);
+    }
+  }
+  tctx.restore();
+}
+
 export const selectController: InteractionController = {
   tool: "select",
   cursor: "default",
@@ -275,6 +342,9 @@ export const selectController: InteractionController = {
     const st = c.store.getState();
     const pp = c.evPos(e);
     const vt = singleVertexObject(st);
+    if (vt && hitArmHandle(st, vt.obj, vt.cap, pp.x, pp.y)) {
+      return "move";
+    }
     if (vt && hitVertexHandle(st, vt.obj, vt.cap, pp.x, pp.y) >= 0) {
       return "move";
     }
@@ -306,12 +376,27 @@ export const selectController: InteractionController = {
     const w = c.toWorld(pp.x, pp.y);
 
     // A press on a vertex handle of the single selected parametric object
-    // starts a vertex drag — the finest control wins over everything.
+    // starts a vertex drag — the finest control wins over everything. The
+    // pressed vertex becomes FOCUSED: its Bézier arms (if the tool has any)
+    // show, and a press on one of those arms drags the tangent instead.
     const vt = singleVertexObject(st);
     if (vt) {
+      const arm = hitArmHandle(st, vt.obj, vt.cap, pp.x, pp.y);
+      if (arm && vt.cap.moveArm) {
+        armDrag = {
+          pid: e.pointerId,
+          id: vt.obj.id,
+          index: arm.index,
+          side: arm.side,
+          moved: false,
+        };
+        return;
+      }
       const idx = hitVertexHandle(st, vt.obj, vt.cap, pp.x, pp.y);
       if (idx >= 0) {
+        focusedVertex = { id: vt.obj.id, index: idx };
         vertexDrag = { pid: e.pointerId, id: vt.obj.id, index: idx, moved: false };
+        c.render(); // the focus ring / arms appear immediately
         return;
       }
       // A press on a midpoint "+" handle INSERTS a vertex there and drags it
@@ -323,6 +408,7 @@ export const selectController: InteractionController = {
         if (ins) {
           st.pushHistory();
           st.dragObject(vt.obj.id, ins.patch);
+          focusedVertex = { id: vt.obj.id, index: ins.index };
           vertexDrag = {
             pid: e.pointerId,
             id: vt.obj.id,
@@ -333,6 +419,9 @@ export const selectController: InteractionController = {
         }
       }
     }
+
+    // Any press past the handles drops the focused vertex (its arms hide).
+    focusedVertex = null;
 
     // A press on the rotate handle starts a rotation drag.
     const rotObj = singleRotatableObject(st);
@@ -440,7 +529,25 @@ export const selectController: InteractionController = {
 
   onPointerMove(e, c) {
     const st = c.store.getState();
-    if (vertexDrag && e.pointerId === vertexDrag.pid) {
+    if (armDrag && e.pointerId === armDrag.pid) {
+      const pp = c.evPos(e);
+      const w = c.toWorld(pp.x, pp.y);
+      const obj = st.board.objects.find((o) => o.id === armDrag!.id);
+      const t = obj && getTool(obj.type);
+      const cap =
+        t && t.kind === "canvas"
+          ? (t.vertices as VertexCapability<never> | undefined)
+          : undefined;
+      if (!obj || !cap?.moveArm) return;
+      if (!armDrag.moved) {
+        st.pushHistory(); // one undo step per arm drag
+        armDrag.moved = true;
+      }
+      st.dragObject(
+        obj.id,
+        cap.moveArm(obj as never, armDrag.index, armDrag.side, w.x, w.y),
+      );
+    } else if (vertexDrag && e.pointerId === vertexDrag.pid) {
       const pp = c.evPos(e);
       const w = c.toWorld(pp.x, pp.y);
       const obj = st.board.objects.find((o) => o.id === vertexDrag!.id);
@@ -550,6 +657,9 @@ export const selectController: InteractionController = {
     if (vertexDrag && e.pointerId === vertexDrag.pid) {
       vertexDrag = null;
     }
+    if (armDrag && e.pointerId === armDrag.pid) {
+      armDrag = null;
+    }
     if (rotating && e.pointerId === rotating.pid) {
       rotating = null;
     }
@@ -604,6 +714,7 @@ export const selectController: InteractionController = {
     moving = null;
     resizing = null;
     vertexDrag = null;
+    armDrag = null;
     rotating = null;
     if (lasso) {
       lasso = null;
@@ -612,17 +723,37 @@ export const selectController: InteractionController = {
   },
 
   onDoubleClick(e, c) {
-    // Double-click on a vertex handle REMOVES that point (curves, polygons);
-    // anywhere else it is the usual edit-in-place / settings-dialog route.
+    // Double-click on a vertex handle REMOVES that point; double-click on
+    // the drawn LINE of a curve ADDS one right there (CAD-style). Anywhere
+    // else it is the usual edit-in-place / settings-dialog route.
     const st = c.store.getState();
     const pp = c.evPos(e);
     const vt = singleVertexObject(st);
-    if (vt && vt.cap.remove) {
-      const idx = hitVertexHandle(st, vt.obj, vt.cap, pp.x, pp.y);
-      if (idx >= 0) {
-        const patch = vt.cap.remove(vt.obj as never, idx);
-        if (patch) st.updateObject(vt.obj.id, patch);
-        return;
+    if (vt) {
+      if (vt.cap.remove) {
+        const idx = hitVertexHandle(st, vt.obj, vt.cap, pp.x, pp.y);
+        if (idx >= 0) {
+          const patch = vt.cap.remove(vt.obj as never, idx);
+          if (patch) {
+            if (focusedVertex?.id === vt.obj.id) focusedVertex = null;
+            st.updateObject(vt.obj.id, patch);
+          }
+          return;
+        }
+      }
+      if (vt.cap.insertOnPath) {
+        const w = c.toWorld(pp.x, pp.y);
+        const ins = vt.cap.insertOnPath(
+          vt.obj as never,
+          w.x,
+          w.y,
+          HANDLE_SLOP / st.camera.scale,
+        );
+        if (ins) {
+          st.updateObject(vt.obj.id, ins.patch);
+          focusedVertex = { id: vt.obj.id, index: ins.index };
+          return;
+        }
       }
     }
     editObjectAt(e, c);
@@ -632,27 +763,11 @@ export const selectController: InteractionController = {
   // template layer (under the committed ink), exactly as renderBack drew them.
   drawOverlay(kit, c) {
     const st = c.store.getState();
-    const { board, selection } = st;
     const { camera, theme } = kit;
     const tctx = kit.back;
     const pad = 8 / camera.scale;
 
-    tctx.save();
-    tctx.strokeStyle = theme.accent;
-    tctx.lineWidth = 2 / camera.scale;
-    tctx.setLineDash([8 / camera.scale, 6 / camera.scale]);
-    for (const sid of selection.objectIds) {
-      const o = board.objects.find((x) => x.id === sid);
-      if (o) tctx.strokeRect(o.x - pad, o.y - pad, o.w + pad * 2, o.h + pad * 2);
-    }
-    for (const sid of selection.strokeIds) {
-      const s = board.strokes.find((x) => x.id === sid);
-      if (s) {
-        const b = strokeBounds(s);
-        tctx.strokeRect(b.x - pad, b.y - pad, b.w + pad * 2, b.h + pad * 2);
-      }
-    }
-    tctx.restore();
+    drawSelectionOutlines(kit, st);
 
     // Resize handles for a single selected canvas object (constant on-screen
     // size). Drawn on the same padded box as the selection outline. Skipped
@@ -691,7 +806,12 @@ export const selectController: InteractionController = {
         tctx.stroke();
         tctx.restore();
       }
+      // A stale focus (object deselected, point removed) self-heals here.
+      if (focusedVertex && focusedVertex.id !== vt.obj.id) focusedVertex = null;
       const pts = vt.cap.get(vt.obj as never);
+      if (focusedVertex && focusedVertex.index >= pts.length) {
+        focusedVertex = null;
+      }
       const r = 6 / camera.scale;
       tctx.save();
       tctx.fillStyle = theme.accent;
@@ -702,6 +822,38 @@ export const selectController: InteractionController = {
         tctx.arc(p.x, p.y, r, 0, Math.PI * 2);
         tctx.fill();
         tctx.stroke();
+      }
+      // The FOCUSED vertex: a ring, plus its Bézier arms (dashed guides to
+      // draggable tangent handles) when the tool exposes them.
+      if (focusedVertex) {
+        const fp = pts[focusedVertex.index];
+        tctx.strokeStyle = theme.accent;
+        tctx.lineWidth = 1.5 / camera.scale;
+        tctx.beginPath();
+        tctx.arc(fp.x, fp.y, r + 3 / camera.scale, 0, Math.PI * 2);
+        tctx.stroke();
+        const arms = vt.cap.arms?.(vt.obj as never, focusedVertex.index) ?? [];
+        if (arms.length > 0) {
+          tctx.strokeStyle = theme.muted;
+          tctx.setLineDash([4 / camera.scale, 4 / camera.scale]);
+          tctx.beginPath();
+          for (const a of arms) {
+            tctx.moveTo(fp.x, fp.y);
+            tctx.lineTo(a.x, a.y);
+          }
+          tctx.stroke();
+          tctx.setLineDash([]);
+          const ar = 5 / camera.scale;
+          tctx.fillStyle = theme.paper;
+          tctx.strokeStyle = theme.muted;
+          tctx.lineWidth = 2 / camera.scale;
+          for (const a of arms) {
+            tctx.beginPath();
+            tctx.arc(a.x, a.y, ar, 0, Math.PI * 2);
+            tctx.fill();
+            tctx.stroke();
+          }
+        }
       }
       // "Add a point" handles: smaller, hollow, with a + mark — pressing one
       // inserts a vertex there (curves, polygons).

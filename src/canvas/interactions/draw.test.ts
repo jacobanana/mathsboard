@@ -53,9 +53,11 @@ describe("shape modes (roadmap A2)", () => {
     expect(o).toMatchObject({ kind: "rect", x: 30, y: 30, w: 120, h: 60 });
     expect(o.stroke).toBe(st().color);
     expect(o.fill).toBe("none");
-    // The draw tool stays put so the next shape can be drawn immediately.
+    // The draw tool stays put so the next shape can be drawn immediately —
+    // but the fresh shape is SELECTED, so its frame shows it's editable.
     expect(st().tool).toBe("pen");
     expect(st().drawMode).toBe("rect");
+    expect(st().selection.objectIds).toEqual([o.id]);
   });
 
   it("holding Shift flips grid snapping off for the gesture", () => {
@@ -238,5 +240,51 @@ describe("point-by-point polygon (freepoly)", () => {
       { x: 60, y: 30 },
       { x: 30, y: 60 },
     ]);
+  });
+});
+
+describe("click-to-place curve (CAD style)", () => {
+  const click = (x: number, y: number) => {
+    down(x, y, { altKey: true });
+    up(x, y, { altKey: true });
+  };
+
+  beforeEach(() => {
+    st().setDrawMode("curve");
+  });
+
+  it("each click adds a point; double-click finishes an OPEN curve", () => {
+    click(0, 100);
+    click(80, 20);
+    click(160, 100);
+    click(240, 20);
+    click(240, 20); // the double-click's second click, same spot
+    drawController.onDoubleClick!(
+      pointer(240, 20) as unknown as MouseEvent,
+      ctx,
+    );
+    const o = lastShape();
+    expect(o.type).toBe("shape");
+    expect(o.kind).toBe("curve");
+    expect(o.pts).toHaveLength(4); // duplicate final click dropped
+    expect(o.fill).toBe("none");
+    expect(st().tool).toBe("pen"); // keeps drawing
+    expect(st().selection.objectIds).toEqual([o.id]); // frame shows
+  });
+
+  it("needs at least two points; a lone click is abandoned", () => {
+    click(50, 50);
+    drawController.onDoubleClick!(pointer(50, 50) as unknown as MouseEvent, ctx);
+    expect(st().board.objects).toHaveLength(0);
+  });
+
+  it("clicking near the first point does NOT close it (curves stay open)", () => {
+    click(0, 0);
+    click(100, 0);
+    click(50, 80);
+    click(2, 2); // near the first point: just another point, no close
+    expect(st().board.objects).toHaveLength(0); // still building
+    drawController.onDoubleClick!(pointer(2, 2) as unknown as MouseEvent, ctx);
+    expect(lastShape().pts).toHaveLength(4);
   });
 });

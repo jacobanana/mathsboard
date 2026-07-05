@@ -137,6 +137,35 @@ export interface VertexCapability<P> {
   /** Patch that removes vertex `i` (double-click), or null when the shape is
    *  already at its minimum point count. */
   remove?(obj: BoardObjectBase & P, i: number): Record<string, unknown> | null;
+  /**
+   * Insert a vertex ON the shape's drawn path nearest to world (wx, wy),
+   * within `tol` world px — the CAD "double-click the line to add a point"
+   * gesture. Returns the patch plus the new vertex's index, or null when the
+   * click wasn't on the path (or the tool doesn't support it for this kind).
+   */
+  insertOnPath?(
+    obj: BoardObjectBase & P,
+    wx: number,
+    wy: number,
+    tol: number,
+  ): { patch: Record<string, unknown>; index: number } | null;
+  /**
+   * BÉZIER ARMS: the draggable tangent handles shown when vertex `i` is
+   * focused (clicked once) — world positions plus which side of the vertex
+   * each sits on. Empty/omitted = no arms for this vertex.
+   */
+  arms?(
+    obj: BoardObjectBase & P,
+    i: number,
+  ): { x: number; y: number; side: 1 | -1 }[];
+  /** Patch for dragging vertex `i`'s arm on `side` to world (wx, wy). */
+  moveArm?(
+    obj: BoardObjectBase & P,
+    i: number,
+    side: 1 | -1,
+    wx: number,
+    wy: number,
+  ): Record<string, unknown>;
 }
 
 /** A tool drawn onto the board canvas. */
