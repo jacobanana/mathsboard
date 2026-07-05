@@ -1,6 +1,8 @@
-// Pen + eraser interaction controllers. The two share one implementation: a
-// live stroke accumulated in world coords, previewed on the ink layer, then
-// committed on release — as ink (pen) or as a geometric erase pass (eraser).
+// Pen + highlighter + eraser interaction controllers. They share one
+// implementation: a live stroke accumulated in world coords, previewed on the
+// ink layer, then committed on release — as ink (pen / highlighter) or as a
+// geometric erase pass (eraser). Highlighter differs from the pen only in its
+// stored `mode` (renders translucent, see drawHelpers) and its wider nib.
 
 import { screenToWorld } from "@/board/geometry";
 import { drawStrokeFull } from "@/canvas/drawHelpers";
@@ -14,13 +16,22 @@ import type {
 /** The in-progress stroke, held outside React/store (no re-render churn). */
 interface LiveStroke {
   pid: number;
-  mode: "pen" | "eraser";
+  mode: Stroke["mode"];
   color: string;
   size: number;
   points: Pt[];
 }
 
-function makeBrushController(mode: "pen" | "eraser"): InteractionController {
+/** The brush's nib diameter (screen px) for the store's current settings. */
+function nibPx(st: { penSize: number; eraserSize: number; highlighterSize: number }, mode: Stroke["mode"]): number {
+  return mode === "eraser"
+    ? st.eraserSize
+    : mode === "highlighter"
+      ? st.highlighterSize
+      : st.penSize;
+}
+
+function makeBrushController(mode: Stroke["mode"]): InteractionController {
   let live: LiveStroke | null = null;
   // Last pointer position (screen px) while the brush is over the canvas, so
   // the ink layer can draw a light ring showing the brush footprint. The ring
@@ -29,7 +40,9 @@ function makeBrushController(mode: "pen" | "eraser"): InteractionController {
   let cursorAt: Pt | null = null;
 
   return {
-    tool: mode,
+    // Highlighter runs UNDER the draw ("pen") tool via drawController, so it is
+    // never registered on its own — its `tool` is just the pen it belongs to.
+    tool: mode === "highlighter" ? "pen" : mode,
     // The ring + centre dot ARE the cursor — a separate crosshair reads as
     // off-centre next to the ring, so the native one is hidden.
     cursor: "none",
@@ -51,8 +64,8 @@ function makeBrushController(mode: "pen" | "eraser"): InteractionController {
         pid: e.pointerId,
         mode,
         color: st.color,
-        // penSize/eraserSize are screen px; store the world-space width.
-        size: (mode === "eraser" ? st.eraserSize : st.penSize) / cam.scale,
+        // The nib sizes are screen px; store the world-space width.
+        size: nibPx(st, mode) / cam.scale,
         points: [c.toWorld(pp.x, pp.y)],
       };
       c.render();
@@ -119,7 +132,7 @@ function makeBrushController(mode: "pen" | "eraser"): InteractionController {
       // scales with zoom.
       if (!cursorAt) return;
       const st = c.store.getState();
-      const diam = mode === "eraser" ? st.eraserSize : st.penSize;
+      const diam = nibPx(st, mode);
       const cam = kit.camera;
       const w = screenToWorld(cam, cursorAt.x, cursorAt.y);
       const ictx = kit.ink;
@@ -143,4 +156,5 @@ function makeBrushController(mode: "pen" | "eraser"): InteractionController {
 }
 
 export const penController = makeBrushController("pen");
+export const highlighterController = makeBrushController("highlighter");
 export const eraserController = makeBrushController("eraser");

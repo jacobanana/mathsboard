@@ -5,8 +5,8 @@
 //                        border colour; shape modes add the background (fill)
 //                        colour, the polygon-sides stepper, the square/circle
 //                        lock and the grid-snap toggle) on TOP, and the DRAW
-//                        MODE selector (freehand + the shape kinds, roadmap A2)
-//                        on the BOTTOM line, nearest the dock's Draw button.
+//                        MODE selector (freehand, highlighter + the shape kinds,
+//                        roadmap A2/A4) on the BOTTOM line, nearest the Draw button.
 //   tool === "select" -> manipulate only (move / resize / rotate on the canvas);
 //                        the pointer NEVER carries a styling panel. It DOES show
 //                        the grid-snap toggle (moves/resizes snap on squared
@@ -43,6 +43,7 @@ import { Popover } from "@/ui/Popover";
 import { keyHint } from "@/ui/shortcuts";
 import {
   FILL_PALETTE,
+  HIGHLIGHTER_SIZE_RANGE,
   LASER_PALETTE,
   PALETTE,
   PEN_SIZE_RANGE,
@@ -65,6 +66,7 @@ import {
   EllipseIcon,
   FrameIcon,
   FreePolyIcon,
+  HighlighterIcon,
   LaserIcon,
   LineIcon,
   PolygonIcon,
@@ -83,6 +85,12 @@ const DRAW_MODES: {
   Icon: () => JSX.Element;
 }[] = [
   { mode: "free", label: "Freehand", hintId: "mode-free", Icon: ScribbleIcon },
+  {
+    mode: "highlighter",
+    label: "Highlighter",
+    hintId: "mode-highlighter",
+    Icon: HighlighterIcon,
+  },
   { mode: "line", label: "Line", hintId: "mode-line", Icon: LineIcon },
   { mode: "arrow", label: "Arrow", hintId: "mode-arrow", Icon: ArrowIcon },
   { mode: "rect", label: "Rectangle", hintId: "mode-rect", Icon: RectIcon },
@@ -253,6 +261,7 @@ export function OptionsStrip(): JSX.Element | null {
   const drawMode = useBoardStore((s) => s.drawMode);
   const setDrawMode = useBoardStore((s) => s.setDrawMode);
   const penSize = useBoardStore((s) => s.penSize);
+  const highlighterSize = useBoardStore((s) => s.highlighterSize);
   const textSize = useBoardStore((s) => s.textSize);
   const mathSize = useBoardStore((s) => s.mathSize);
   const eraserSize = useBoardStore((s) => s.eraserSize);
@@ -263,6 +272,7 @@ export function OptionsStrip(): JSX.Element | null {
   const color = useBoardStore((s) => s.color);
   const setColor = useBoardStore((s) => s.setColor);
   const setPenSize = useBoardStore((s) => s.setPenSize);
+  const setHighlighterSize = useBoardStore((s) => s.setHighlighterSize);
   const setTextSize = useBoardStore((s) => s.setTextSize);
   const setMathSize = useBoardStore((s) => s.setMathSize);
   const setEraserSize = useBoardStore((s) => s.setEraserSize);
@@ -363,6 +373,11 @@ export function OptionsStrip(): JSX.Element | null {
     if (activeStrokeId != null) updateStroke(activeStrokeId, { size: px });
   }
 
+  function pickHighlighterSize(px: number): void {
+    setHighlighterSize(px);
+    if (activeStrokeId != null) updateStroke(activeStrokeId, { size: px });
+  }
+
   // --- SELECT tool in LASER mode: the laser toggle + the area-frame toggle.
   // Takes priority over shape styling — you can't edit a shape while aiming.
   // (laserMode is only reachable in collab builds; see the gating below.)
@@ -403,12 +418,18 @@ export function OptionsStrip(): JSX.Element | null {
             (activeStroke?.size as number | undefined) ?? penSize,
             pickPenSize,
           ] as const)
-        : ([
-            SHAPE_WIDTH_RANGE,
-            (activeShape?.strokeWidth as number | undefined) ??
-              Math.min(penSize, SHAPE_WIDTH_RANGE.max),
-            pickPenSize,
-          ] as const)
+        : drawMode === "highlighter"
+          ? ([
+              HIGHLIGHTER_SIZE_RANGE,
+              (activeStroke?.size as number | undefined) ?? highlighterSize,
+              pickHighlighterSize,
+            ] as const)
+          : ([
+              SHAPE_WIDTH_RANGE,
+              (activeShape?.strokeWidth as number | undefined) ??
+                Math.min(penSize, SHAPE_WIDTH_RANGE.max),
+              pickPenSize,
+            ] as const)
       : tool === "text"
         ? ([
             TEXT_SIZE_RANGE,
@@ -424,7 +445,10 @@ export function OptionsStrip(): JSX.Element | null {
   const frac = (value - range.min) / (range.max - range.min);
   const dot = Math.round(6 + frac * 16);
 
-  const shapeMode = tool === "pen" && drawMode !== "free";
+  // Freehand and highlighter are freehand-family (size + colour only); every
+  // other draw mode is a geometric shape (border width, fill, aspect, ...).
+  const shapeMode =
+    tool === "pen" && drawMode !== "free" && drawMode !== "highlighter";
 
   // The contextual controls for the active tool/mode: for the pen, the settings
   // that style the selected draw mode (aspect/sides, size, colour, fill, snap);
@@ -523,7 +547,12 @@ export function OptionsStrip(): JSX.Element | null {
               width: dot,
               height: dot,
               background: "currentColor",
-              opacity: tool === "eraser" ? 0.55 : 1,
+              opacity:
+                tool === "eraser"
+                  ? 0.55
+                  : tool === "pen" && drawMode === "highlighter"
+                    ? 0.4
+                    : 1,
             }}
           />
         )}

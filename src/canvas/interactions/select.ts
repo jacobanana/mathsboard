@@ -312,7 +312,9 @@ export function editObjectAt(e: MouseEvent, c: InputCtx): void {
   const stroke = hitTestStroke(st.board.strokes, w.x, w.y);
   if (stroke) {
     st.setSelection({ objectIds: [], strokeIds: [stroke.id] });
-    st.setDrawMode("free");
+    // Edit it with the tool that drew it: a highlighter stroke in highlighter
+    // mode, an ordinary pencil stroke in freehand — so the pill styles it live.
+    st.setDrawMode(stroke.mode === "highlighter" ? "highlighter" : "free");
     st.setTool("pen");
     st.setDrawEditMode(true); // double-click again (anywhere) to exit
     return;

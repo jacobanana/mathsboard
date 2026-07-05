@@ -28,12 +28,12 @@ its three sub-categories.
 
 ### 1.1 The two layers of the app
 
-- **Whiteboard primitives** — pen, text, eraser, select, pan, **shapes**
-  (lines / arrows / rect / ellipse / triangle / polygon / Bézier / angle, with
-  draggable vertices, rotation and z-order / grouping), **grid snapping**, and a
-  **laser pointer**. This is the layer Miro/Excalidraw are built on; it used to
-  be the **thin** part of our app but the Track-A parity floor (A1–A3, A5) is now
-  shipped.
+- **Whiteboard primitives** — pen, **highlighter**, text, eraser, select, pan,
+  **shapes** (lines / arrows / rect / ellipse / triangle / polygon / Bézier /
+  angle, with draggable vertices, rotation and z-order / grouping), **grid
+  snapping**, and a **laser pointer**. This is the layer Miro/Excalidraw are
+  built on; it used to be the **thin** part of our app but the Track-A parity
+  floor (A1–A5) is now shipped.
 - **Maths content** — ~24 registry tools (numberline, long division, fraction
   wall, bar-method arithmetic, clock, protractor, coordinate grid, rendered
   **KaTeX notation**, …) plus two systemic interaction layers: the
@@ -61,7 +61,7 @@ library itself.
 | **Arrows / connectors** | ✅ core | ✅ | **Shipped** — non-binding arrows (A2) |
 | **Grid snapping / smart guides** | ✅ | ✅ | **Shipped** — grid snap + magnetic angles (A3); smart guides later |
 | **Laser pointer** | ✅ (Excalidraw) | ✅ | **Shipped** — fading trail + view-follow director model (A1) |
-| Highlighter pen | ✅ | ❌ | Add — cheap (Track A); top remaining parity gap |
+| Highlighter pen | ✅ | ✅ | **Shipped** — translucent wide draw mode (A4) |
 | Z-order, align/distribute, group, lock | ✅ | 🟡 | Z-order + group/ungroup shipped (A5); align/lock later |
 | Rich text (bold, fonts, align) | ✅ | ❌ | Mostly skip |
 | Shape fill/stroke/opacity/dash styling | ✅ | 🟡 | Fill + border colour/width/dash shipped with A2 (kept shallow) |
@@ -196,7 +196,7 @@ extend the `ToolName` union (`board/types.ts`), add a dock button
 | A1 | **Laser pointer** ✅ SHIPPED (fading trail + view-follow director model) | `canvas/interactions/laser` (select-tool toggle) + `PresenceLayer` + awareness | low-med | low | done |
 | A2 | **Shape tool** ✅ SHIPPED (line / arrow / rect / ellipse / triangle / polygon / Bézier / angle; vertices, rotation, insert/remove points) | `tools/shape` + `canvas/interactions/draw` | medium | med | done |
 | A3 | **Grid snapping** ✅ SHIPPED (+ magnetic angle snapping) | `board/geometry.snapPt`, opted into by controllers | low-med | low | done |
-| A4 | **Highlighter** | pen controller variant (alpha + width) | low | low | **next (only open Track-A item)** |
+| A4 | **Highlighter** ✅ SHIPPED (translucent wide draw mode, key K) | pen controller variant (alpha + width) | low | low | done |
 | A5 | Z-order + grouping ✅ SHIPPED (align buttons still open) | `board/commands` + FloatButtons | low-med | low | done |
 
 ### A1. Laser pointer — ✅ SHIPPED
@@ -253,11 +253,19 @@ shape / select-move / pen controllers opt into, gated by a toggle (and honoured
 only when the background is `squared`). Smart alignment guides (Excalidraw's
 "snap to other objects") are a later, separate step.
 
-### A4. Highlighter — nearly free
+### A4. Highlighter — ✅ SHIPPED
 
-A pen mode with reduced alpha and a wider nib: "circle the key number". Either a
-flag on the existing pen controller or a sibling controller; a highlighter
-stroke is just a `Stroke` with an alpha colour and larger `size`.
+> **Shipped.** A translucent marker for "circle the key number". It landed as a
+> new **draw mode** on the draw tool (not a separate dock tool): key **K**, in
+> the options-pill mode row and the 3 / D cycle — the freehand pen's sibling.
+
+The stroke model gained a third mode, `Stroke.mode: "highlighter"`, that renders
+`source-over` at ~0.35 alpha with a wider nib (its own `highlighterSize`,
+8–48px). Built as a sibling **brush controller** rather than a flag, so it reuses
+the freehand path wholesale: the eraser trims it, it selects / moves like ink,
+and double-clicking one edits it in highlighter mode with live restyle. Alpha
+(not `multiply`) because the ink layer is a separate canvas from the paper, so
+`multiply` would read as opaque over blank squares.
 
 ---
 
@@ -388,8 +396,8 @@ This is also the reason the shape tool (A2) is a canvas tool, not a widget.
 Two interleaved tracks. Track A removes the "feels primitive next to Excalidraw"
 impression; Track B builds the thing no competitor has. Alternate so each ship
 is either a visible parity win or a moat deepening. **Phase 1 is fully shipped,
-and Phase 2 is done bar A4 (highlighter) and B2 (bar model)** — a ✓ marks what
-has landed. The next ships are **A4, then B2**.
+and Phase 2 is done bar B2 (bar model)** — a ✓ marks what has landed. The next
+ship is **B2**; with A4 shipped, **Track A is complete** bar A5's align/lock.
 
 ```mermaid
 flowchart LR
@@ -402,7 +410,7 @@ flowchart LR
     B1["B1 KaTeX math text ✓"]
     B0["B0 Type-in answer boxes ✓"]
     B2["B2 Labelled bar model"]
-    A4["A4 Highlighter"]
+    A4["A4 Highlighter ✓"]
   end
   subgraph P3["Phase 3 — manipulatives"]
     B3["B3 Ten-frame / part-whole"]
@@ -421,7 +429,7 @@ flowchart LR
   classDef done stroke:#0f5132,stroke-width:3px,stroke-dasharray:4 2;
   class A1,A2,A3,A4,A5 a;
   class B0,B1,B2,B3,B4,B5,B6,B7 b;
-  class A1,A2,A3,A5,B0,B1 done;
+  class A1,A2,A3,A4,A5,B0,B1 done;
 ```
 
 Rationale for the order (and what remains):
@@ -429,10 +437,11 @@ Rationale for the order (and what remains):
 1. **A1 → A2 → A3 — shipped.** Laser was the cheapest high-value win and lowest
    risk (no document writes); shapes were the one genuine primitive gap; snapping
    makes shapes usable by a finger. This trio closed the credibility gap.
-2. **B1 (KaTeX) — shipped**, and **B0 (type-in answer boxes) shipped** as an
-   unplanned moat-deepener. Still open in this phase: **B2 (labelled bar model)**,
-   which extends the existing fraction bars rather than duplicating them, and
-   **A4 (highlighter)** as a cheap breather. These are the immediate next ships.
+2. **B1 (KaTeX) — shipped**, **B0 (type-in answer boxes) shipped** as an
+   unplanned moat-deepener, and **A4 (highlighter) shipped** — the cheap breather
+   that completed Track A's freehand set. Still open in this phase: **B2 (labelled
+   bar model)**, which extends the existing fraction bars rather than duplicating
+   them. That is the immediate next ship.
 3. **B3–B5**: the manipulatives, in curriculum order (all still open).
 4. **B6–B7 + A5**: geometry/probability round-out and the opportunistic
    whiteboard niceties. A5's z-order + grouping shipped; **align/distribute and
@@ -462,15 +471,15 @@ Left out on purpose — revisit only if a concrete user need appears:
 ## 8. One-line summary
 
 The whiteboard-parity floor is now **shipped** — **laser pointer, a full shape
-tool, grid snapping, z-order/grouping** — so we no longer look primitive next to
-Excalidraw. On the maths moat, **KaTeX notation** (the biggest maths win) and an
-unplanned **type-in answer-box** layer (self-marking on the method scaffolds)
-have also landed. The **remaining** effort is the rest of the moat: the
-**labelled bar model** (extending the existing fraction bars), the manipulatives
-no general whiteboard has (**ten-frames, base-ten, hundred square**), and making
-a few of them **manipulable** — the static-vs-dynamic gap (§1.6) that separates
-us from Polypad and the Math Learning Center — plus the cheap **highlighter** to
-finish Track A. We already **lead** the math-dedicated field on method scaffolds
+tool, grid snapping, z-order/grouping, and the highlighter** — so we no longer
+look primitive next to Excalidraw. On the maths moat, **KaTeX notation** (the
+biggest maths win) and an unplanned **type-in answer-box** layer (self-marking on
+the method scaffolds) have also landed. The **remaining** effort is the rest of
+the moat: the **labelled bar model** (extending the existing fraction bars), the
+manipulatives no general whiteboard has (**ten-frames, base-ten, hundred
+square**), and making a few of them **manipulable** — the static-vs-dynamic gap
+(§1.6) that separates us from Polypad and the Math Learning Center. We already
+**lead** the math-dedicated field on method scaffolds
 + reveal + type-in and hold our own on collaboration. Skip Mermaid, the Miro
 collaboration surface, and the GeoGebra/Desmos graphing tier; they don't serve
 one tutor teaching one child over a video call.

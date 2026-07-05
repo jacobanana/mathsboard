@@ -49,6 +49,8 @@ export const FILL_PALETTE: [string, string][] = [
 ];
 
 export const PEN_SIZE_RANGE: SizeRange = { min: 1, max: 24, step: 1 };
+/** Highlighter nib width: wider than the pen (a marker, not a fine liner). */
+export const HIGHLIGHTER_SIZE_RANGE: SizeRange = { min: 8, max: 48, step: 2 };
 /** Shape border width (also nudged by +/- while a shape mode is active). */
 export const SHAPE_WIDTH_RANGE: SizeRange = { min: 1, max: 12, step: 1 };
 /** Regular-polygon side count (the draw dock's stepper + the dialog). */

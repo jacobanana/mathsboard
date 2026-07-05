@@ -28,7 +28,8 @@ import { id as newId } from "@/board/types";
 import type { AnyBoardObject } from "@/board/types";
 import { snapPt } from "@/board/geometry";
 import { useBoardStore } from "@/board/store";
-import { penController } from "@/canvas/interactions/brush";
+import type { DrawMode } from "@/board/store";
+import { penController, highlighterController } from "@/canvas/interactions/brush";
 import { drawSelectionOutlines } from "@/canvas/interactions/select";
 import {
   hasAngles,
@@ -94,6 +95,17 @@ let placePress: { pid: number } | null = null;
 
 const placementMode = (m: string): m is Placing["kind"] =>
   m === "freepoly" || m === "curve";
+
+/** The freehand brush a draw mode delegates to: the pen for "free", the
+ *  highlighter for "highlighter", null for the shape / placement modes (which
+ *  this controller drives directly). */
+function freehandBrush(mode: DrawMode): InteractionController | null {
+  return mode === "free"
+    ? penController
+    : mode === "highlighter"
+      ? highlighterController
+      : null;
+}
 
 /**
  * Grid snapping for a gesture: the toggle on squared paper, EXCEPT while
@@ -321,8 +333,9 @@ export const drawController: InteractionController = {
 
   hoverCursor(e, c) {
     const mode = c.store.getState().drawMode;
-    if (mode === "free") {
-      return penController.hoverCursor!(e, c);
+    const brush = freehandBrush(mode);
+    if (brush) {
+      return brush.hoverCursor!(e, c);
     }
     if (placementMode(mode) && placing) {
       // Track the hover so the elastic segment follows the cursor.
@@ -335,9 +348,11 @@ export const drawController: InteractionController = {
 
   onPointerDown(e, c) {
     const st = c.store.getState();
-    if (st.drawMode === "free") {
+    // The explicit union (not freehandBrush) narrows drawMode to ShapeKind for
+    // the shape-anchoring `live` below once the freehand modes are handled.
+    if (st.drawMode === "free" || st.drawMode === "highlighter") {
       placing = null;
-      penController.onPointerDown(e, c);
+      freehandBrush(st.drawMode)!.onPointerDown(e, c);
       return;
     }
     if (placementMode(st.drawMode)) {
@@ -360,7 +375,8 @@ export const drawController: InteractionController = {
 
   onPointerMove(e, c) {
     if (!live) {
-      if (placementMode(c.store.getState().drawMode)) {
+      const mode = c.store.getState().drawMode;
+      if (placementMode(mode)) {
         if (placing && placePress) {
           const pp = c.evPos(e);
           placing.cursor = c.toWorld(pp.x, pp.y);
@@ -368,7 +384,7 @@ export const drawController: InteractionController = {
         }
         return;
       }
-      penController.onPointerMove(e, c);
+      freehandBrush(mode)?.onPointerMove(e, c);
       return;
     }
     if (e.pointerId !== live.pid) return;
@@ -396,7 +412,7 @@ export const drawController: InteractionController = {
         if (e.type !== "pointercancel") placeClick(e, c);
         return;
       }
-      penController.onPointerUp(e, c);
+      freehandBrush(c.store.getState().drawMode)?.onPointerUp(e, c);
       return;
     }
     if (e.pointerId !== live.pid) return;
@@ -437,18 +453,23 @@ export const drawController: InteractionController = {
       placePress = null;
       c.render();
     }
+    // Cancel/leave both brushes: only the one holding a live stroke or a
+    // cursor ring reacts, the other is a no-op.
     penController.cancel!(c);
+    highlighterController.cancel!(c);
   },
 
   onPointerLeave(c) {
     penController.onPointerLeave!(c);
+    highlighterController.onPointerLeave!(c);
   },
 
   drawOverlay(kit, c) {
     const st = c.store.getState();
     const mode = st.drawMode;
-    if (mode === "free") {
-      penController.drawOverlay!(kit, c);
+    const brush = freehandBrush(mode);
+    if (brush) {
+      brush.drawOverlay!(kit, c);
       return;
     }
     // Freshly committed shapes stay selected while the draw tool is active:

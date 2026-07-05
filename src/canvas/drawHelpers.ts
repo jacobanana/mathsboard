@@ -247,19 +247,29 @@ export function drawStackFrac(
 
 // --- stroke renderers -----------------------------------------------------
 
+/** Opacity a highlighter stroke renders at — translucent enough that ink and
+ *  paper read through it. A single stroke is one path stroked once, so the
+ *  alpha is uniform (no self-overlap darkening within a stroke). */
+export const HIGHLIGHTER_ALPHA = 0.35;
+
 export function strokeStyleFor(
   ctx: CanvasRenderingContext2D,
-  s: { mode: "pen" | "eraser"; color: string; size: number },
+  s: { mode: "pen" | "eraser" | "highlighter"; color: string; size: number },
 ): void {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.lineWidth = s.size;
+  ctx.globalAlpha = 1;
   if (s.mode === "eraser") {
     ctx.globalCompositeOperation = "destination-out";
     ctx.strokeStyle = "#000";
     ctx.fillStyle = "#000";
   } else {
+    // Highlighter: same source-over ink as the pen but translucent, so it
+    // works over blank paper as well as over ink (a separate ink layer means
+    // "multiply" would look opaque on blank areas — see scene.ts layering).
     ctx.globalCompositeOperation = "source-over";
+    if (s.mode === "highlighter") ctx.globalAlpha = HIGHLIGHTER_ALPHA;
     ctx.strokeStyle = s.color;
     ctx.fillStyle = s.color;
   }
@@ -267,7 +277,7 @@ export function strokeStyleFor(
 
 export function drawStrokeFull(
   ctx: CanvasRenderingContext2D,
-  s: { mode: "pen" | "eraser"; color: string; size: number; points: { x: number; y: number }[] },
+  s: { mode: "pen" | "eraser" | "highlighter"; color: string; size: number; points: { x: number; y: number }[] },
 ): void {
   const p = s.points;
   strokeStyleFor(ctx, s);
@@ -287,6 +297,7 @@ export function drawStrokeFull(
     ctx.stroke();
   }
   ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1; // don't leak highlighter translucency onto later strokes
 }
 
 // --- grid renderer --------------------------------------------------------

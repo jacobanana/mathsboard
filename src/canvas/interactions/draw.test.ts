@@ -41,6 +41,38 @@ describe("freehand mode (unchanged pen behaviour)", () => {
   });
 });
 
+describe("highlighter mode (roadmap A4)", () => {
+  it("a drag commits a highlighter stroke sized from highlighterSize", () => {
+    st().setDrawMode("highlighter");
+    st().setHighlighterSize(20);
+    down(10, 10);
+    move(60, 40);
+    up(60, 40);
+    expect(st().board.objects).toHaveLength(0);
+    const strokes = st().board.strokes;
+    expect(strokes).toHaveLength(1);
+    expect(strokes[0].mode).toBe("highlighter");
+    // Camera scale is 1 in the fixture, so the stored (world) width equals the
+    // screen nib width — the highlighter's own setting, not penSize.
+    expect(strokes[0].size).toBe(20);
+    expect(st().tool).toBe("pen"); // stays in the draw tool like freehand
+    expect(st().drawMode).toBe("highlighter");
+  });
+
+  it("switching to a shape mode still drag-creates a shape (not a stroke)", () => {
+    st().setDrawMode("highlighter");
+    down(10, 10);
+    move(60, 40);
+    up(60, 40);
+    st().setDrawMode("rect");
+    down(33, 34);
+    move(148, 93);
+    up(148, 93);
+    expect(st().board.strokes).toHaveLength(1); // the one highlighter stroke
+    expect(lastShape().kind).toBe("rect");
+  });
+});
+
 describe("shape modes (roadmap A2)", () => {
   it("drags a rectangle onto the grid and keeps the draw tool active", () => {
     st().setDrawMode("rect");

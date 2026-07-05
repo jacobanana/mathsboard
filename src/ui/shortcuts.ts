@@ -487,6 +487,14 @@ export const SHORTCUTS: ShortcutSpec[] = [
     run: () => pickDrawMode("free"),
   },
   {
+    id: "mode-highlighter",
+    group: "tools",
+    keys: [["K"]],
+    label: "Highlighter (translucent marker)",
+    test: (c) => bare(c) && c.key === "k",
+    run: () => pickDrawMode("highlighter"),
+  },
+  {
     id: "mode-line",
     group: "tools",
     keys: [["L"]],

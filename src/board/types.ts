@@ -32,10 +32,13 @@ export interface BoardObjectBase {
  */
 export type AnyBoardObject = BoardObjectBase & Record<string, unknown>;
 
-/** A freehand pen / eraser stroke. Points are in world coordinates. */
+/** A freehand pen / highlighter / eraser stroke. Points are in world
+ *  coordinates. `highlighter` renders like `pen` but translucent and wide (a
+ *  marker over the ink); `eraser` strokes are applied geometrically and never
+ *  stored, so a persisted stroke is only ever `pen` or `highlighter`. */
 export interface Stroke {
   id: string;
-  mode: "pen" | "eraser";
+  mode: "pen" | "eraser" | "highlighter";
   color: string;
   size: number;
   points: { x: number; y: number }[];

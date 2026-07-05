@@ -186,11 +186,11 @@ describe("shapes, arrange & grouping", () => {
     expect(st().tool).toBe("pen");
     expect(st().drawMode).toBe("free"); // first press: no cycle
     expect(fire(keydown("3"))).toBe(true);
-    expect(st().drawMode).toBe("line"); // second press: next mode
+    expect(st().drawMode).toBe("highlighter"); // second press: next mode
     expect(fire(keydown("d"))).toBe(true);
-    expect(st().drawMode).toBe("arrow"); // D shares the cycle
+    expect(st().drawMode).toBe("line"); // D shares the cycle
     // ... and the cycle wraps around the full mode list.
-    for (let i = 0; i < 8; i++) fire(keydown("3"));
+    for (let i = 0; i < 9; i++) fire(keydown("3"));
     expect(st().drawMode).toBe("free");
   });
 

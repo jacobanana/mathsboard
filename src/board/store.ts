@@ -63,12 +63,13 @@ const EMPTY_SELECTION: Selection = { objectIds: [], strokeIds: [] };
  * One dock button, toggled in the options pill / by shortcut — the pen tool
  * "became the drawing tool".
  */
-export type DrawMode = "free" | "freepoly" | ShapeKind;
+export type DrawMode = "free" | "highlighter" | "freepoly" | ShapeKind;
 
 /** Every draw mode in its UI order — the options pill's row and the cycle
  *  the draw shortcut (3 / D) steps through when pressed again. */
 export const DRAW_MODE_ORDER: DrawMode[] = [
   "free",
+  "highlighter",
   "line",
   "arrow",
   "rect",
@@ -111,6 +112,8 @@ interface BoardState {
   tool: ToolName;
   color: string;
   penSize: number;
+  /** Highlighter nib width (screen px, like penSize) — its own wider setting. */
+  highlighterSize: number;
   textSize: number;
   /** Base font size new maths notation is placed at (maps onto the uniform
    *  resize scale: 26 = the layout size, i.e. scale 1 — see tools/mathtext). */
@@ -257,6 +260,7 @@ interface BoardState {
   setDrawEditMode(on: boolean): void;
   setColor(c: string): void;
   setPenSize(n: number): void;
+  setHighlighterSize(n: number): void;
   setTextSize(n: number): void;
   setMathSize(n: number): void;
   setEraserSize(n: number): void;
@@ -446,7 +450,9 @@ export function activeStrokeId(
   }
   const id = s.selection.strokeIds[0];
   const stroke = s.board.strokes.find((x) => x.id === id);
-  return stroke && stroke.mode === "pen" ? stroke.id : null;
+  // Pen and highlighter strokes are both restyleable in edit mode; eraser
+  // strokes are never stored, so this is really "any persisted stroke".
+  return stroke && stroke.mode !== "eraser" ? stroke.id : null;
 }
 
 /**
@@ -487,6 +493,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
     tool: "pen",
     color: theme.ink,
     penSize: 6,
+    highlighterSize: 20,
     textSize: 26,
     mathSize: 26,
     eraserSize: 45,
@@ -662,6 +669,9 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
     setPenSize(n) {
       set({ penSize: n });
+    },
+    setHighlighterSize(n) {
+      set({ highlighterSize: n });
     },
     setTextSize(n) {
       set({ textSize: n });
