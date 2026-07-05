@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useBoardStore } from "@/board/store";
 import { screenToWorld } from "@/board/geometry";
-import { renderScene } from "@/canvas/scene";
+import { renderScene, renderInputValues } from "@/canvas/scene";
 import { createTextEditor } from "@/canvas/textEditor";
 import { createMathEditor, prewarmMathEditor } from "@/canvas/mathEditor";
 import { registerExportLayers } from "@/canvas/export";
@@ -336,13 +336,17 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     };
   }, [resize]);
 
-  // Expose the two layers to the PNG export service (no shell DOM reach).
+  // Expose the two layers to the PNG export service (no shell DOM reach), plus
+  // a pass that bakes the type-in answer values (HTML inputs, uncapturable from
+  // the canvas bitmap) into the exported image.
   useEffect(() => {
     const t = tCanvasRef.current;
     const i = iCanvasRef.current;
     if (!t || !i) return;
-    return registerExportLayers(t, i);
-  }, []);
+    return registerExportLayers(t, i, (octx) =>
+      renderInputValues(octx, viewRef.current, store.getState()),
+    );
+  }, [store]);
 
   // Redraw whenever document / camera / tool / selection / editing changes.
   useEffect(() => {
