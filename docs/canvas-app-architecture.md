@@ -20,7 +20,9 @@ save a few lines are noted but deferred.
 > `canvas/viewport.ts` (T5), `canvas/textEditor.ts` (T6), `board/selection.ts`
 > / `board/resize.ts` / `canvas/export.ts` (Tier 3). §1–§2 below describe the
 > PRE-refactor shape and are kept as the rationale; §4 is now the actual shape.
-> Still open: data-driving the Toolbar dock from the interaction registry (§6).
+> The once-open §6 item (data-driving the Toolbar dock from the registry)
+> landed with the follow-up refactor — see docs/tool-architecture-refactor.md,
+> which also unified styling, edit routing and the creation ritual.
 
 ---
 

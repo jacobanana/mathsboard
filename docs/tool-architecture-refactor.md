@@ -1,5 +1,16 @@
 # Tools, select & edit: duplication audit and unification plan
 
+> **Status: IMPLEMENTED (2026-07).** All five phases landed, one commit each,
+> on the sequencing in §5: parity fixes + `pressSelection` (board/selection.ts),
+> the creation ritual (`createObject`, board/commands.ts), the styling service
+> (`board/styling.ts` + StyleChannels + the `sizes` table), `editWith` + the
+> in-place editor registry (canvas/editors.ts) + the tap-edit factory
+> (canvas/interactions/tapEdit.ts), and the registry-driven UI (ui/toolSpecs.tsx
+> + one DRAW_MODES table + host-drawn selection chrome). §§1–3 below describe
+> the PRE-refactor shape and are kept as the rationale; §4 is now the actual
+> shape. Verified by the unit suite (behaviour-level, written before the
+> plumbing moved) and the full Playwright e2e run.
+
 > **Why this doc exists.** The T1–T6 refactor (docs/canvas-app-architecture.md)
 > gave interaction tools a controller registry and killed the god-modules. But
 > it stopped one layer short: the **UI surfaces** (dock, options pill,
