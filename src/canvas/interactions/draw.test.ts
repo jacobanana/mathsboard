@@ -41,6 +41,32 @@ describe("freehand mode (unchanged pen behaviour)", () => {
   });
 });
 
+describe("stroke width is zoom-independent (drawn size stays constant)", () => {
+  // The stored width is a FIXED world size — a stroke reads the same no matter
+  // the zoom it was drawn at (matching shape borders). Regression: the width
+  // used to be divided by the draw-time camera scale, so the same pen looked
+  // thinner when drawn zoomed-in and thicker when drawn zoomed-out.
+  const strokeSizeDrawnAt = (scale: number): number => {
+    freshBoard();
+    st().setSize("pen", 6);
+    useBoardStore.setState({ camera: { x: 0, y: 0, scale } });
+    down(10, 10);
+    move(60, 40);
+    up(60, 40);
+    return st().board.strokes[0].size;
+  };
+
+  it("stores the nib width unchanged whatever the zoom", () => {
+    expect(strokeSizeDrawnAt(1)).toBe(6);
+    expect(strokeSizeDrawnAt(0.25)).toBe(6);
+    expect(strokeSizeDrawnAt(4)).toBe(6);
+  });
+
+  it("gives strokes drawn at different zooms the same world width", () => {
+    expect(strokeSizeDrawnAt(4)).toBe(strokeSizeDrawnAt(0.5));
+  });
+});
+
 describe("highlighter mode (roadmap A4)", () => {
   it("a drag commits a highlighter stroke sized from highlighterSize", () => {
     st().setDrawMode("highlighter");
@@ -52,8 +78,7 @@ describe("highlighter mode (roadmap A4)", () => {
     const strokes = st().board.strokes;
     expect(strokes).toHaveLength(1);
     expect(strokes[0].mode).toBe("highlighter");
-    // Camera scale is 1 in the fixture, so the stored (world) width equals the
-    // screen nib width — the highlighter's own setting, not penSize.
+    // The stored (world) width is the highlighter's own nib setting, not penSize.
     expect(strokes[0].size).toBe(20);
     expect(st().tool).toBe("pen"); // stays in the draw tool like freehand
     expect(st().drawMode).toBe("highlighter");

@@ -34,6 +34,18 @@ function nibPx(
   ];
 }
 
+/**
+ * A brush footprint's WORLD-space width from its screen-px nib. Pen and
+ * highlighter marks are STORED, so their width is a fixed world size — a stroke
+ * reads the same no matter the zoom it was drawn at (matching shape borders,
+ * which store a fixed strokeWidth). The eraser is a live pass, never stored, so
+ * its reach stays screen-relative (÷ scale): you always rub out what sits under
+ * the visible brush ring.
+ */
+function worldNib(nib: number, mode: Stroke["mode"], scale: number): number {
+  return mode === "eraser" ? nib / scale : nib;
+}
+
 function makeBrushController(mode: Stroke["mode"]): InteractionController {
   let live: LiveStroke | null = null;
   // Last pointer position (screen px) while the brush is over the canvas, so
@@ -67,8 +79,10 @@ function makeBrushController(mode: Stroke["mode"]): InteractionController {
         pid: e.pointerId,
         mode,
         color: st.color,
-        // The nib sizes are screen px; store the world-space width.
-        size: nibPx(st, mode) / cam.scale,
+        // The nib sizes are screen px; store the world-space width. Pen /
+        // highlighter get a FIXED world width (zoom-independent, like a shape
+        // border); the eraser's reach stays screen-relative (see worldNib).
+        size: worldNib(nibPx(st, mode), mode, cam.scale),
         points: [c.toWorld(pp.x, pp.y)],
       };
       c.render();
@@ -130,9 +144,10 @@ function makeBrushController(mode: Stroke["mode"]): InteractionController {
       // Re-paint the in-progress live stroke on top of the committed ink.
       if (live) drawStrokeFull(kit.ink, live);
 
-      // Brush cursor ring: a light circle the exact size of the pen / eraser
-      // footprint. The diameter is a screen-px value, so the world radius
-      // scales with zoom.
+      // Brush cursor ring: a light circle the exact size of the footprint the
+      // stroke will get. Pen / highlighter width is a fixed world size, so the
+      // ring scales on screen with zoom (tracking the ink it previews); the
+      // eraser stays screen-fixed (its reach is screen-relative — see worldNib).
       if (!cursorAt) return;
       const st = c.store.getState();
       const diam = nibPx(st, mode);
@@ -141,7 +156,7 @@ function makeBrushController(mode: Stroke["mode"]): InteractionController {
       const ictx = kit.ink;
       ictx.save();
       ictx.beginPath();
-      ictx.arc(w.x, w.y, diam / 2 / cam.scale, 0, Math.PI * 2);
+      ictx.arc(w.x, w.y, worldNib(diam, mode, cam.scale) / 2, 0, Math.PI * 2);
       ictx.fillStyle = "rgba(126,152,151,0.12)";
       ictx.fill();
       ictx.lineWidth = 1.5 / cam.scale;
