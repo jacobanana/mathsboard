@@ -114,6 +114,39 @@ export function measureTextWidth(text: string, font: string): number {
   return measureCtx.measureText(text).width;
 }
 
+/**
+ * Wrap `text` to `maxW` at `font` using the offscreen measuring context, so a
+ * tool's size()/inputs.fields() can compute a wrapped prompt's line count with
+ * no live render context (draw() gets the same lines for the same inputs).
+ */
+export function wrapMeasured(text: string, maxW: number, font: string): string[] {
+  return wrapText(measureCtx, text, maxW, font);
+}
+
+// --- word-answer marking --------------------------------------------------
+// The numeric answersMatch (registry.ts) can't grade a "type it in words"
+// answer, so tools that mark a written number supply `correctText` and the
+// input overlay compares with wordsMatch. Normalisation is forgiving: case,
+// hyphens, commas and the optional "and" don't affect the verdict.
+
+/** Lowercase; hyphens/commas -> spaces; drop the word "and"; collapse spaces. */
+export function normalizeWords(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[-,]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w && w !== "and") // "and" only as a whole token — keeps "thousand"
+    .join(" ")
+    .trim();
+}
+
+/** Whether a typed written number matches `correct` after normalisation. Blank
+ *  never matches (mirrors answersMatch). */
+export function wordsMatch(typed: string, correct: string): boolean {
+  if (typed.trim() === "") return false;
+  return normalizeWords(typed) === normalizeWords(correct);
+}
+
 // --- result footer -------------------------------------------------------
 // Several method tools (grid method, area / lattice) work the sub-products in a
 // grid and need one more box for the final answer. This is the shared "= [box]"

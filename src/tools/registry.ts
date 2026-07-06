@@ -197,12 +197,19 @@ export interface InputFieldSpec {
   /** Expected answer for live marking; omit for un-marked free entry. */
   correct?: number;
   /**
+   * Expected WRITTEN answer (a number in words) for marking via wordsMatch
+   * instead of the numeric answersMatch — e.g. "type this number in words".
+   * Mutually exclusive with `correct`; used with variant "text".
+   */
+  correctText?: string;
+  /**
    * Visual style. "box" (default): the input is its own framed field (the tool
    * draws no cell under it) — e.g. a single practice table. "cell": frameless,
    * fills a cell the tool already draws grid lines for — e.g. the 12×12 grid,
-   * where a per-cell border would double the gridlines.
+   * where a per-cell border would double the gridlines. "text": a wide, left-
+   * aligned free-text field (not numeric), graded against `correctText`.
    */
-  variant?: "box" | "cell";
+  variant?: "box" | "cell" | "text";
 }
 
 export interface InputCapability<P> {

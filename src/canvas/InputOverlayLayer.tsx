@@ -24,6 +24,7 @@
 import { useBoardStore } from "@/board/store";
 import { hitTest, worldToScreen } from "@/board/geometry";
 import { answersMatch, getTool } from "@/tools/registry";
+import { wordsMatch } from "@/canvas/drawHelpers";
 
 interface InputOverlayLayerProps {
   /** #stage element, for culling inputs of off-screen objects. */
@@ -89,35 +90,47 @@ export function InputOverlayLayer({
             return null;
           const typed = (rec["ans:" + f.key] as string) ?? "";
           const revealed = !!o.revealed;
+          // A field grades numerically (correct) or as written words (correctText).
+          const isText = f.variant === "text";
+          const hasCorrect = f.correct != null || f.correctText != null;
+          const revealValue = f.correctText ?? String(f.correct);
           // Marking (and the correct answer in blank boxes) only appears once
           // the "show answers" toggle is on — until then it's plain entry.
-          const revealBlank = revealed && typed.trim() === "" && f.correct != null;
+          const revealBlank = revealed && typed.trim() === "" && hasCorrect;
           const marked =
-            revealed && f.correct != null && typed.trim() !== ""
-              ? answersMatch(typed, f.correct)
+            revealed && hasCorrect && typed.trim() !== ""
+              ? (
+                  f.correctText != null
+                    ? wordsMatch(typed, f.correctText)
+                    : answersMatch(typed, f.correct!)
+                )
                 ? "ok"
                 : "no"
               : "";
           const cls =
             "iofield" +
             (f.variant === "cell" ? " cell" : "") +
+            (isText ? " text" : "") +
             (revealBlank ? " revealed" : marked ? " " + marked : "");
           return (
             <input
               key={o.id + ":" + f.key}
               className={cls}
-              inputMode="numeric"
+              inputMode={isText ? "text" : "numeric"}
               autoComplete="off"
               readOnly={revealBlank}
-              value={revealBlank ? String(f.correct) : typed}
+              value={revealBlank ? revealValue : typed}
               style={{
                 left: s.x + f.x * px,
                 top: s.y + f.y * px,
                 width: f.w * px,
                 height: f.h * px,
                 // Fit by height, but cap by width so many-digit answers in a
-                // square grid cell don't overflow.
-                fontSize: Math.max(8, Math.min(f.h * 0.55, f.w * 0.42) * px),
+                // square grid cell don't overflow. Words fields cap smaller so a
+                // long spelled-out number still fits.
+                fontSize: isText
+                  ? Math.max(9, Math.min(f.h * 0.5, 18) * px)
+                  : Math.max(8, Math.min(f.h * 0.55, f.w * 0.42) * px),
               }}
               // Keep typing local: don't let keys reach the board shortcut
               // handler (e.g. "e" = eraser) or the press bubble to the canvas.

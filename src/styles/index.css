@@ -129,6 +129,12 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .field input[type=number],.field input[type=text],.field select{font-family:inherit;font-size:16px;font-weight:600;border:2px solid #E0E4E2;border-radius:10px;padding:9px 11px;width:140px;text-align:center;color:var(--ink);background:#fff;}
 .field input:focus,.field select:focus,textarea:focus{outline:none;border-color:var(--accent);}
 .field.check{justify-content:flex-start;gap:10px;cursor:pointer;} .field.check input{width:22px;height:22px;accent-color:var(--bar);}
+/* Place-value dialog: activity + decimals segmented pickers, and the target row. */
+.pv-seg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px;}
+.pv-seg .btn{flex:1 1 auto;min-height:40px;justify-content:center;border:2px solid #E0E4E2;}
+.pv-seg .btn.active{border-color:var(--accent);}
+.pv-target{display:flex;gap:8px;align-items:center;margin-top:8px;}
+.pv-target input{flex:1;width:auto;}
 .err{color:#D64545;font-size:13.5px;min-height:18px;margin:2px 0 0;font-weight:600;}
 .card-actions{display:flex;gap:10px;margin-top:16px;}
 .card-actions .btn{flex:1;justify-content:center;color:var(--ink);background:#EEF1F0;min-height:48px;} .card-actions .btn:hover{background:#E3E8E6;}
@@ -219,6 +225,9 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .iofield.cell:focus{background:rgba(242,179,61,.24);}
 .iofield.cell.ok{background:rgba(46,158,91,.16);color:#2E9E5B;}
 .iofield.cell.no{background:rgba(214,69,69,.16);color:#D64545;}
+/* "text" variant: a wide, left-aligned free-text field (a number written in
+   words), lighter weight than the numeric answer boxes. */
+.iofield.text{text-align:left;font-weight:500;padding:0 8px;}
 .ilayer{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
 /* --- Widget resize handles (WidgetHandleLayer): DOM handles over the selected
    resizable widget, above the widget card so they stay clickable. --- */
