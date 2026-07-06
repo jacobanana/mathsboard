@@ -34,6 +34,7 @@ import { percAmountTool } from "@/tools/percamount";
 import fdpTool from "@/tools/fdp";
 import clockTool from "@/tools/clock";
 import diceTool from "@/tools/dice";
+import moneyTool from "@/tools/money";
 import noteTool from "@/tools/note";
 import worksheetTool from "@/tools/worksheet";
 import imageTool from "@/tools/image";
@@ -64,6 +65,9 @@ const ALL_TOOLS = [
   // A rollable 3D die (probability / number games) — a widget overlay, not a
   // canvas tool, but it lives with the number tools in the gallery.
   diceTool,
+  // A 3D money mat (count coins & notes) — also a widget overlay in the number
+  // section of the gallery.
+  moneyTool,
   // Practice
   worksheetTool,
   // Fractions, decimals & %

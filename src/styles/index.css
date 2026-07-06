@@ -273,6 +273,48 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .dice-face-btn:hover{filter:brightness(.97);}
 .dice-face-btn.active{background:var(--accent);color:#3a2a05;border-color:var(--accent);}
 
+/* --- Money widget (.imoney): a 3D money mat with counting games --- */
+.imoney{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+.imoney:active{cursor:grabbing;}
+.imoney-prompt{display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #F0EAD6;background:#FBF7EC;}
+.imoney-q{flex:1;font-weight:800;font-size:13.5px;color:var(--ink);line-height:1.12;overflow:hidden;}
+.imoney-new{flex:0 0 auto;padding:5px 10px;border-radius:9px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:12px;cursor:pointer;}
+.imoney-new:hover{filter:brightness(.97);}
+.imoney-stage{position:relative;background:radial-gradient(120% 100% at 50% 15%,#FDFBF4 0%,#EFE7D2 100%);}
+.imoney-canvas{display:block;touch-action:none;}
+.imoney-item{position:absolute;top:6px;left:8px;font-size:26px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.2));pointer-events:none;}
+.imoney-divider{position:absolute;top:8%;bottom:8%;left:50%;width:2px;transform:translateX(-1px);background:repeating-linear-gradient(#C9B98C,#C9B98C 5px,transparent 5px,transparent 10px);pointer-events:none;}
+.imoney-controls{display:flex;align-items:center;gap:8px;padding:0 12px;border-top:1px solid #F0EAD6;background:#FBF7EC;}
+.imoney-sym{flex:0 0 auto;font-weight:800;font-size:16px;color:var(--bar);}
+.imoney-input{flex:1;min-width:0;font-family:inherit;font-size:16px;font-weight:700;border:2px solid #E0E4E2;border-radius:9px;padding:6px 10px;color:var(--ink);background:#fff;font-variant-numeric:tabular-nums;}
+.imoney-input:focus{outline:none;border-color:var(--accent);}
+.imoney-input.ok{border-color:#2E9E5B;background:#EAF7EE;} .imoney-input.no{border-color:#D64545;background:#FBECEC;}
+.imoney-check{flex:0 0 auto;padding:7px 12px;border-radius:9px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:13px;cursor:pointer;}
+.imoney-check:hover{filter:brightness(.97);}
+.imoney-mark{flex:0 0 auto;font-size:17px;font-weight:800;min-width:1em;text-align:center;}
+.imoney-mark.ok{color:#2E9E5B;} .imoney-mark.no{color:#D64545;}
+.imoney-read{flex:1;font-weight:800;font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums;}
+.imoney-read.big{font-size:20px;}
+.imoney-slash{color:var(--bar);font-weight:600;}
+.imoney-choices{display:flex;align-items:center;gap:6px;width:100%;}
+.imoney-choice{flex:1;padding:7px 6px;border-radius:9px;border:2px solid transparent;background:var(--hover);color:var(--bar);font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap;}
+.imoney-choice:hover{filter:brightness(.97);}
+.imoney-choice.active{background:var(--accent);color:#3a2a05;border-color:var(--accent);}
+.imoney-clear{flex:0 0 auto;padding:6px 12px;border-radius:9px;border:0;background:var(--hover);color:var(--bar);font-weight:800;font-size:13px;cursor:pointer;}
+.imoney-clear:disabled{opacity:.4;cursor:default;}
+.imoney-tray{display:flex;align-items:center;gap:6px;padding:6px 10px;border-top:1px solid #F0EAD6;background:#F4EEDD;overflow-x:auto;overflow-y:hidden;}
+.imoney-chip{flex:0 0 auto;width:46px;height:46px;padding:0;border:0;border-radius:10px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.14);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.imoney-chip.bill{width:60px;}
+.imoney-chip:hover{box-shadow:0 2px 7px rgba(0,0,0,.2);transform:translateY(-1px);}
+.imoney-chip:active{transform:translateY(0);}
+.imoney-chip-cv{width:100%;height:100%;display:block;}
+
+/* Money dialog: the segmented option pickers (currency / game / difficulty). */
+.money-opts{display:flex;gap:6px;flex-wrap:wrap;}
+.money-opt{padding:7px 11px;border-radius:10px;background:var(--hover);color:var(--bar);font-weight:800;font-size:13px;cursor:pointer;border:2px solid transparent;}
+.money-opt:hover{filter:brightness(.97);}
+.money-opt.active{background:var(--accent);color:#3a2a05;border-color:var(--accent);}
+
 /* --- Boards: toolbar title chip --- */
 .board-title{display:inline-flex;align-items:center;gap:7px;max-width:240px;min-height:44px;padding:0 12px;border-radius:13px;background:transparent;color:var(--ink);font-weight:700;font-size:14px;}
 .board-title:hover{background:var(--hover);}
