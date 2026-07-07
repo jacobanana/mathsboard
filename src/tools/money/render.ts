@@ -1,32 +1,25 @@
-// The Money tool's software-3D painter — the same Canvas-2D technique the dice
-// widget uses (rotate the mesh by a quaternion, cull back faces, painter-sort,
-// Lambert-shade, print the label in the face plane, one glossy highlight on
-// top), generalised from a single die to a pile of coins and notes.
+// The Money tool's painter — flat, modern 2D vector coins and notes.
 //
-// Coins and notes are modelled at unit scale (see geometry.ts) and drawn at a
-// pixel size derived from their REAL millimetre dimensions, so denominations
-// keep their true relative sizes (the US dime really is smaller than the penny).
-// Static pieces are blitted from an offscreen sprite cache keyed by
-// (denomId · size · spin); only pieces mid-drop are drawn live.
+// No 3D: each piece is drawn straight in screen space as clean vector shapes —
+// a filled disc / rounded rectangle with a soft top-lit gradient, a crisp rim,
+// a subtle sheen and a soft drop shadow, plus the denomination in a rounded
+// face font. Coins and notes are sized from their REAL millimetre dimensions
+// (see currencies.ts) so denominations keep true relative sizes (the US dime
+// really is smaller than the penny). A small per-piece rotation (the piece's
+// `spin`) keeps a scattered pile looking natural.
+//
+// Flat vector drawing is cheap, so every piece is drawn live each frame (no
+// sprite cache); the placing "pop" animation is a scale + drop, not a tumble.
 
-import {
-  add,
-  dot,
-  mul,
-  normalize,
-  rotateVec,
-  type Quat,
-  type Vec3,
-} from "@/tools/dice/geometry";
 import {
   getCurrency,
   getDenom,
+  metricsFor,
   type Currency,
   type Denomination,
 } from "@/tools/money/currencies";
-import { billMesh, coinMesh, pieceQuat, type Mesh } from "@/tools/money/geometry";
 
-// --- colour helpers (ported from the dice painter) --------------------------
+// --- colour helpers ---------------------------------------------------------
 
 type Rgb = [number, number, number];
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -38,154 +31,29 @@ function hexToRgb(hex: string): Rgb {
   return [parseInt(n.slice(0, 2), 16), parseInt(n.slice(2, 4), 16), parseInt(n.slice(4, 6), 16)];
 }
 const rgb = (c: Rgb) => `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})`;
+/** Multiply toward white (k>1) or black (k<1), clamped. */
 const shade = (c: Rgb, k: number): string =>
   rgb([clamp(c[0] * k, 0, 255), clamp(c[1] * k, 0, 255), clamp(c[2] * k, 0, 255)]);
-const mulc = (c: Rgb, k: number): Rgb => [c[0] * k, c[1] * k, c[2] * k];
 /** Readable ink (dark on light, near-white on dark). */
 function inkFor(c: Rgb): Rgb {
   const lum = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
-  return lum > 150 ? [40, 46, 44] : [250, 250, 246];
+  return lum > 150 ? [45, 52, 50] : [250, 250, 247];
 }
 
-const LIGHT = normalize([-0.32, 0.5, 0.78]);
-const FONT = "'Segoe UI', system-ui, sans-serif";
+const FONT = "'Segoe UI Rounded', ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif";
 
-// --- pixel scale (real mm -> px, per currency & mat size) -------------------
-
-export interface Metrics {
-  /** Projection unit for a coin (its radius, px). */
-  coinR: (d: Denomination) => number;
-  /** Projection unit for a note (its long side, px). */
-  billW: (d: Denomination) => number;
-  /** Hit-test radius (px). */
-  hitR: (d: Denomination) => number;
-}
-
-/** Build the mm->px scale for a currency given the mat pixel size. Coins scale
- *  linearly by diameter; notes are compressed (2–3× a coin) so a €500 doesn't
- *  dwarf everything. */
-export function metricsFor(cur: Currency, matMin: number): Metrics {
-  const coins = cur.denominations.filter((d) => d.kind === "coin");
-  const bills = cur.denominations.filter((d) => d.kind === "bill");
-  const maxCoinMm = Math.max(...coins.map((d) => d.sizeMm));
-  const minBillMm = bills.length ? Math.min(...bills.map((d) => d.sizeMm)) : 1;
-  const maxBillMm = bills.length ? Math.max(...bills.map((d) => d.sizeMm)) : 1;
-  const unit = clamp(matMin * 0.12, 13, 48); // target radius of the biggest coin
-  const coinR = (d: Denomination) => unit * (d.sizeMm / maxCoinMm);
-  const billW = (d: Denomination) => {
-    const norm = maxBillMm > minBillMm ? (d.sizeMm - minBillMm) / (maxBillMm - minBillMm) : 0;
-    return unit * (4.0 + 1.4 * norm);
-  };
-  const hitR = (d: Denomination) => (d.kind === "coin" ? coinR(d) : billW(d) * 0.42);
-  return { coinR, billW, hitR };
-}
-
-// --- one piece --------------------------------------------------------------
-
-function drawPiece(
-  ctx: CanvasRenderingContext2D,
-  denom: Denomination,
-  q: Quat,
-  cx: number,
-  cy: number,
-  unitPx: number,
-): void {
-  const isCoin = denom.kind === "coin";
-  const mesh: Mesh = isCoin ? coinMesh() : billMesh(denom.sizeMm, denom.heightMm ?? denom.sizeMm * 0.5);
-  const PERSP = 0.2;
-  const project = (v: Vec3) => {
-    const f = 1 + v[2] * PERSP;
-    return { x: cx + v[0] * unitPx * f, y: cy - v[1] * unitPx * f };
-  };
-  const base = hexToRgb(denom.color);
-  const edge = shade(base, 0.42);
-  const lineW = Math.max(0.5, unitPx * 0.015);
-
-  const front = mesh.faces
-    .map((face) => ({ face, n: rotateVec(q, face.normal), zc: rotateVec(q, face.center)[2] }))
-    .filter((d) => d.n[2] > 0.02)
-    .sort((a, b) => a.zc - b.zc);
-
-  for (const { face, n } of front) {
-    const pts = face.indices.map((i) => project(rotateVec(q, mesh.vertices[i])));
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    ctx.closePath();
-    const lam = Math.max(0, dot(n, LIGHT));
-    const fb = face.kind === "top" ? base : mulc(base, 0.82);
-    ctx.fillStyle = shade(fb, 0.6 + 0.5 * lam);
-    ctx.fill();
-    ctx.lineJoin = "round";
-    ctx.lineWidth = lineW;
-    ctx.strokeStyle = edge;
-    ctx.stroke();
-    if (face.kind === "top") drawFace(ctx, denom, face, q, project, lam);
-  }
-}
-
-/** Print the face design (label, bimetallic core, note motif) in the face
- *  plane, exactly like the dice painter draws its numbers. */
-function drawFace(
-  ctx: CanvasRenderingContext2D,
-  denom: Denomination,
-  face: Mesh["faces"][number],
-  q: Quat,
-  project: (v: Vec3) => { x: number; y: number },
-  lam: number,
-): void {
-  const s = face.inradius ?? 0.8;
-  const cRot = rotateVec(q, face.center);
-  const o = project(cRot);
-  const ue = project(add(cRot, mul(rotateVec(q, face.u), s)));
-  const de = project(add(cRot, mul(rotateVec(q, face.v), -s)));
-  ctx.save();
-  ctx.transform(ue.x - o.x, ue.y - o.y, de.x - o.x, de.y - o.y, o.x, o.y);
-  const R = 10;
-  ctx.scale(1 / R, 1 / R);
-  const topShade = 0.72 + 0.4 * lam;
-  const isCoin = denom.kind === "coin";
-
-  if (isCoin && denom.coreColor) {
-    // Bimetallic: a lighter inner disc under the number.
-    ctx.beginPath();
-    ctx.arc(0, 0, 0.62 * R, 0, 2 * Math.PI);
-    ctx.fillStyle = shade(hexToRgb(denom.coreColor), topShade);
-    ctx.fill();
-  }
-  if (!isCoin) {
-    // Note: a subtle inner frame + a portrait window on the left so it reads as
-    // a banknote, then the value large on the right.
-    const exX = (0.5 / s) * R; // the note's long half in this scaled space
-    const base = hexToRgb(denom.color);
-    ctx.lineWidth = 0.06 * R;
-    ctx.strokeStyle = shade(base, 1.18);
-    roundRect(ctx, -0.9 * exX, -0.82 * R, 1.8 * exX, 1.64 * R, 0.18 * R);
-    ctx.stroke();
-    ctx.fillStyle = shade(base, 1.12);
-    ctx.beginPath();
-    ctx.ellipse(-0.55 * exX, 0, 0.26 * exX, 0.55 * R, 0, 0, 2 * Math.PI);
-    ctx.fill();
-  }
-
-  const ink = inkFor(hexToRgb(denom.coreColor ?? denom.color));
-  ctx.fillStyle = rgb(ink);
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  let fs = (isCoin ? 1.15 : 1.35) * R;
+/** Set a bold face font that fits `text` within `maxW` (starting at `sizePx`). */
+function fitFont(ctx: CanvasRenderingContext2D, text: string, sizePx: number, maxW: number): void {
+  let fs = sizePx;
   ctx.font = `800 ${fs}px ${FONT}`;
-  const maxW = (isCoin ? 1.55 : 2.4) * R;
-  const w = ctx.measureText(denom.face).width;
+  const w = ctx.measureText(text).width;
   if (w > maxW) {
     fs *= maxW / w;
     ctx.font = `800 ${fs}px ${FONT}`;
   }
-  const dx = isCoin ? 0 : 0.55 * ((0.5 / s) * R); // notes: value on the right
-  ctx.fillText(denom.face, dx, 0.02 * R);
-  ctx.restore();
 }
 
-function roundRect(
+function roundRectPath(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
@@ -202,30 +70,163 @@ function roundRect(
   ctx.closePath();
 }
 
-// --- sprite cache (static pieces) -------------------------------------------
+// --- one coin (flat vector) -------------------------------------------------
 
-const SPRITES = new Map<string, HTMLCanvasElement>();
+function drawCoin(
+  ctx: CanvasRenderingContext2D,
+  denom: Denomination,
+  cx: number,
+  cy: number,
+  r: number,
+  rot: number,
+  scale: number,
+): void {
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (scale !== 1) ctx.scale(scale, scale);
+  const base = hexToRgb(denom.color);
 
-function sprite(denom: Denomination, unitPx: number, spin: number, dpr: number): HTMLCanvasElement {
-  const sizeBucket = Math.round(unitPx);
-  const spinBucket = Math.round(spin * 12);
-  const key = `${denom.id}|${sizeBucket}|${spinBucket}|${dpr}`;
-  let cv = SPRITES.get(key);
-  if (cv) return cv;
-  const isCoin = denom.kind === "coin";
-  // Generous bounding box; the tilt tips the piece so it grows a little.
-  const halfW = (isCoin ? unitPx : unitPx * 0.62) * 1.18 + 3;
-  const halfH = (isCoin ? unitPx : unitPx * 0.5) * 1.25 + 3;
-  cv = document.createElement("canvas");
-  cv.width = Math.ceil(2 * halfW * dpr);
-  cv.height = Math.ceil(2 * halfH * dpr);
-  const ctx = cv.getContext("2d")!;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawPiece(ctx, denom, pieceQuat(isCoin ? "coin" : "bill", spin), halfW, halfH, unitPx);
-  (cv as HTMLCanvasElement & { _hw: number; _hh: number })._hw = halfW;
-  (cv as HTMLCanvasElement & { _hw: number; _hh: number })._hh = halfH;
-  SPRITES.set(key, cv);
-  return cv;
+  // Soft drop shadow + top-lit body gradient.
+  ctx.save();
+  ctx.shadowColor = "rgba(30,40,38,0.22)";
+  ctx.shadowBlur = r * 0.22;
+  ctx.shadowOffsetY = r * 0.14;
+  const body = ctx.createLinearGradient(0, -r, 0, r);
+  body.addColorStop(0, shade(base, 1.14));
+  body.addColorStop(1, shade(base, 0.9));
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, 2 * Math.PI);
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.restore();
+
+  // Crisp milled rim just inside the edge.
+  ctx.lineWidth = r * 0.07;
+  ctx.strokeStyle = shade(base, 0.78);
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.95, 0, 2 * Math.PI);
+  ctx.stroke();
+
+  // Fluid top-left sheen, clipped to the disc.
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.93, 0, 2 * Math.PI);
+  ctx.clip();
+  const sheen = ctx.createRadialGradient(-r * 0.32, -r * 0.4, r * 0.05, -r * 0.15, -r * 0.2, r * 1.35);
+  sheen.addColorStop(0, "rgba(255,255,255,0.4)");
+  sheen.addColorStop(0.5, "rgba(255,255,255,0.08)");
+  sheen.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = sheen;
+  ctx.fillRect(-r, -r, 2 * r, 2 * r);
+  ctx.restore();
+
+  // Face contents rotate with the coin so a pile reads naturally.
+  ctx.rotate(rot);
+  if (denom.coreColor) {
+    // Bimetallic: an inner disc in the second metal.
+    const cb = hexToRgb(denom.coreColor);
+    const core = ctx.createLinearGradient(0, -r * 0.6, 0, r * 0.6);
+    core.addColorStop(0, shade(cb, 1.12));
+    core.addColorStop(1, shade(cb, 0.9));
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.62, 0, 2 * Math.PI);
+    ctx.fillStyle = core;
+    ctx.fill();
+    ctx.lineWidth = r * 0.03;
+    ctx.strokeStyle = shade(cb, 0.82);
+    ctx.stroke();
+  } else {
+    // Single metal: a fine inner ring for a coined feel.
+    ctx.lineWidth = r * 0.03;
+    ctx.strokeStyle = shade(base, 0.86);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.74, 0, 2 * Math.PI);
+    ctx.stroke();
+  }
+
+  const ink = inkFor(hexToRgb(denom.coreColor ?? denom.color));
+  ctx.fillStyle = rgb(ink);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  fitFont(ctx, denom.face, r * 1.1, r * 1.25);
+  ctx.fillText(denom.face, 0, r * 0.02);
+  ctx.restore();
+}
+
+// --- one note (flat vector) -------------------------------------------------
+
+function drawBill(
+  ctx: CanvasRenderingContext2D,
+  denom: Denomination,
+  cx: number,
+  cy: number,
+  w: number,
+  rot: number,
+  scale: number,
+): void {
+  const h = w * ((denom.heightMm ?? denom.sizeMm * 0.5) / denom.sizeMm);
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (scale !== 1) ctx.scale(scale, scale);
+  ctx.rotate(rot);
+  const base = hexToRgb(denom.color);
+  const rx = w / 2;
+  const ry = h / 2;
+  const rad = Math.min(rx, ry) * 0.34;
+
+  // Soft drop shadow + top-lit body.
+  ctx.save();
+  ctx.shadowColor = "rgba(30,40,38,0.24)";
+  ctx.shadowBlur = w * 0.05;
+  ctx.shadowOffsetY = h * 0.08;
+  const body = ctx.createLinearGradient(0, -ry, 0, ry);
+  body.addColorStop(0, shade(base, 1.1));
+  body.addColorStop(1, shade(base, 0.9));
+  roundRectPath(ctx, -rx, -ry, w, h, rad);
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.restore();
+
+  // Inner frame.
+  ctx.lineWidth = Math.max(1, h * 0.028);
+  ctx.strokeStyle = shade(base, 1.28);
+  roundRectPath(ctx, -rx * 0.9, -ry * 0.8, w * 0.9, h * 0.8, rad * 0.7);
+  ctx.stroke();
+
+  // Portrait medallion on the left.
+  const px = -rx * 0.58;
+  const pr = ry * 0.52;
+  const port = ctx.createLinearGradient(px, -pr, px, pr);
+  port.addColorStop(0, shade(base, 1.22));
+  port.addColorStop(1, shade(base, 1.04));
+  ctx.beginPath();
+  ctx.arc(px, 0, pr, 0, 2 * Math.PI);
+  ctx.fillStyle = port;
+  ctx.fill();
+  ctx.lineWidth = h * 0.02;
+  ctx.strokeStyle = shade(base, 0.84);
+  ctx.stroke();
+
+  // Value on the right.
+  const ink = inkFor(base);
+  ctx.fillStyle = rgb(ink);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  fitFont(ctx, denom.face, h * 0.52, w * 0.52);
+  ctx.fillText(denom.face, rx * 0.3, 0);
+
+  // Fluid sheen across the top, clipped to the note.
+  ctx.save();
+  roundRectPath(ctx, -rx, -ry, w, h, rad);
+  ctx.clip();
+  const sheen = ctx.createLinearGradient(0, -ry, 0, ry * 0.3);
+  sheen.addColorStop(0, "rgba(255,255,255,0.24)");
+  sheen.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = sheen;
+  ctx.fillRect(-rx, -ry, w, h);
+  ctx.restore();
+
+  ctx.restore();
 }
 
 // --- the stage --------------------------------------------------------------
@@ -237,8 +238,8 @@ export interface RenderPiece {
   x: number;
   y: number;
   spin: number;
-  /** Present only while dropping in: the live orientation + a falling offset. */
-  anim?: { quat: Quat; dyPx: number };
+  /** Present only while popping in: a falling offset + a grow scale. */
+  anim?: { dyPx: number; scale: number };
 }
 
 export interface HitRegion {
@@ -255,8 +256,8 @@ export interface StageView {
   pieces: RenderPiece[];
 }
 
-/** Paint a mat of pieces. Returns hit regions (largest last = topmost) so the
- *  component can hit-test a click to the frontmost piece. */
+/** Paint a mat of pieces. Returns hit regions (topmost last) so the component
+ *  can hit-test a click to the frontmost piece. */
 export function paintStage(canvas: HTMLCanvasElement, view: StageView): HitRegion[] {
   const { cssW, cssH } = view;
   const dpr = window.devicePixelRatio || 1;
@@ -276,32 +277,13 @@ export function paintStage(canvas: HTMLCanvasElement, view: StageView): HitRegio
   for (const p of view.pieces) {
     const denom = getDenom(p.denomId);
     if (!denom) continue;
-    const isCoin = denom.kind === "coin";
-    const unitPx = isCoin ? m.coinR(denom) : m.billW(denom);
     const cx = p.x * cssW;
     const cy = p.y * cssH + (p.anim?.dyPx ?? 0);
-    if (p.anim) {
-      drawPiece(ctx, denom, p.anim.quat, cx, cy, unitPx);
-    } else {
-      const sp = sprite(denom, unitPx, p.spin, dpr);
-      const hw = (sp as HTMLCanvasElement & { _hw: number })._hw;
-      const hh = (sp as HTMLCanvasElement & { _hh: number })._hh;
-      ctx.drawImage(sp, cx - hw, cy - hh, sp.width / dpr, sp.height / dpr);
-    }
+    const scale = p.anim?.scale ?? 1;
+    if (denom.kind === "coin") drawCoin(ctx, denom, cx, cy, m.coinR(denom), p.spin, scale);
+    else drawBill(ctx, denom, cx, cy, m.billW(denom), p.spin, scale);
     hits.push({ key: p.key, cx, cy, r: m.hitR(denom) });
   }
-
-  // One glossy top-light over the drawn pieces (source-atop clips to them).
-  ctx.save();
-  ctx.globalCompositeOperation = "source-atop";
-  const g = ctx.createLinearGradient(0, 0, 0, cssH);
-  g.addColorStop(0, "rgba(255,255,255,0.22)");
-  g.addColorStop(0.5, "rgba(255,255,255,0.05)");
-  g.addColorStop(1, "rgba(0,0,0,0.06)");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, cssW, cssH);
-  ctx.restore();
-
   return hits;
 }
 
@@ -310,8 +292,8 @@ export function drawThumb(canvas: HTMLCanvasElement, denomId: string): void {
   const denom = getDenom(denomId);
   if (!denom) return;
   const dpr = window.devicePixelRatio || 1;
-  const cssW = canvas.clientWidth || 44;
-  const cssH = canvas.clientHeight || 44;
+  const cssW = canvas.clientWidth || 46;
+  const cssH = canvas.clientHeight || 46;
   const w = Math.max(1, Math.round(cssW * dpr));
   const h = Math.max(1, Math.round(cssH * dpr));
   if (canvas.width !== w) canvas.width = w;
@@ -320,7 +302,6 @@ export function drawThumb(canvas: HTMLCanvasElement, denomId: string): void {
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssW, cssH);
-  const isCoin = denom.kind === "coin";
-  const unitPx = isCoin ? cssH * 0.42 : cssW * 0.42;
-  drawPiece(ctx, denom, pieceQuat(isCoin ? "coin" : "bill", 0), cssW / 2, cssH / 2, unitPx);
+  if (denom.kind === "coin") drawCoin(ctx, denom, cssW / 2, cssH / 2, Math.min(cssW, cssH) * 0.4, 0, 1);
+  else drawBill(ctx, denom, cssW / 2, cssH / 2, cssW * 0.82, 0, 1);
 }

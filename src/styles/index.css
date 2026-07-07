@@ -273,6 +273,40 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .dice-face-btn:hover{filter:brightness(.97);}
 .dice-face-btn.active{background:var(--accent);color:#3a2a05;border-color:var(--accent);}
 
+/* --- Timer widget (.itimer): a 3D hourglass with a readout + controls --- */
+.itimer{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+.itimer:active{cursor:grabbing;}
+.itimer-stage{display:block;background:radial-gradient(120% 100% at 50% 16%,#FDFBF4 0%,#EFE7D2 100%);}
+.itimer-svg{display:block;width:100%;height:100%;}
+.itimer-readout{display:flex;align-items:center;justify-content:center;border-top:1px solid #F0EAD6;background:#FBF7EC;font-weight:800;font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:.02em;}
+.itimer-controls{display:flex;align-items:center;gap:8px;padding:0 10px 6px;background:#FBF7EC;}
+.itimer-btn{flex:1;padding:8px 6px;border:0;border-radius:10px;background:var(--hover);color:var(--bar);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;}
+.itimer-btn:hover{filter:brightness(.97);}
+.itimer-btn:active{transform:scale(.96);}
+.itimer-btn.primary{background:var(--accent);color:#3a2a05;}
+
+/* Timer dialog: the mode toggle + the hh:mm:ss steppers. */
+.timer-mode{display:flex;gap:6px;}
+.timer-mode-btn{flex:1;padding:8px 12px;border-radius:10px;background:var(--hover);color:var(--bar);font-weight:800;font-size:14px;cursor:pointer;border:2px solid transparent;}
+.timer-mode-btn:hover{filter:brightness(.97);}
+.timer-mode-btn.active{background:var(--accent);color:#3a2a05;border-color:var(--accent);}
+.timer-hms{display:flex;align-items:center;gap:6px;}
+/* Higher specificity than the global `.field input[type=number]` (140px) so each
+   field is tight to two digits and the row never overflows the dialog. */
+.field .timer-hms input[type=number]{width:44px;flex:0 0 auto;box-sizing:border-box;font-size:18px;font-weight:800;text-align:center;padding:8px 2px;font-variant-numeric:tabular-nums;-moz-appearance:textfield;}
+/* Hide the number spinners so each field is tight to two digits. */
+.field .timer-hms input[type=number]::-webkit-outer-spin-button,.field .timer-hms input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.timer-hms-sep{font-weight:800;font-size:18px;color:var(--muted);}
+
+/* --- Timer "Time's up!" board-wide alert (TimerDoneLayer) --- */
+.timer-done{position:fixed;inset:0;z-index:60;pointer-events:none;overflow:hidden;}
+.timer-flash{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 40%,rgba(231,184,75,.42) 0%,rgba(231,184,75,.16) 45%,rgba(231,184,75,0) 75%);animation:timerFlash 1.1s ease-out forwards;}
+.timer-confetti{position:absolute;inset:0;width:100%;height:100%;}
+.timer-banner{position:absolute;top:16%;left:50%;transform:translateX(-50%);padding:16px 34px;border-radius:18px;background:var(--bar);color:#fff;font-weight:900;font-size:34px;letter-spacing:.01em;box-shadow:0 14px 40px rgba(0,0,0,.28);animation:timerBanner 3.6s cubic-bezier(.2,1.2,.3,1) forwards;}
+@keyframes timerFlash{0%{opacity:0;}12%{opacity:1;}100%{opacity:0;}}
+@keyframes timerBanner{0%{opacity:0;transform:translateX(-50%) scale(.7);}10%{opacity:1;transform:translateX(-50%) scale(1.06);}18%{transform:translateX(-50%) scale(1);}88%{opacity:1;transform:translateX(-50%) scale(1);}100%{opacity:0;transform:translateX(-50%) scale(.96);}}
+@media (prefers-reduced-motion:reduce){.timer-flash,.timer-banner{animation-duration:.01ms;animation-iteration-count:1;}}
+
 /* --- Money widget (.imoney): a 3D money mat with counting games --- */
 .imoney{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
 .imoney:active{cursor:grabbing;}
@@ -295,6 +329,7 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .imoney-mark.ok{color:#2E9E5B;} .imoney-mark.no{color:#D64545;}
 .imoney-read{flex:1;font-weight:800;font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums;}
 .imoney-read.big{font-size:20px;}
+.imoney-hint{flex:1;font-weight:600;font-size:12.5px;color:var(--muted);}
 .imoney-slash{color:var(--bar);font-weight:600;}
 .imoney-choices{display:flex;align-items:center;gap:6px;width:100%;}
 .imoney-choice{flex:1;padding:7px 6px;border-radius:9px;border:2px solid transparent;background:var(--hover);color:var(--bar);font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap;}
@@ -302,7 +337,7 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .imoney-choice.active{background:var(--accent);color:#3a2a05;border-color:var(--accent);}
 .imoney-clear{flex:0 0 auto;padding:6px 12px;border-radius:9px;border:0;background:var(--hover);color:var(--bar);font-weight:800;font-size:13px;cursor:pointer;}
 .imoney-clear:disabled{opacity:.4;cursor:default;}
-.imoney-tray{display:flex;align-items:center;gap:6px;padding:6px 10px;border-top:1px solid #F0EAD6;background:#F4EEDD;overflow-x:auto;overflow-y:hidden;}
+.imoney-tray{display:flex;flex-wrap:wrap;align-items:center;align-content:center;justify-content:center;gap:6px;padding:6px 8px;border-top:1px solid #F0EAD6;background:#F4EEDD;overflow:hidden;}
 .imoney-chip{flex:0 0 auto;width:46px;height:46px;padding:0;border:0;border-radius:10px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.14);cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .imoney-chip.bill{width:60px;}
 .imoney-chip:hover{box-shadow:0 2px 7px rgba(0,0,0,.2);transform:translateY(-1px);}

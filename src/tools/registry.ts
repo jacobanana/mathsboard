@@ -329,6 +329,13 @@ export interface WidgetTool<P = Record<string, unknown>> extends ToolMeta {
    * would just snap back and must NOT opt in. The box keeps its aspect ratio.
    */
   resizable?: boolean;
+  /**
+   * Optional LIVE-STATE reset after a settings edit is applied. When present,
+   * editObject writes the returned patch via updateWidgetState (INPUT_ORIGIN,
+   * undo-invisible) right after the param edit — the timer uses this to reset its
+   * run whenever its settings change. Return null to leave the run untouched.
+   */
+  resetOnEdit?(obj: BoardObjectBase & P): Record<string, unknown> | null;
 }
 
 export type Tool = CanvasTool<any> | WidgetTool<any>;

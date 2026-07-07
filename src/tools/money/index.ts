@@ -51,12 +51,13 @@ const moneyTool = defineWidgetTool<MoneyParams>({
   kind: "widget",
   type: "money",
   name: "Money",
-  blurb: "count coins & notes in 3D",
+  blurb: "count coins & notes",
   category: "number",
   defaults: () => ({ ...DEFAULT_MONEY }),
   // Prompt row + mat + answer row + tray. The card derives its whole layout from
   // obj.w/obj.h, so it resizes cleanly (aspect-locked) via the WidgetHandleLayer.
-  defaultSize: { w: 420, h: 380 },
+  // Wide enough that the tray shows every denomination in ≤2 rows (see trayRows).
+  defaultSize: { w: 480, h: 440 },
   resizable: true,
   Component: Money,
   Dialog: MoneyDialog,

@@ -33,6 +33,7 @@ import fracAmountTool from "@/tools/fracamount";
 import { percAmountTool } from "@/tools/percamount";
 import fdpTool from "@/tools/fdp";
 import clockTool from "@/tools/clock";
+import timerTool from "@/tools/timer";
 import diceTool from "@/tools/dice";
 import moneyTool from "@/tools/money";
 import noteTool from "@/tools/note";
@@ -81,6 +82,9 @@ const ALL_TOOLS = [
   protractorTool,
   // Time
   clockTool,
+  // A shared 3D-hourglass timer (countdown / stopwatch) — a widget overlay that
+  // syncs start/pause/reset and shows a board-wide "Time's up!" to everyone.
+  timerTool,
   // Word problems
   noteTool,
   // Pictures — the upload goes through the backend (/api/upload), so this tool

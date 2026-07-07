@@ -18,8 +18,6 @@ import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
 import { id as newId } from "@/board/types";
-import { pieceQuat } from "@/tools/money/geometry";
-import { rollQuat, type Quat } from "@/tools/dice/geometry";
 import {
   denominationsFor,
   format,
@@ -29,6 +27,8 @@ import {
 } from "@/tools/money/currencies";
 import {
   GAME_META,
+  PROMPT_H,
+  ANSWER_H,
   checkAnswer,
   deriveProblem,
   freeSpot,
@@ -37,6 +37,8 @@ import {
   problemStamp,
   prunePlacedPatch,
   readPlacedPieces,
+  stageSize,
+  trayHeight,
   type MoneyObj,
   type PlacedPiece,
   type Relation,
@@ -44,14 +46,17 @@ import {
 import { drawThumb, paintStage, type HitRegion, type RenderPiece } from "@/tools/money/render";
 import type { MoneyParams } from "@/tools/money";
 
-const PROMPT_H = 40;
-const ANSWER_H = 48;
-const TRAY_H = 64;
 const CAP = 60; // max pieces on the mat
 const DROP_MS = 430;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+/** Overshoot ease for a springy pop (0→1, briefly past 1). */
+const easeOutBack = (t: number) => {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+};
 
 export function Money({ obj }: WidgetProps<MoneyParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
@@ -70,25 +75,23 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
   ]);
 
   const usesTray = meta.inputMode === "build" || meta.inputMode === "none";
-  const trayH = usesTray ? TRAY_H : 0;
-  const cssW = obj.w;
-  const stageH = Math.max(60, obj.h - PROMPT_H - ANSWER_H - trayH);
+  const { w: cssW, h: stageH } = stageSize(mo);
 
   const placed = readPlacedPieces(mo);
   const placedTotal = liveSum(placed);
 
-  // The pieces shown on the mat: the question pile (count/change/compare) or the
-  // student's placed pile (make/shop/sandbox).
+  // The pieces shown on the mat: the question pile (count/compare) or the
+  // student's placed pile (make/shop/change/sandbox — the build games).
   const matPieces: PlacedPiece[] =
     obj.game === "compare"
       ? [...problem.presented, ...(problem.presentedB ?? [])]
-      : obj.game === "count" || obj.game === "change"
+      : obj.game === "count"
         ? problem.presented
         : placed;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hitsRef = useRef<HitRegion[]>([]);
-  const animRef = useRef<Map<string, { start: number; kind: "coin" | "bill" }>>(new Map());
+  const animRef = useRef<Map<string, { start: number }>>(new Map());
   const seenRef = useRef<Set<string>>(new Set());
   const rafRef = useRef(0);
 
@@ -97,14 +100,20 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
   paintRef.current = (now: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const drop = stageH * 0.32;
+    const drop = stageH * 0.28;
     const pieces: RenderPiece[] = matPieces.map((p) => {
       const a = animRef.current.get(p.key);
       if (!a) return { key: p.key, denomId: p.denomId, x: p.x, y: p.y, spin: p.spin };
-      const e = easeOutCubic(clamp((now - a.start) / DROP_MS, 0, 1));
-      const target = pieceQuat(a.kind, p.spin);
-      const quat: Quat = rollQuat(target, target, 2, e);
-      return { key: p.key, denomId: p.denomId, x: p.x, y: p.y, spin: p.spin, anim: { quat, dyPx: -(1 - e) * drop } };
+      const t = clamp((now - a.start) / DROP_MS, 0, 1);
+      // A springy pop: fall in from above while growing to full size.
+      return {
+        key: p.key,
+        denomId: p.denomId,
+        x: p.x,
+        y: p.y,
+        spin: p.spin,
+        anim: { dyPx: -(1 - easeOutCubic(t)) * drop, scale: 0.6 + 0.4 * easeOutBack(t) },
+      };
     });
     hitsRef.current = paintStage(canvas, { currency: obj.currency, cssW, cssH: stageH, pieces });
   };
@@ -131,10 +140,7 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
     if (usesTray) {
       for (const p of placed) {
         keys.add(p.key);
-        if (!seenRef.current.has(p.key)) {
-          const d = getDenom(p.denomId);
-          animRef.current.set(p.key, { start: performance.now(), kind: d?.kind === "bill" ? "bill" : "coin" });
-        }
+        if (!seenRef.current.has(p.key)) animRef.current.set(p.key, { start: performance.now() });
       }
     }
     seenRef.current = keys;
@@ -212,8 +218,8 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
     if (current.length >= CAP) return;
     const d = getDenom(denomId);
     if (!d) return;
-    const spot = freeSpot(current.map((p) => ({ x: p.x, y: p.y })), Math.random);
-    const spin = (Math.random() - 0.5) * (d.kind === "coin" ? 0.7 : 0.28);
+    const spot = freeSpot(current, denomId, m, Math.random);
+    const spin = (Math.random() - 0.5) * (d.kind === "coin" ? 0.7 : 0.22);
     updateWidgetState(obj.id, {
       [placeField(newId())]: { d: denomId, x: spot.x, y: spot.y, s: spin },
       result: undefined,
@@ -337,25 +343,25 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
 
         {meta.inputMode === "choice" && (
           <div className="imoney-choices">
-            {(["<", "=", ">"] as Relation[]).map((rel) => (
-              <button
-                key={rel}
-                className={"imoney-choice" + (mo.choice === rel ? " active" : "")}
-                onClick={() => chooseRelation(rel)}
-              >
-                {rel === "<" ? "◀ left less" : rel === ">" ? "right less ▶" : "= equal"}
-              </button>
-            ))}
+            {([[">", "◀ Left"], ["=", "Equal"], ["<", "Right ▶"]] as [Relation, string][]).map(
+              ([rel, label]) => (
+                <button
+                  key={rel}
+                  className={"imoney-choice" + (mo.choice === rel ? " active" : "")}
+                  onClick={() => chooseRelation(rel)}
+                >
+                  {label}
+                </button>
+              ),
+            )}
             <span className={"imoney-mark" + markCls}>{mark}</span>
           </div>
         )}
 
         {meta.inputMode === "build" && (
           <>
-            <span className="imoney-read">
-              {format(placedTotal, cur)} <span className="imoney-slash">/</span>{" "}
-              {format(problem.target, cur)}
-            </span>
+            {/* No running total — it would give the answer away. */}
+            <span className="imoney-hint">Build it, then check</span>
             <button className="imoney-check" onClick={check}>
               Check
             </button>
@@ -374,7 +380,7 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
       </div>
 
       {usesTray && (
-        <div className="imoney-tray" style={{ height: TRAY_H + "px" }}>
+        <div className="imoney-tray" style={{ height: trayHeight(mo) + "px" }}>
           {denoms.map((d) => (
             <TrayChip key={d.id} denom={d} onAdd={addPiece} label={format(d.value, cur)} />
           ))}

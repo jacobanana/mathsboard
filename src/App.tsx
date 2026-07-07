@@ -18,6 +18,7 @@ import { WidgetLayer } from "@/canvas/WidgetLayer";
 import { WidgetHandleLayer } from "@/canvas/WidgetHandleLayer";
 import { InputOverlayLayer } from "@/canvas/InputOverlayLayer";
 import { AnswerButtonLayer } from "@/canvas/AnswerButtonLayer";
+import { TimerDoneLayer } from "@/ui/TimerDoneLayer";
 import { PresenceLayer } from "@/ui/PresenceLayer";
 import { boardIdFromUrl } from "@/collab/session";
 import { getStoredName } from "@/collab/profile";
@@ -181,6 +182,7 @@ export default function App(): JSX.Element {
         <WidgetLayer onEditObject={openEditFor} />
         <WidgetHandleLayer />
         <AnswerButtonLayer container={stageEl} />
+        <TimerDoneLayer />
         {COLLAB_ENABLED && <PresenceLayer />}
         <ZoomCluster getStageSize={getStageSize} />
         {COLLAB_ENABLED && imageDrop.active && (

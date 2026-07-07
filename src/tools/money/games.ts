@@ -24,11 +24,14 @@ import {
   getCurrency,
   getDenom,
   greedyPieces,
+  metricsFor,
   parseAmount,
+  pieceSize,
   type CurrencyCode,
   type Currency,
   type Denomination,
   type Difficulty,
+  type Metrics,
 } from "@/tools/money/currencies";
 
 export type MoneyGame =
@@ -50,6 +53,9 @@ export interface MoneyObj {
   currency: CurrencyCode;
   game: MoneyGame;
   difficulty: Difficulty;
+  /** Box size (px) — the mat pieces are laid out within. */
+  w?: number;
+  h?: number;
   round?: number;
   ans?: string;
   choice?: Relation;
@@ -115,13 +121,13 @@ export const GAME_META: Record<
   change: {
     label: "Give change",
     short: "Change",
-    inputMode: "amount",
+    inputMode: "build",
     prompt: (p) => {
       const cur = getCurrency(p.currency);
-      return `It cost ${format(p.price ?? 0, cur)}, you paid ${format(
+      return `It cost ${format(p.price ?? 0, cur)}, paid with ${format(
         p.paid ?? 0,
         cur,
-      )}. How much change?`;
+      )} — give the change.`;
     },
   },
   make: {
@@ -201,82 +207,160 @@ const SHOP_ITEMS: [string, string][] = [
   ["hat", "🎩"],
 ];
 
-// --- layout (deterministic scatter within the mat, normalised [0..1]) -------
+// --- layout: place pieces so each stays mostly visible ----------------------
+//
+// Positions are stored normalised [0..1] in mat space (so they survive resize),
+// but crowding is judged in PIXELS via the shared metrics — a coin and a wide
+// note need very different clearance. A piece may be at most MAX_OVERLAP covered
+// by any other, so at least (1 − MAX_OVERLAP) of every piece stays visible.
 
-function scatter(
-  rng: () => number,
-  n: number,
-  region: [number, number, number, number], // x0,y0,x1,y1
-): { x: number; y: number }[] {
-  const [x0, y0, x1, y1] = region;
-  const out: { x: number; y: number }[] = [];
-  for (let i = 0; i < n; i++) {
-    out.push({ x: x0 + rng() * (x1 - x0), y: y0 + rng() * (y1 - y0) });
-  }
-  return out;
-}
+/** Mat layout heights (also used by the component to size its rows). */
+export const PROMPT_H = 40;
+export const ANSWER_H = 48;
+/** Tray chip footprint (px) — must match the .imoney-chip CSS. */
+const CHIP_COIN_W = 46;
+const CHIP_BILL_W = 60;
+const CHIP_GAP = 6;
+const TRAY_ROW_H = 52;
+const TRAY_VPAD = 12;
+const DEFAULT_W = 480;
+const DEFAULT_H = 440;
 
-/**
- * A spot for a newly placed piece that avoids crowding: sample a few candidates
- * and keep the one furthest from the existing pieces. Cosmetic only (the painter
- * z-sorts overlaps), so pixel-exact radii aren't needed.
- */
-export function freeSpot(
-  existing: { x: number; y: number }[],
-  rng: () => number,
-  region: [number, number, number, number] = [0.1, 0.12, 0.9, 0.74],
-): { x: number; y: number } {
-  const [x0, y0, x1, y1] = region;
-  let best = { x: (x0 + x1) / 2, y: (y0 + y1) / 2 };
-  let bestD = -1;
-  for (let k = 0; k < 12; k++) {
-    const c = { x: x0 + rng() * (x1 - x0), y: y0 + rng() * (y1 - y0) };
-    let d = Infinity;
-    for (const e of existing) d = Math.min(d, (e.x - c.x) ** 2 + (e.y - c.y) ** 2);
-    if (existing.length === 0) return c;
-    if (d > bestD) {
-      bestD = d;
-      best = c;
+/** How many rows the tray wraps into at a given widget width (greedy pack,
+ *  matching flex-wrap) — the tray shows EVERY denomination, never scrolls. */
+export function trayRows(obj: MoneyObj): number {
+  const mode = GAME_META[obj.game].inputMode;
+  if (mode !== "build" && mode !== "none") return 0;
+  const denoms = denominationsFor(getCurrency(obj.currency), obj.difficulty);
+  const avail = (obj.w ?? DEFAULT_W) - 2 * CHIP_GAP;
+  let rows = 1;
+  let rowW = 0;
+  for (const d of denoms) {
+    const cw = (d.kind === "coin" ? CHIP_COIN_W : CHIP_BILL_W) + CHIP_GAP;
+    if (rowW > 0 && rowW + cw > avail) {
+      rows++;
+      rowW = 0;
     }
+    rowW += cw;
   }
-  return best;
+  return rows;
 }
 
-// --- pile builders ----------------------------------------------------------
+/** Total tray height (px), 0 when the game has no tray. */
+export function trayHeight(obj: MoneyObj): number {
+  const rows = trayRows(obj);
+  return rows > 0 ? rows * TRAY_ROW_H + TRAY_VPAD : 0;
+}
+
+/** The mat (canvas stage) pixel size for a widget — the area pieces live in.
+ *  Mirrors the component's layout so placement and drawing agree. */
+export function stageSize(obj: MoneyObj): { w: number; h: number } {
+  return {
+    w: obj.w ?? DEFAULT_W,
+    h: Math.max(60, (obj.h ?? DEFAULT_H) - PROMPT_H - ANSWER_H - trayHeight(obj)),
+  };
+}
+
+/** At least 60% of every piece stays visible (≤40% of it may be covered). */
+const MAX_OVERLAP = 0.4;
+
+interface Box {
+  cx: number;
+  cy: number;
+  hw: number;
+  hh: number;
+}
+
+function boxAt(d: Denomination, cx: number, cy: number, m: Metrics): Box {
+  const { w, h } = pieceSize(d, m);
+  return { cx, cy, hw: w / 2, hh: h / 2 };
+}
+
+/** Fraction of the SMALLER of two boxes covered by their overlap (0..1) — so a
+ *  wide note dropped on a small coin (or vice-versa) reads as "the coin is
+ *  hidden", not "a big shape barely overlaps". */
+function coverFrac(a: Box, b: Box): number {
+  const ox = Math.max(0, Math.min(a.cx + a.hw, b.cx + b.hw) - Math.max(a.cx - a.hw, b.cx - b.hw));
+  const oy = Math.max(0, Math.min(a.cy + a.hh, b.cy + b.hh) - Math.max(a.cy - a.hh, b.cy - b.hh));
+  const minArea = Math.min(4 * a.hw * a.hh, 4 * b.hw * b.hh);
+  return minArea > 0 ? (ox * oy) / minArea : 0;
+}
 
 const spinFor = (rng: () => number, d: Denomination): number =>
-  (rng() - 0.5) * (d.kind === "coin" ? 0.7 : 0.28);
+  (rng() - 0.5) * (d.kind === "coin" ? 0.7 : 0.22);
 
-/** Build a pile of `n` random pieces from `denoms`, positioned in `region`. */
-function buildPile(
-  rng: () => number,
-  denoms: Denomination[],
-  n: number,
-  region: [number, number, number, number],
-  keyPrefix: string,
-): PlacedPiece[] {
-  const pos = scatter(rng, n, region);
-  return pos.map((p, i) => {
-    const d = pick(rng, denoms);
-    return { key: `${keyPrefix}${i}`, denomId: d.id, x: p.x, y: p.y, spin: spinFor(rng, d) };
-  });
-}
-
-/** Lay out an exact list of denominations (e.g. a greedy make) as a pile. */
-function layoutPieces(
+/**
+ * Place `list` in a pixel region, each piece kept ≤MAX_OVERLAP over any already
+ * placed one (rejection sampling; best-effort when the mat is genuinely too
+ * full). `seed` boxes (e.g. the other compare pile) are avoided but not
+ * returned. Returns pieces with NORMALISED positions.
+ */
+function placePile(
   rng: () => number,
   list: Denomination[],
   region: [number, number, number, number],
+  W: number,
+  H: number,
+  m: Metrics,
   keyPrefix: string,
+  seed: Box[] = [],
 ): PlacedPiece[] {
-  const pos = scatter(rng, list.length, region);
-  return list.map((d, i) => ({
-    key: `${keyPrefix}${i}`,
-    denomId: d.id,
-    x: pos[i].x,
-    y: pos[i].y,
-    spin: spinFor(rng, d),
-  }));
+  const placed = [...seed];
+  const pieces: PlacedPiece[] = [];
+  list.forEach((d, i) => {
+    const half = boxAt(d, 0, 0, m);
+    // Keep the whole piece inside both the region and the mat.
+    const x0 = Math.max(half.hw, region[0]);
+    const y0 = Math.max(half.hh, region[1]);
+    const x1 = Math.min(W - half.hw, region[2]);
+    const y1 = Math.min(H - half.hh, region[3]);
+    let best = { x: (x0 + x1) / 2, y: (y0 + y1) / 2 };
+    let bestCover = Infinity;
+    for (let attempt = 0; attempt < 120; attempt++) {
+      const cx = x1 > x0 ? x0 + rng() * (x1 - x0) : (x0 + x1) / 2;
+      const cy = y1 > y0 ? y0 + rng() * (y1 - y0) : (y0 + y1) / 2;
+      const box = boxAt(d, cx, cy, m);
+      let cover = 0;
+      for (const p of placed) {
+        cover = Math.max(cover, coverFrac(box, p));
+        if (cover > MAX_OVERLAP) break;
+      }
+      if (cover <= MAX_OVERLAP) {
+        best = { x: cx, y: cy };
+        break;
+      }
+      if (cover < bestCover) {
+        bestCover = cover;
+        best = { x: cx, y: cy };
+      }
+    }
+    placed.push(boxAt(d, best.x, best.y, m));
+    pieces.push({ key: `${keyPrefix}${i}`, denomId: d.id, x: best.x / W, y: best.y / H, spin: spinFor(rng, d) });
+  });
+  return pieces;
+}
+
+/** A spot for a newly placed piece that keeps it (and the pieces already on the
+ *  mat) at least 60% visible. Returns a normalised position. */
+export function freeSpot(
+  existing: PlacedPiece[],
+  newDenomId: string,
+  obj: MoneyObj,
+  rng: () => number,
+): { x: number; y: number } {
+  const d = getDenom(newDenomId);
+  if (!d) return { x: 0.5, y: 0.5 };
+  const cur = getCurrency(obj.currency);
+  const { w: W, h: H } = stageSize(obj);
+  const m = metricsFor(cur, Math.min(W, H));
+  const seed = existing
+    .map((p) => {
+      const ed = getDenom(p.denomId);
+      return ed ? boxAt(ed, p.x * W, p.y * H, m) : null;
+    })
+    .filter((b): b is Box => b !== null);
+  const [piece] = placePile(rng, [d], [0.03 * W, 0.05 * H, 0.97 * W, 0.94 * H], W, H, m, "n", seed);
+  return { x: piece.x, y: piece.y };
 }
 
 const roundTo = (v: number, step: number): number =>
@@ -294,18 +378,24 @@ export function deriveProblem(obj: MoneyObj): Problem {
   const denoms = denominationsFor(cur, obj.difficulty);
   const r = RANGES[obj.difficulty];
   const step = coinStep(cur);
+  const { w: W, h: H } = stageSize(obj);
+  const m = metricsFor(cur, Math.min(W, H));
+  const choose = (n: number) => Array.from({ length: n }, () => pick(rng, denoms));
 
   switch (obj.game) {
     case "count": {
-      const n = randInt(rng, r.nLo, r.nHi);
-      const pile = buildPile(rng, denoms, n, [0.1, 0.12, 0.9, 0.74], "q");
+      const pile = placePile(rng, choose(randInt(rng, r.nLo, r.nHi)), [0.03 * W, 0.05 * H, 0.97 * W, 0.95 * H], W, H, m, "q");
       return { game: "count", currency: obj.currency, presented: pile, target: sumPieces(pile) };
     }
     case "compare": {
-      const a = buildPile(rng, denoms, randInt(rng, r.nLo, r.nHi), [0.06, 0.16, 0.44, 0.74], "a");
-      let b = buildPile(rng, denoms, randInt(rng, r.nLo, r.nHi), [0.56, 0.16, 0.94, 0.74], "b");
+      // Fewer pieces per pile than counting — two piles share the mat, and a
+      // comparison reads best when each side is a small, countable handful.
+      const cmpN = () => randInt(rng, 2, obj.difficulty === "hard" ? 5 : 4);
+      const a = placePile(rng, choose(cmpN()), [0.03 * W, 0.05 * H, 0.49 * W, 0.95 * H], W, H, m, "a");
+      const aBoxes = a.map((p) => boxAt(getDenom(p.denomId)!, p.x * W, p.y * H, m));
       // Occasionally force a tie so "=" is a real answer.
-      if (rng() < 0.12) b = retotal(rng, denoms, sumPieces(a), [0.56, 0.16, 0.94, 0.74], "b");
+      const bList = rng() < 0.14 ? greedyPieces(sumPieces(a), denoms) ?? choose(cmpN()) : choose(cmpN());
+      const b = placePile(rng, bList, [0.51 * W, 0.05 * H, 0.97 * W, 0.95 * H], W, H, m, "b", aBoxes);
       const ta = sumPieces(a);
       const tb = sumPieces(b);
       const relation: Relation = ta > tb ? ">" : ta < tb ? "<" : "=";
@@ -321,11 +411,11 @@ export function deriveProblem(obj: MoneyObj): Problem {
       return { game: "shop", currency: obj.currency, presented: [], target: price, price, itemName, itemEmoji };
     }
     case "change": {
-      const price = roundTo(randInt(rng, r.min, Math.max(r.min, r.max - 100)), step);
-      const paid = nextPaid(price, denoms, step);
-      const answer = paid - price;
-      const pile = layoutPieces(rng, greedyPieces(paid, denoms) ?? [], [0.1, 0.12, 0.9, 0.68], "p");
-      return { game: "change", currency: obj.currency, presented: pile, target: answer, price, paid };
+      // The mat is the student's build area (they make the change with the
+      // tray), so nothing is pre-placed — price & paid are stated in the prompt.
+      const price = roundTo(randInt(rng, r.min, r.max), step);
+      const paid = paidFor(price, denoms, cur, rng);
+      return { game: "change", currency: obj.currency, presented: [], target: paid - price, price, paid };
     }
     case "sandbox":
     default:
@@ -336,28 +426,21 @@ export function deriveProblem(obj: MoneyObj): Problem {
 const sumPieces = (pieces: PlacedPiece[]): number =>
   pieces.reduce((s, p) => s + (getDenom(p.denomId)?.value ?? 0), 0);
 
-/** Rebuild pile B to hit an exact total (for a forced compare tie), greedily. */
-function retotal(
-  rng: () => number,
+/** A realistic, varied amount handed over for `price`: usually one of the two
+ *  smallest single coins/notes bigger than the price (so the change stays
+ *  sensible), or — if the price tops the biggest denomination — the next whole
+ *  major unit up. Random pick gives the "give change" game its variety. */
+function paidFor(
+  price: number,
   denoms: Denomination[],
-  total: number,
-  region: [number, number, number, number],
-  keyPrefix: string,
-): PlacedPiece[] {
-  const list = greedyPieces(total, denoms);
-  return list ? layoutPieces(rng, list, region, keyPrefix) : [];
-}
-
-/** A realistic "paid" amount ≥ price: the smallest single note/coin bigger than
- *  the price, else the price rounded up to the next major unit. */
-function nextPaid(price: number, denoms: Denomination[], step: number): number {
-  const bigger = denoms
-    .map((d) => d.value)
+  cur: Currency,
+  rng: () => number,
+): number {
+  const bigger = [...new Set(denoms.map((d) => d.value))]
     .filter((v) => v > price)
     .sort((a, b) => a - b);
-  if (bigger.length) return bigger[0];
-  const major = 100;
-  return roundTo(Math.ceil((price + step) / major) * major, step);
+  if (bigger.length) return pick(rng, bigger.slice(0, 2));
+  return Math.ceil((price + 1) / cur.minorPerMajor) * cur.minorPerMajor;
 }
 
 // --- placed pieces (the student's pile) -------------------------------------
@@ -392,14 +475,14 @@ export const liveSum = (pieces: PlacedPiece[]): number => sumPieces(pieces);
 /** Mark the current answer. Games with no answer to mark (sandbox) return "ok". */
 export function checkAnswer(obj: MoneyObj, problem: Problem): "ok" | "no" {
   switch (obj.game) {
-    case "count":
-    case "change": {
-      const cur = getCurrency(obj.currency);
-      const parsed = parseAns(obj.ans, cur);
+    case "count": {
+      const parsed = parseAns(obj.ans, getCurrency(obj.currency));
       return parsed === problem.target ? "ok" : "no";
     }
     case "make":
     case "shop":
+    case "change":
+      // Build games: the placed pile must total the target (change owed / price).
       return liveSum(readPlacedPieces(obj)) === problem.target ? "ok" : "no";
     case "compare":
       return obj.choice != null && obj.choice === problem.relation ? "ok" : "no";

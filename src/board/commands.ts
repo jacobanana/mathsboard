@@ -126,6 +126,14 @@ export function editObject(objId: string, params: Params): void {
   const size = sizedBox(existing.type, params, scaleOf(existing));
   if (!size) return;
   st.updateObject(objId, { ...params, w: size.w, h: size.h });
+  // A widget may reset its live run state on edit (the timer resets its run so a
+  // settings change always starts clean). Written under INPUT_ORIGIN, so it's
+  // synced but undo-invisible, separate from the undoable param edit above.
+  const tool = getTool(existing.type);
+  if (tool?.kind === "widget" && tool.resetOnEdit) {
+    const patch = tool.resetOnEdit(existing);
+    if (patch) st.updateWidgetState(objId, patch);
+  }
   track("tool_action", { tool: existing.type, action: "edited" });
 }
 

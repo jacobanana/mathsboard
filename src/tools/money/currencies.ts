@@ -296,3 +296,45 @@ export function greedyMakeChange(
 ): Denomination[] | null {
   return greedyPieces(paid - price, denoms);
 }
+
+// --- on-screen sizing (real mm -> px) ---------------------------------------
+// Shared by the renderer (how big to draw a piece) and the layout (how far
+// apart to place pieces so none is heavily hidden). Kept here, next to the mm
+// data, so both agree on one scale.
+
+export interface Metrics {
+  /** A coin's radius (px). */
+  coinR: (d: Denomination) => number;
+  /** A note's long side (px). */
+  billW: (d: Denomination) => number;
+  /** Hit-test radius (px). */
+  hitR: (d: Denomination) => number;
+}
+
+/** Build the mm→px scale for a currency given the mat's smaller pixel side.
+ *  Coins scale linearly by diameter; notes are compressed (a few × a coin). */
+export function metricsFor(cur: Currency, matMin: number): Metrics {
+  const coins = cur.denominations.filter((d) => d.kind === "coin");
+  const bills = cur.denominations.filter((d) => d.kind === "bill");
+  const maxCoinMm = Math.max(...coins.map((d) => d.sizeMm));
+  const minBillMm = bills.length ? Math.min(...bills.map((d) => d.sizeMm)) : 1;
+  const maxBillMm = bills.length ? Math.max(...bills.map((d) => d.sizeMm)) : 1;
+  const unit = Math.max(13, Math.min(48, matMin * 0.12)); // radius of the biggest coin
+  const coinR = (d: Denomination) => unit * (d.sizeMm / maxCoinMm);
+  const billW = (d: Denomination) => {
+    const norm = maxBillMm > minBillMm ? (d.sizeMm - minBillMm) / (maxBillMm - minBillMm) : 0;
+    return unit * (3.1 + 1.1 * norm);
+  };
+  const hitR = (d: Denomination) => (d.kind === "coin" ? coinR(d) : billW(d) * 0.42);
+  return { coinR, billW, hitR };
+}
+
+/** A piece's on-screen size in px: coins are `2r` squares, notes are `w × h`. */
+export function pieceSize(d: Denomination, m: Metrics): { w: number; h: number } {
+  if (d.kind === "coin") {
+    const r = m.coinR(d);
+    return { w: 2 * r, h: 2 * r };
+  }
+  const w = m.billW(d);
+  return { w, h: w * ((d.heightMm ?? d.sizeMm * 0.5) / d.sizeMm) };
+}
