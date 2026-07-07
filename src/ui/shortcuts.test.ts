@@ -98,8 +98,8 @@ describe("dispatch", () => {
 
   it("digit and mnemonic keys switch tools", () => {
     const cases: [string, string][] = [
-      ["1", "select"],
-      ["2", "pan"],
+      ["1", "pan"],
+      ["2", "select"],
       ["3", "pen"],
       ["d", "pen"],
       ["4", "eraser"],

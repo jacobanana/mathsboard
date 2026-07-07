@@ -9,13 +9,13 @@
 //            Paper, Boards, Save image, Shortcuts.
 //
 //   #dock — a bottom-centre pill, thumb-reachable on touch devices, holding
-//     the six mode buttons (Select, Pan, Draw, Eraser, Text, Maths; keys 1-6)
-//     plus Picture (7) and, past the divider, Insert (I / 0). Select/Pan lead,
-//     matching the Miro / Excalidraw convention (1 = select); Eraser sits next
-//     to Draw since the two alternate constantly; Maths sits next to Text as
-//     its notation-aware sibling. The startup tool is still the pen (order ≠
-//     default). The LASER is not a dock button — it's a toggle on the Select
-//     tool's options pill (and a second press of 1); see OptionsStrip.
+//     the six mode buttons (Move, Select, Draw, Eraser, Text, Maths; keys 1-6)
+//     plus Picture (7) and, past the divider, Insert (I / 0). Move (pan) leads
+//     as the pure-navigation tool (1 = move), Select sits next to it; Eraser
+//     sits next to Draw since the two alternate constantly; Maths sits next to
+//     Text as its notation-aware sibling. The startup tool is still the pen
+//     (order ≠ default). The LASER is not a dock button — it's a toggle on the
+//     Select tool's options pill (and a second press of 2); see OptionsStrip.
 //
 //   The contextual options pill (OptionsStrip, #options) floats ABOVE the
 //   dock when the active tool has options and disappears otherwise. It's a

@@ -208,6 +208,18 @@ describe("selection behaviours", () => {
     expect(st().board.strokes).toHaveLength(1);
   });
 
+  it("switching to the Move (pan) tool clears the selection; other tools keep it", () => {
+    freshBoard({ objects: [anObject()], strokes: [aStroke()] });
+    st().selectAll();
+    expect(st().selection.objectIds.length).toBeGreaterThan(0);
+
+    st().setTool("eraser"); // a non-pan tool leaves the selection intact
+    expect(st().selection.objectIds.length).toBeGreaterThan(0);
+
+    st().setTool("pan"); // the Move tool navigates only — no selection
+    expect(st().selection).toEqual({ objectIds: [], strokeIds: [] });
+  });
+
   it("nudgeSelection translates objects and stroke points together", () => {
     const o = anObject();
     const s = aStroke();

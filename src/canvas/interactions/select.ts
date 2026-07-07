@@ -538,7 +538,7 @@ export const selectController: InteractionController = {
       }
     } else {
       // Empty space: begin a rubber-band area selection. Shift keeps the
-      // current selection and adds to it. (Pan via the Pan tool / 2 fingers.)
+      // current selection and adds to it. (Pan via the Move tool / 2 fingers.)
       if (!shift) st.clearSelection();
       lasso = {
         pid: e.pointerId,

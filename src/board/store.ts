@@ -628,7 +628,13 @@ export const useBoardStore = create<BoardState>((set, get) => {
     setTool(t) {
       // Any deliberate tool switch ends an edit session: picking the draw tool
       // fresh (dock / shortcut) must not inherit a stale double-click-to-exit.
-      set({ tool: t, drawEditMode: false });
+      // The Move (pan) tool navigates only — it carries no selection, so
+      // arriving at it clears any current one (and thus its on-canvas chrome).
+      set((s) => ({
+        tool: t,
+        drawEditMode: false,
+        selection: t === "pan" ? EMPTY_SELECTION : s.selection,
+      }));
     },
     setDrawEditMode(on) {
       set({ drawEditMode: on });

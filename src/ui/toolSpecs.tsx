@@ -287,6 +287,14 @@ function EraserOptions(): JSX.Element {
 
 export const TOOL_UI: ToolUiSpec[] = [
   {
+    tool: "pan",
+    domId: "panBtn",
+    icon: HandIcon,
+    label: "Move",
+    title: (hint) => `Move the view (${hint})`,
+    shortcut: { id: "tool-pan", keys: [["1"], ["H"]], label: "Move the view" },
+  },
+  {
     tool: "select",
     domId: "selectBtn",
     icon: SelectIcon,
@@ -301,19 +309,11 @@ export const TOOL_UI: ToolUiSpec[] = [
     },
     shortcut: {
       id: "tool-select",
-      keys: [["1"], ["V"]],
+      keys: [["2"], ["V"]],
       label: "Select & move (press again for the laser pointer)",
       run: selectOrToggleLaser,
     },
     Options: SelectOptions,
-  },
-  {
-    tool: "pan",
-    domId: "panBtn",
-    icon: HandIcon,
-    label: "Pan",
-    title: (hint) => `Move the view (${hint})`,
-    shortcut: { id: "tool-pan", keys: [["2"], ["H"]], label: "Pan the view" },
   },
   {
     tool: "pen",
