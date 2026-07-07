@@ -31,6 +31,7 @@ export function MoneyDialog({ initial, onSubmit, onCancel }: ToolDialogProps<Mon
   const [currency, setCurrency] = useState<CurrencyCode>(initial?.currency ?? DEFAULT_MONEY.currency);
   const [game, setGame] = useState<MoneyGame>(initial?.game ?? DEFAULT_MONEY.game);
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? DEFAULT_MONEY.difficulty);
+  const [autoNew, setAutoNew] = useState<boolean>(initial?.autoNew ?? false);
 
   return (
     <>
@@ -88,11 +89,25 @@ export function MoneyDialog({ initial, onSubmit, onCancel }: ToolDialogProps<Mon
         </div>
       </div>
 
+      <div className="field">
+        <label className="money-toggle">
+          <input
+            type="checkbox"
+            checked={autoNew}
+            onChange={(e) => setAutoNew(e.target.checked)}
+          />
+          <span>New question when correct (auto-advance)</span>
+        </label>
+      </div>
+
       <div className="card-actions">
         <button className="btn" onClick={onCancel}>
           {editing ? "Cancel" : "Back"}
         </button>
-        <button className="btn primary" onClick={() => onSubmit({ currency, game, difficulty })}>
+        <button
+          className="btn primary"
+          onClick={() => onSubmit({ currency, game, difficulty, autoNew })}
+        >
           {editing ? "Save" : "Add to board"}
         </button>
       </div>

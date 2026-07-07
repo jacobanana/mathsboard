@@ -27,6 +27,8 @@ export interface MoneyParams {
   game: MoneyGame;
   /** Difficulty — controls the denominations in play and the amount range. */
   difficulty: Difficulty;
+  /** Auto-advance: on a correct check, celebrate then load a new question. */
+  autoNew?: boolean;
   // --- live widget state (NOT set from the dialog; via updateWidgetState) ---
   /** Monotonic "new problem" counter; the problem is re-derived from it. */
   round?: number;
@@ -57,7 +59,7 @@ const moneyTool = defineWidgetTool<MoneyParams>({
   // Prompt row + mat + answer row + tray. The card derives its whole layout from
   // obj.w/obj.h, so it resizes cleanly (aspect-locked) via the WidgetHandleLayer.
   // Wide enough that the tray shows every denomination in ≤2 rows (see trayRows).
-  defaultSize: { w: 480, h: 440 },
+  defaultSize: { w: 520, h: 440 },
   resizable: true,
   Component: Money,
   Dialog: MoneyDialog,

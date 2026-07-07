@@ -89,14 +89,21 @@ export interface Problem {
   /** Second pile, for compare. */
   presentedB?: PlacedPiece[];
   /** The value the answer is checked against, in minor units:
-   *  count → pile total · change → change owed · make → target · shop → price. */
+   *  count → pile total · change → change owed · make → target · shop → total. */
   target: number;
   // Display extras (game-specific):
   price?: number;
   paid?: number;
   relation?: Relation;
-  itemName?: string;
-  itemEmoji?: string;
+  /** Shopping: the items to add up and pay for. */
+  items?: ShopItem[];
+}
+
+/** One thing on the shopping list (Shop game). */
+export interface ShopItem {
+  name: string;
+  emoji: string;
+  price: number;
 }
 
 export const GAMES: MoneyGame[] = [
@@ -137,12 +144,10 @@ export const GAME_META: Record<
     prompt: (p) => `Make ${format(p.target, getCurrency(p.currency))}`,
   },
   shop: {
-    label: "Pay the price",
+    label: "Shopping",
     short: "Shop",
     inputMode: "build",
-    prompt: (p) =>
-      `Pay exactly ${format(p.price ?? p.target, getCurrency(p.currency))}` +
-      (p.itemName ? ` for the ${p.itemName}` : ""),
+    prompt: () => "Add up your shopping, then pay the total.",
   },
   compare: {
     label: "Which is worth more?",
@@ -221,21 +226,20 @@ export const ANSWER_H = 48;
 const CHIP_COIN_W = 46;
 const CHIP_BILL_W = 60;
 const CHIP_GAP = 6;
+const TRAY_HPAD = 8; // .imoney-tray horizontal padding (each side)
 const TRAY_ROW_H = 52;
 const TRAY_VPAD = 12;
-const DEFAULT_W = 480;
+// Wide enough that the busiest currencies (USD/EUR: 8 coins + 7 notes) sit on
+// exactly two rows — coins on one, notes on the other.
+const DEFAULT_W = 520;
 const DEFAULT_H = 440;
 
-/** How many rows the tray wraps into at a given widget width (greedy pack,
- *  matching flex-wrap) — the tray shows EVERY denomination, never scrolls. */
-export function trayRows(obj: MoneyObj): number {
-  const mode = GAME_META[obj.game].inputMode;
-  if (mode !== "build" && mode !== "none") return 0;
-  const denoms = denominationsFor(getCurrency(obj.currency), obj.difficulty);
-  const avail = (obj.w ?? DEFAULT_W) - 2 * CHIP_GAP;
+/** Rows one group of chips wraps into at width `avail` (greedy, like flex-wrap). */
+function packRows(list: Denomination[], avail: number): number {
+  if (!list.length) return 0;
   let rows = 1;
   let rowW = 0;
-  for (const d of denoms) {
+  for (const d of list) {
     const cw = (d.kind === "coin" ? CHIP_COIN_W : CHIP_BILL_W) + CHIP_GAP;
     if (rowW > 0 && rowW + cw > avail) {
       rows++;
@@ -244,6 +248,19 @@ export function trayRows(obj: MoneyObj): number {
     rowW += cw;
   }
   return rows;
+}
+
+/** How many rows the tray occupies. Coins and notes are kept on SEPARATE rows
+ *  (so a wrapped tray reads as "coins" above "notes"), each group wrapping as
+ *  needed — the tray shows EVERY denomination and never scrolls. */
+export function trayRows(obj: MoneyObj): number {
+  const mode = GAME_META[obj.game].inputMode;
+  if (mode !== "build" && mode !== "none") return 0;
+  const denoms = denominationsFor(getCurrency(obj.currency), obj.difficulty);
+  const avail = (obj.w ?? DEFAULT_W) - 2 * TRAY_HPAD;
+  const coins = denoms.filter((d) => d.kind === "coin");
+  const notes = denoms.filter((d) => d.kind === "bill");
+  return Math.max(1, packRows(coins, avail) + packRows(notes, avail));
 }
 
 /** Total tray height (px), 0 when the game has no tray. */
@@ -359,7 +376,9 @@ export function freeSpot(
       return ed ? boxAt(ed, p.x * W, p.y * H, m) : null;
     })
     .filter((b): b is Box => b !== null);
-  const [piece] = placePile(rng, [d], [0.03 * W, 0.05 * H, 0.97 * W, 0.94 * H], W, H, m, "n", seed);
+  // Shop shows a receipt panel across the top, so build below it there.
+  const top = obj.game === "shop" ? 0.34 : 0.05;
+  const [piece] = placePile(rng, [d], [0.03 * W, top * H, 0.97 * W, 0.94 * H], W, H, m, "n", seed);
   return { x: piece.x, y: piece.y };
 }
 
@@ -406,9 +425,17 @@ export function deriveProblem(obj: MoneyObj): Problem {
       return { game: "make", currency: obj.currency, presented: [], target };
     }
     case "shop": {
-      const price = roundTo(randInt(rng, r.min, r.max), step);
-      const [itemName, itemEmoji] = pick(rng, SHOP_ITEMS);
-      return { game: "shop", currency: obj.currency, presented: [], target: price, price, itemName, itemEmoji };
+      // A short shopping list: add up the item prices and pay the total.
+      const nItems = obj.difficulty === "easy" ? 2 : obj.difficulty === "hard" ? 3 : randInt(rng, 2, 3);
+      const perMax = Math.max(step * 2, Math.floor(r.max / nItems));
+      const pool = [...SHOP_ITEMS];
+      const items: ShopItem[] = [];
+      for (let k = 0; k < nItems; k++) {
+        const [name, emoji] = pool.splice(Math.floor(rng() * pool.length), 1)[0];
+        items.push({ name, emoji, price: roundTo(randInt(rng, Math.max(step, r.min), perMax), step) });
+      }
+      const total = items.reduce((s, it) => s + it.price, 0);
+      return { game: "shop", currency: obj.currency, presented: [], target: total, price: total, items };
     }
     case "change": {
       // The mat is the student's build area (they make the change with the

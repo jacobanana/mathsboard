@@ -86,6 +86,15 @@ describe.each(CURRENCY_CODES)("%s", (code: CurrencyCode) => {
         expect(greedyPieces(p.target, denoms)).not.toBeNull();
       });
 
+      it(`shop: total is the sum of the item prices, and is makeable (round ${round})`, () => {
+        const p = deriveProblem(obj({ currency: code, difficulty, game: "shop", round }));
+        expect(p.items && p.items.length).toBeGreaterThanOrEqual(2);
+        const total = p.items!.reduce((s, it) => s + it.price, 0);
+        expect(total).toBe(p.target);
+        expect(p.items!.every((it) => it.price > 0)).toBe(true);
+        expect(greedyPieces(p.target, denominationsFor(cur, difficulty))).not.toBeNull();
+      });
+
       it(`change: 0 < change owed, and is makeable (round ${round})`, () => {
         const p = deriveProblem(obj({ currency: code, difficulty, game: "change", round }));
         expect(p.paid! - p.price!).toBe(p.target);

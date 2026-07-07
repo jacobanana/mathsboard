@@ -13,7 +13,7 @@
 // are removed by clicking them. Dragging the card moves the object; a settings
 // change reseeds the problem and clears the pile.
 
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
@@ -48,6 +48,13 @@ import type { MoneyParams } from "@/tools/money";
 
 const CAP = 60; // max pieces on the mat
 const DROP_MS = 430;
+const AUTO_MS = 3000; // auto-advance delay after a correct answer
+/** Emoji that burst out on a correct answer. */
+const CONFETTI = ["🎉", "⭐", "✨", "💰", "🎊", "🪙", "⭐", "✨"];
+function confettiStyle(i: number): React.CSSProperties {
+  const a = (i / CONFETTI.length) * 2 * Math.PI;
+  return { "--tx": Math.cos(a) * 96 + "px", "--ty": Math.sin(a) * 96 + "px" } as React.CSSProperties;
+}
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
@@ -94,6 +101,12 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
   const animRef = useRef<Map<string, { start: number }>>(new Map());
   const seenRef = useRef<Set<string>>(new Set());
   const rafRef = useRef(0);
+
+  // Transient celebrate/commiserate animation, and the auto-advance timer.
+  const [fx, setFx] = useState<{ kind: "ok" | "no"; n: number } | null>(null);
+  const fxSeqRef = useRef(0);
+  const fxTimerRef = useRef(0);
+  const autoTimerRef = useRef(0);
 
   // Paint the mat at time `now`, folding in any in-progress drop animations.
   const paintRef = useRef<(now: number) => void>(() => {});
@@ -149,7 +162,14 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obj, stageH, cssW]);
 
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(rafRef.current);
+      window.clearTimeout(fxTimerRef.current);
+      window.clearTimeout(autoTimerRef.current);
+    },
+    [],
+  );
 
   // Reseed + clear the pile when the game / currency / difficulty changes (an
   // edit through the Dialog). The problem already depends on these via its seed;
@@ -177,11 +197,28 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
     updateWidgetState(obj.id, { ans: v, result: undefined });
   }
 
+  // Play the happy/lame animation, and (if auto-advance is on) queue the next
+  // question after a correct answer. The queued advance re-checks the result at
+  // fire time, so any edit the student makes in the meantime cancels it.
+  function afterCheck(result: "ok" | "no") {
+    fxSeqRef.current += 1;
+    setFx({ kind: result, n: fxSeqRef.current });
+    window.clearTimeout(fxTimerRef.current);
+    fxTimerRef.current = window.setTimeout(() => setFx(null), result === "ok" ? 1700 : 1000);
+    window.clearTimeout(autoTimerRef.current);
+    if (result === "ok" && obj.autoNew) {
+      autoTimerRef.current = window.setTimeout(() => {
+        if (fresh()?.result === "ok") newProblem();
+      }, AUTO_MS);
+    }
+  }
+
   function check() {
     const m = fresh();
     if (!m) return;
     const result = checkAnswer(m, deriveProblem(m));
     updateWidgetState(obj.id, { result });
+    afterCheck(result);
     track("tool_action", { tool: "money", action: "check" });
   }
 
@@ -190,10 +227,13 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
     if (!m) return;
     const result: "ok" | "no" = rel === deriveProblem(m).relation ? "ok" : "no";
     updateWidgetState(obj.id, { choice: rel, result });
+    afterCheck(result);
     track("tool_action", { tool: "money", action: "check" });
   }
 
   function newProblem() {
+    window.clearTimeout(autoTimerRef.current);
+    setFx(null);
     const m = fresh() ?? mo;
     updateWidgetState(obj.id, {
       round: (m.round ?? 0) + 1,
@@ -289,7 +329,7 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
 
   return (
     <div
-      className="imoney"
+      className={"imoney" + (fx?.kind === "ok" ? " happy" : fx?.kind === "no" ? " shake" : "")}
       data-id={obj.id}
       style={{ width: cssW + "px", height: obj.h + "px" }}
       onPointerDown={onCardPointerDown}
@@ -310,12 +350,28 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
           style={{ width: cssW + "px", height: stageH + "px" }}
           onPointerDown={onStagePointerDown}
         />
-        {obj.game === "shop" && problem.itemEmoji && (
-          <div className="imoney-item" title={problem.itemName}>
-            {problem.itemEmoji}
+        {obj.game === "shop" && problem.items && (
+          <div className="imoney-shop">
+            {problem.items.map((it, i) => (
+              <span className="imoney-shop-item" key={i} title={it.name}>
+                <span className="imoney-shop-emoji">{it.emoji}</span>
+                <span className="imoney-shop-price">{format(it.price, cur)}</span>
+              </span>
+            ))}
           </div>
         )}
         {obj.game === "compare" && <div className="imoney-divider" />}
+        {fx && (
+          <div className={"imoney-fx " + fx.kind} key={fx.n}>
+            <span className="imoney-fx-badge">{fx.kind === "ok" ? "✓" : "✗"}</span>
+            {fx.kind === "ok" &&
+              CONFETTI.map((emoji, i) => (
+                <span key={i} className="imoney-confetti" style={confettiStyle(i)}>
+                  {emoji}
+                </span>
+              ))}
+          </div>
+        )}
       </div>
 
       <div className="imoney-controls" style={{ height: ANSWER_H + "px" }}>
@@ -360,8 +416,16 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
 
         {meta.inputMode === "build" && (
           <>
-            {/* No running total — it would give the answer away. */}
-            <span className="imoney-hint">Build it, then check</span>
+            {/* Hide the running total until Check — otherwise it gives the answer
+                away. After checking, reveal what was built vs. what was needed. */}
+            {result ? (
+              <span className={"imoney-read" + markCls}>
+                {format(placedTotal, cur)} <span className="imoney-slash">/</span>{" "}
+                {format(problem.target, cur)}
+              </span>
+            ) : (
+              <span className="imoney-hint">Build it, then check</span>
+            )}
             <button className="imoney-check" onClick={check}>
               Check
             </button>
@@ -381,9 +445,23 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
 
       {usesTray && (
         <div className="imoney-tray" style={{ height: trayHeight(mo) + "px" }}>
-          {denoms.map((d) => (
-            <TrayChip key={d.id} denom={d} onAdd={addPiece} label={format(d.value, cur)} />
-          ))}
+          {/* Coins on one row, notes on the next. */}
+          <div className="imoney-tray-row">
+            {denoms
+              .filter((d) => d.kind === "coin")
+              .map((d) => (
+                <TrayChip key={d.id} denom={d} onAdd={addPiece} label={format(d.value, cur)} />
+              ))}
+          </div>
+          {denoms.some((d) => d.kind === "bill") && (
+            <div className="imoney-tray-row">
+              {denoms
+                .filter((d) => d.kind === "bill")
+                .map((d) => (
+                  <TrayChip key={d.id} denom={d} onAdd={addPiece} label={format(d.value, cur)} />
+                ))}
+            </div>
+          )}
         </div>
       )}
     </div>
