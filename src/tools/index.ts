@@ -38,6 +38,7 @@ import diceTool from "@/tools/dice";
 import moneyTool from "@/tools/money";
 import noteTool from "@/tools/note";
 import worksheetTool from "@/tools/worksheet";
+import flashCardsTool from "@/tools/flashcards";
 import imageTool from "@/tools/image";
 
 // Gallery order (also the registration order listByCategory preserves).
@@ -71,6 +72,9 @@ const ALL_TOOLS = [
   moneyTool,
   // Practice
   worksheetTool,
+  // A colourful flash-cards game — one arithmetic card at a time, flip to check,
+  // with a summary at the end. A widget overlay, like the quiz above it.
+  flashCardsTool,
   // Fractions, decimals & %
   fractionTool,
   fractionWallTool,

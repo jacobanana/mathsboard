@@ -373,6 +373,110 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .money-toggle{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14px;color:var(--ink);cursor:pointer;}
 .money-toggle input{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;}
 
+/* --- Flash cards widget (.iflash): a colourful one-at-a-time flip-card game --- */
+.iflash{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+.iflash:active{cursor:grabbing;}
+.iflash.happy{animation:ifBounce .6s ease;}
+.iflash.shake{animation:ifShake .5s ease;}
+@keyframes ifBounce{0%,100%{transform:translateY(0);}30%{transform:translateY(-9px);}55%{transform:translateY(0);}72%{transform:translateY(-4px);}}
+@keyframes ifShake{0%,100%{transform:translateX(0);}18%{transform:translateX(-7px);}36%{transform:translateX(6px);}54%{transform:translateX(-5px);}72%{transform:translateX(4px);}88%{transform:translateX(-2px);}}
+
+/* Header strip: title · progress · New deck. */
+.if-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #F0EAD6;background:#FBF7EC;}
+.if-title{flex:1;font-weight:800;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.if-progress{flex:0 0 auto;font-weight:800;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.if-new{flex:0 0 auto;padding:5px 10px;border-radius:9px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:12px;cursor:pointer;}
+.if-new:hover{filter:brightness(.97);}
+
+/* The 3D flip scene: one card, front (question) and back (result). The deal-in
+   fade is on .if-dealwrap (a flat element); the flip itself is on .if-flip,
+   which must carry NO opacity/filter/overflow or its preserve-3d flattens and
+   the flipped card would show a mirrored front instead of the back. */
+.if-scene{position:relative;padding:12px;box-sizing:border-box;}
+.if-dealwrap{position:relative;width:100%;height:100%;perspective:1200px;animation:ifDeal .28s ease both;}
+.if-flip{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.8,.3,1);}
+.if-flip.flipped{transform:rotateY(180deg);}
+@keyframes ifDeal{from{opacity:0;}to{opacity:1;}}
+/* No overflow:hidden here — it flattens the 3D context and defeats
+   backface-visibility (the flipped card would show a mirrored front). */
+.if-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;box-shadow:0 6px 18px rgba(0,0,0,.18);color:#fff;}
+.if-front{text-shadow:0 2px 6px rgba(0,0,0,.22);}
+.if-back{transform:rotateY(180deg);background:linear-gradient(150deg,#64748B 0%,#94A3B8 100%);}
+.if-flip.ok .if-back{background:linear-gradient(150deg,#16A34A 0%,#22C55E 100%);}
+.if-flip.no .if-back{background:linear-gradient(150deg,#DC2626 0%,#F05252 100%);}
+/* Only the face turned toward the viewer takes clicks (belt-and-braces against
+   3D hit-testing quirks — the hidden face must never intercept the button). */
+.if-flip:not(.flipped) .if-back{pointer-events:none;}
+.if-flip.flipped .if-front{pointer-events:none;}
+
+/* Front — the question and the answer input. */
+.if-q{font-weight:900;font-size:var(--ifq);line-height:1.05;letter-spacing:.01em;white-space:nowrap;}
+.if-ansrow{display:flex;align-items:center;gap:8px;margin-top:14px;}
+.if-eq{font-weight:900;font-size:calc(var(--ifq) * .62);}
+.if-input{width:3.2em;font-family:inherit;font-weight:800;font-size:calc(var(--ifq) * .58);text-align:center;border:0;border-radius:12px;padding:.1em .15em;background:rgba(255,255,255,.96);color:#1F2937;box-shadow:inset 0 1px 3px rgba(0,0,0,.18);text-shadow:none;min-width:0;}
+.if-input::placeholder{color:#9AA3AF;}
+.if-input:focus{outline:3px solid rgba(255,255,255,.75);outline-offset:1px;}
+.if-check{margin-top:14px;padding:8px 24px;border-radius:11px;border:0;background:rgba(255,255,255,.96);color:#1F2937;font-weight:800;font-size:15px;cursor:pointer;text-shadow:none;box-shadow:0 3px 8px rgba(0,0,0,.18);}
+.if-check:hover{filter:brightness(.96);}
+.if-check:active{transform:scale(.97);}
+
+/* Front — the optional per-card countdown bar. */
+.if-timer{position:absolute;top:10px;left:12px;right:12px;display:flex;align-items:center;gap:8px;}
+.if-timer-track{flex:1;height:7px;border-radius:5px;background:rgba(255,255,255,.32);overflow:hidden;}
+.if-timer-bar{height:100%;width:100%;border-radius:5px;background:rgba(255,255,255,.92);}
+.if-timer-secs{flex:0 0 auto;min-width:2.4em;text-align:right;font-weight:800;font-size:12px;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.25);}
+.if-timer-secs.urgent{color:#FFE08A;}
+
+/* Back — the verdict, revealed by the flip. */
+.if-badge{font-size:var(--ifbadge);font-weight:900;line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25));}
+.if-flip.flipped .if-badge{animation:ifPop .55s cubic-bezier(.2,1.7,.4,1) both;}
+@keyframes ifPop{0%{transform:scale(0) rotate(-30deg);opacity:0;}55%{transform:scale(1.28) rotate(8deg);opacity:1;}100%{transform:scale(1) rotate(0);opacity:1;}}
+.if-truth{margin-top:4px;font-weight:900;font-size:calc(var(--ifq) * .72);white-space:nowrap;text-shadow:0 2px 6px rgba(0,0,0,.2);}
+.if-yours{margin-top:6px;font-weight:700;font-size:14px;opacity:.94;}
+.if-next{margin-top:16px;padding:9px 24px;border-radius:11px;border:0;background:rgba(255,255,255,.96);color:#1F2937;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.2);}
+.if-next:hover{filter:brightness(.96);}
+.if-next:active{transform:scale(.97);}
+.if-confetti{position:absolute;left:50%;top:42%;font-size:24px;pointer-events:none;text-shadow:none;animation:ifBurst .9s ease-out both;}
+@keyframes ifBurst{0%{opacity:0;transform:translate(-50%,-50%) scale(.3);}25%{opacity:1;}100%{opacity:0;transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty))) scale(1.1) rotate(28deg);}}
+
+/* End-of-deck summary: a score, then every question with its answer + result. */
+.if-summary{flex:1;display:flex;flex-direction:column;min-height:0;gap:10px;padding:12px;box-sizing:border-box;}
+.if-score{flex:0 0 auto;text-align:center;color:#fff;background:linear-gradient(150deg,#6D5EF6 0%,#8B7BF9 100%);border-radius:14px;padding:10px;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+.if-score-big{font-weight:900;font-size:34px;line-height:1;font-variant-numeric:tabular-nums;}
+.if-score-of{font-size:20px;opacity:.85;}
+.if-score-sub{margin-top:4px;font-weight:700;font-size:14px;}
+.if-scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:5px;padding-right:2px;touch-action:pan-y;cursor:default;}
+.if-srow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;font-size:14px;background:#F4F6F5;}
+.if-srow.ok{background:#EAF7EE;}
+.if-srow.no{background:#FBECEC;}
+.if-srow-mk{flex:0 0 auto;font-weight:900;}
+.if-srow.ok .if-srow-mk{color:#16A34A;}
+.if-srow.no .if-srow-mk{color:#DC2626;}
+.if-srow-q{flex:0 0 auto;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;}
+.if-srow-a{flex:1;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.if-srow.no .if-srow-a{color:#C05049;text-decoration:line-through;}
+.if-srow-c{flex:0 0 auto;font-weight:900;color:#16A34A;font-variant-numeric:tabular-nums;}
+.if-summary-actions{flex:0 0 auto;display:flex;gap:8px;}
+.if-again,.if-newdeck{flex:1;padding:9px 6px;border-radius:11px;border:0;font-weight:800;font-size:14px;cursor:pointer;}
+.if-again{background:var(--hover);color:var(--bar);}
+.if-newdeck{background:var(--accent);color:#3a2a05;}
+.if-again:hover,.if-newdeck:hover{filter:brightness(.97);}
+
+/* Flash-cards dialog: the segmented pickers + the timer toggle. */
+.flash-opts{display:flex;gap:6px;flex-wrap:wrap;}
+.flash-opt{padding:7px 11px;border-radius:10px;background:var(--hover);color:var(--bar);font-weight:800;font-size:13px;cursor:pointer;border:2px solid transparent;}
+.flash-opt:hover{filter:brightness(.97);}
+.flash-opt.active{background:var(--accent);color:#3a2a05;border-color:var(--accent);}
+.flash-toggle{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14px;color:var(--ink);cursor:pointer;}
+.flash-toggle input{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;}
+.flash-secs{display:flex;align-items:center;gap:8px;margin-top:8px;}
+.flash-secs-unit{font-weight:600;font-size:14px;color:var(--muted);}
+
+@media (prefers-reduced-motion:reduce){
+  .iflash.happy,.iflash.shake,.if-dealwrap,.if-flip.flipped .if-badge,.if-confetti{animation-duration:.01ms;animation-iteration-count:1;}
+  .if-flip{transition-duration:.01ms;}
+}
+
 /* --- Boards: toolbar title chip --- */
 .board-title{display:inline-flex;align-items:center;gap:7px;max-width:240px;min-height:44px;padding:0 12px;border-radius:13px;background:transparent;color:var(--ink);font-weight:700;font-size:14px;}
 .board-title:hover{background:var(--hover);}
