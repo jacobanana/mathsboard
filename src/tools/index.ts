@@ -36,6 +36,7 @@ import clockTool from "@/tools/clock";
 import timerTool from "@/tools/timer";
 import diceTool from "@/tools/dice";
 import moneyTool from "@/tools/money";
+import numberOrderTool from "@/tools/numberorder";
 import noteTool from "@/tools/note";
 import worksheetTool from "@/tools/worksheet";
 import flashCardsTool from "@/tools/flashcards";
@@ -70,6 +71,9 @@ const ALL_TOOLS = [
   // A 3D money mat (count coins & notes) — also a widget overlay in the number
   // section of the gallery.
   moneyTool,
+  // A number-ordering game (compare & sort) — tap the biggest/smallest, or put a
+  // set of numbers in order. A widget overlay, alongside the other number games.
+  numberOrderTool,
   // Practice
   worksheetTool,
   // A colourful flash-cards game — one arithmetic card at a time, flip to check,

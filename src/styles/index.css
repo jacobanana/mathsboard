@@ -477,6 +477,87 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
   .if-flip{transition-duration:.01ms;}
 }
 
+/* --- Number order widget (.iorder): a tap-the-biggest / sort-in-order game --- */
+.iorder{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+.iorder:active{cursor:grabbing;}
+.iorder.happy{animation:ifBounce .6s ease;}
+.iorder.shake{animation:ifShake .5s ease;}
+
+/* Header strip: title · progress · New (shared look with the flash cards). */
+.io-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #F0EAD6;background:#FBF7EC;}
+.io-title{flex:1;font-weight:800;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.io-progress{flex:0 0 auto;font-weight:800;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.io-new{flex:0 0 auto;padding:5px 10px;border-radius:9px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:12px;cursor:pointer;}
+.io-new:hover{filter:brightness(.97);}
+
+/* Play area: an instruction banner, the tiles, then the footer controls. */
+.io-scene{position:relative;display:flex;flex-direction:column;gap:12px;padding:12px;box-sizing:border-box;animation:ifDeal .28s ease both;}
+.io-prompt{flex:0 0 auto;text-align:center;color:#fff;font-weight:800;font-size:16px;padding:9px 12px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.15);text-shadow:0 1px 4px rgba(0,0,0,.18);}
+
+/* The number tiles — a centred, wrapping grid that grows with the box. */
+.io-tiles{position:relative;flex:1;min-height:0;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:10px;}
+.io-tile{position:relative;min-width:var(--iotile);height:var(--iotile);padding:0 12px;display:flex;align-items:center;justify-content:center;border:3px solid #E2E5EA;border-radius:16px;background:#F6F8FB;color:#1F2937;font-weight:900;font-size:var(--iotilefont);font-variant-numeric:tabular-nums;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.10);transition:transform .16s cubic-bezier(.2,.8,.3,1),background .2s ease,border-color .2s ease,box-shadow .2s ease;animation:ioDeal .34s cubic-bezier(.2,.9,.3,1) both;}
+.io-num{line-height:1;}
+.io-tile:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(0,0,0,.14);}
+.io-tile:not(:disabled):active{transform:scale(.95);}
+.io-tile:disabled{cursor:default;}
+/* Selected (in the chain, still playing) — a lifted, accented tile. */
+.io-tile.sel{background:linear-gradient(150deg,#6D5EF6 0%,#8B7BF9 100%);border-color:#5B4CE0;color:#fff;transform:translateY(-3px);box-shadow:0 8px 18px rgba(109,94,246,.4);}
+/* Checked reveal — green (right), red (wrong), dim (not part of the answer). */
+.io-tile.io-right{background:linear-gradient(150deg,#16A34A 0%,#22C55E 100%);border-color:#12833C;color:#fff;box-shadow:0 6px 16px rgba(22,163,74,.34);}
+.io-tile.io-wrong{background:linear-gradient(150deg,#DC2626 0%,#F05252 100%);border-color:#B91C1C;color:#fff;box-shadow:0 6px 16px rgba(220,38,38,.3);}
+.io-tile.io-dim{opacity:.5;}
+.io-tile.io-right{animation:ioPop .5s cubic-bezier(.2,1.7,.4,1) both;}
+
+/* The little corner badge: chain position while playing, correct position /
+   tick / cross once checked. */
+.io-badge{position:absolute;top:-9px;right:-9px;min-width:22px;height:22px;padding:0 4px;display:flex;align-items:center;justify-content:center;border-radius:11px;background:#fff;color:#5B4CE0;font-size:13px;font-weight:900;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,.24);animation:ioPop .34s cubic-bezier(.2,1.7,.4,1) both;}
+.io-tile.io-right .io-badge{color:#16A34A;}
+.io-tile.io-wrong .io-badge{color:#DC2626;}
+
+.io-confetti{position:absolute;left:50%;top:50%;font-size:24px;pointer-events:none;animation:ifBurst .9s ease-out both;}
+
+/* Footer: the hint / result line plus the round controls. */
+.io-foot{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;min-height:38px;}
+.io-hint{font-weight:700;font-size:13px;color:var(--muted);text-align:center;}
+.io-result{font-weight:800;font-size:15px;}
+.io-result.ok{color:#16A34A;}
+.io-result.no{color:#DC2626;}
+.io-next{padding:8px 20px;border-radius:11px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.14);}
+.io-next:hover{filter:brightness(.97);}
+.io-next:active{transform:scale(.97);}
+.io-retry,.io-clear{padding:8px 16px;border-radius:11px;border:0;background:var(--hover);color:var(--bar);font-weight:800;font-size:14px;cursor:pointer;}
+.io-retry:hover,.io-clear:hover{filter:brightness(.97);}
+
+@keyframes ioDeal{from{opacity:0;transform:translateY(10px) scale(.9);}to{opacity:1;transform:none;}}
+@keyframes ioPop{0%{transform:scale(0) rotate(-18deg);opacity:0;}55%{transform:scale(1.22) rotate(6deg);opacity:1;}100%{transform:scale(1) rotate(0);opacity:1;}}
+
+/* End-of-session summary: a score, then every round with its result. */
+.io-summary{flex:1;display:flex;flex-direction:column;min-height:0;gap:10px;padding:12px;box-sizing:border-box;}
+.io-score{flex:0 0 auto;text-align:center;color:#fff;background:linear-gradient(150deg,#6D5EF6 0%,#8B7BF9 100%);border-radius:14px;padding:10px;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+.io-score-big{font-weight:900;font-size:34px;line-height:1;font-variant-numeric:tabular-nums;}
+.io-score-of{font-size:20px;opacity:.85;}
+.io-score-sub{margin-top:4px;font-weight:700;font-size:14px;}
+.io-scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:5px;padding-right:2px;touch-action:pan-y;cursor:default;}
+.io-srow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;font-size:14px;background:#F4F6F5;}
+.io-srow.ok{background:#EAF7EE;}
+.io-srow.no{background:#FBECEC;}
+.io-srow-mk{flex:0 0 auto;font-weight:900;}
+.io-srow.ok .io-srow-mk{color:#16A34A;}
+.io-srow.no .io-srow-mk{color:#DC2626;}
+.io-srow-q{flex:0 0 auto;font-weight:800;color:var(--ink);}
+.io-srow-n{flex:1;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;}
+.io-summary-actions{flex:0 0 auto;display:flex;gap:8px;}
+.io-again,.io-newdeck{flex:1;padding:9px 6px;border-radius:11px;border:0;font-weight:800;font-size:14px;cursor:pointer;}
+.io-again{background:var(--hover);color:var(--bar);}
+.io-newdeck{background:var(--accent);color:#3a2a05;}
+.io-again:hover,.io-newdeck:hover{filter:brightness(.97);}
+
+@media (prefers-reduced-motion:reduce){
+  .iorder.happy,.iorder.shake,.io-scene,.io-tile,.io-badge,.io-confetti{animation-duration:.01ms;animation-iteration-count:1;}
+  .io-tile{transition-duration:.01ms;}
+}
+
 /* --- Boards: toolbar title chip --- */
 .board-title{display:inline-flex;align-items:center;gap:7px;max-width:240px;min-height:44px;padding:0 12px;border-radius:13px;background:transparent;color:var(--ink);font-weight:700;font-size:14px;}
 .board-title:hover{background:var(--hover);}
