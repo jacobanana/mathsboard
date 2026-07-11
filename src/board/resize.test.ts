@@ -51,6 +51,26 @@ describe("resizeRect", () => {
     expect(r.w / r.h).toBeCloseTo(2, 9);
   });
 
+  it("free mode moves each dragged edge independently (no ratio)", () => {
+    // Corner: both dragged edges land on the pointer, aspect changes.
+    const c = resizeRect(box, "se", 500, 500, true);
+    expect(c.x).toBe(100);
+    expect(c.y).toBe(100);
+    expect(c.w).toBe(400);
+    expect(c.h).toBe(400); // NOT derived — free of the 2:1 ratio
+
+    // Edge: only the dragged axis changes; the other stays put.
+    const e = resizeRect(box, "e", 500, 0, true);
+    expect(e.w).toBe(400);
+    expect(e.h).toBe(100); // unchanged
+    expect(e.y).toBe(100); // not re-centred
+
+    // Still clamps to MIN_OBJ.
+    const m = resizeRect(box, "se", -500, -500, true);
+    expect(m.w).toBe(MIN_OBJ);
+    expect(m.h).toBe(MIN_OBJ);
+  });
+
   it("every handle has a cursor", () => {
     for (const h of RESIZE_HANDLES) {
       expect(RESIZE_CURSOR[h]).toBeTruthy();

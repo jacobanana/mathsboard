@@ -326,9 +326,20 @@ export interface WidgetTool<P = Record<string, unknown>> extends ToolMeta {
    * WidgetHandleLayer floats DOM handles over the selected widget instead. Only
    * set this when the Component fully derives its layout from `obj.w`/`obj.h`
    * (like the die): a widget that self-measures its natural size (the worksheet)
-   * would just snap back and must NOT opt in. The box keeps its aspect ratio.
+   * would just snap back and must NOT opt in. The box keeps its aspect ratio
+   * unless the tool also sets `freeAspect`.
    */
   resizable?: boolean;
+  /**
+   * Opt OUT of aspect-ratio locking while resizing (requires `resizable`). A
+   * widget whose HTML layout reflows to fill any box — the number-order game's
+   * tile grid — can be stretched freely on either axis; each handle moves its
+   * own edge and the other axis is left alone. Editing settings then preserves
+   * the object's current w/h instead of snapping it back to the natural ratio.
+   * Omit for widgets that only look right at a fixed shape (the die, the flip
+   * card), which stay aspect-locked.
+   */
+  freeAspect?: boolean;
   /**
    * Optional LIVE-STATE reset after a settings edit is applied. When present,
    * editObject writes the returned patch via updateWidgetState (INPUT_ORIGIN,

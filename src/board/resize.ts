@@ -42,20 +42,25 @@ export function singleResizableObject(
 }
 
 /**
- * New box for an object whose `handle` is dragged to world point (wx, wy). The
- * object ALWAYS keeps its original w:h aspect ratio. The opposite edge/corner
- * stays anchored; each moving edge is clamped to keep at least MIN_OBJ.
+ * New box for an object whose `handle` is dragged to world point (wx, wy). By
+ * default the object keeps its original w:h aspect ratio; pass `free` to let
+ * each axis move independently (a widget whose layout reflows to any box). The
+ * opposite edge/corner stays anchored; each moving edge is clamped to MIN_OBJ.
  *
  *   - Corner handle: the pointer drives both axes; the box grows on whichever
  *     axis moved furthest and the other axis is derived from the ratio.
  *   - Edge handle: the dragged axis drives, the perpendicular axis is derived
  *     and kept centred on the object's unchanged mid-line.
+ *
+ * With `free`, both the ratio derivation and the re-centring are skipped: the
+ * dragged edges land exactly where the pointer put them.
  */
 export function resizeRect(
   o: { x: number; y: number; w: number; h: number },
   handle: ResizeHandle,
   wx: number,
   wy: number,
+  free = false,
 ): { x: number; y: number; w: number; h: number } {
   const ar = o.h > 0 ? o.w / o.h : 1;
   let l = o.x;
@@ -75,6 +80,9 @@ export function resizeRect(
   let h = b - t;
   const horiz = left || right;
   const vert = top || bottom;
+
+  // Free resize: each dragged edge is already clamped in place — no ratio.
+  if (free) return { x: l, y: t, w, h };
 
   if (horiz && vert) {
     // Corner: dominant axis wins, derive the other, anchor opposite corner.

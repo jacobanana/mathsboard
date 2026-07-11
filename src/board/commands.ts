@@ -123,15 +123,22 @@ export function editObject(objId: string, params: Params): void {
   const st = useBoardStore.getState();
   const existing = st.board.objects.find((o) => o.id === objId);
   if (!existing) return;
-  const size = sizedBox(existing.type, params, scaleOf(existing));
+  const editTool = getTool(existing.type);
+  // A free-aspect widget's box is user-controlled on both axes; keep it as-is so
+  // a settings edit never snaps a freely-stretched card back to its natural
+  // ratio. Everything else re-derives the box from the new params at the old
+  // (uniform) scale, so editing settings preserves any resize.
+  const freeAspect = editTool?.kind === "widget" && editTool.freeAspect;
+  const size = freeAspect
+    ? { w: existing.w, h: existing.h }
+    : sizedBox(existing.type, params, scaleOf(existing));
   if (!size) return;
   st.updateObject(objId, { ...params, w: size.w, h: size.h });
   // A widget may reset its live run state on edit (the timer resets its run so a
   // settings change always starts clean). Written under INPUT_ORIGIN, so it's
   // synced but undo-invisible, separate from the undoable param edit above.
-  const tool = getTool(existing.type);
-  if (tool?.kind === "widget" && tool.resetOnEdit) {
-    const patch = tool.resetOnEdit(existing);
+  if (editTool?.kind === "widget" && editTool.resetOnEdit) {
+    const patch = editTool.resetOnEdit(existing);
     if (patch) st.updateWidgetState(objId, patch);
   }
   track("tool_action", { tool: existing.type, action: "edited" });
