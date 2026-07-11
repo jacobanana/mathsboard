@@ -49,6 +49,8 @@ export function WidgetHandleLayer(): JSX.Element {
   const t = target && getTool(target.type);
   const o =
     target && t && t.kind === "widget" && t.resizable ? target : null;
+  // A widget whose layout reflows to any box resizes on both axes freely.
+  const freeAspect = !!(t && t.kind === "widget" && t.freeAspect);
 
   if (!o) return <div className="whandle-layer" ref={layerRef} />;
 
@@ -85,7 +87,7 @@ export function WidgetHandleLayer(): JSX.Element {
       const snap =
         st.snap !== ev.shiftKey && st.board.background === "squared" && !ev.altKey;
       const p = snap ? snapPt(wpt) : wpt;
-      const box = resizeRect(start, handle, p.x, p.y);
+      const box = resizeRect(start, handle, p.x, p.y, freeAspect);
       const cur = st.board.objects.find((x) => x.id === o.id);
       if (
         cur &&

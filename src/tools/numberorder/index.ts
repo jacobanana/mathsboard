@@ -65,6 +65,9 @@ const numberOrderTool = defineWidgetTool<NumberOrderParams>({
   // via the WidgetHandleLayer.
   defaultSize: { w: 340, h: 400 },
   resizable: true,
+  // The tile grid reflows to fill any box, so it stretches freely on either
+  // axis — no aspect lock (see WidgetTool.freeAspect).
+  freeAspect: true,
   Component: NumberOrder,
   Dialog: NumberOrderDialog,
   // Editing settings always restarts the (re-derived) session from round one and

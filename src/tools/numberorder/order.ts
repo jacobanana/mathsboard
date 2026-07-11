@@ -130,8 +130,9 @@ function shuffle<T>(rng: () => number, arr: T[]): T[] {
 // at higher levels makes the comparisons less obvious (and the digits longer).
 
 const RANGE: Record<Level, { lo: number; hi: number }> = {
-  easy: { lo: 1, hi: 20 },
-  medium: { lo: 1, hi: 100 },
+  easy: { lo: 1, hi: 100 },
+  // Medium reaches into the thousands — four-digit numbers.
+  medium: { lo: 1, hi: 9_999 },
   // Hard reaches into the millions — seven-digit numbers to compare and order.
   hard: { lo: 1, hi: 9_999_999 },
 };

@@ -55,8 +55,8 @@ const obj = (over: Partial<OrderObj> = {}): OrderObj => ({
 });
 
 const RANGE: Record<string, { lo: number; hi: number }> = {
-  easy: { lo: 1, hi: 20 },
-  medium: { lo: 1, hi: 100 },
+  easy: { lo: 1, hi: 100 },
+  medium: { lo: 1, hi: 9_999 },
   hard: { lo: 1, hi: 9_999_999 },
 };
 
