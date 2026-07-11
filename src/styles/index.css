@@ -494,10 +494,11 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .io-scene{position:relative;display:flex;flex-direction:column;gap:12px;padding:12px;box-sizing:border-box;animation:ifDeal .28s ease both;}
 .io-prompt{flex:0 0 auto;text-align:center;color:#fff;font-weight:800;font-size:16px;padding:9px 12px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.15);text-shadow:0 1px 4px rgba(0,0,0,.18);}
 
-/* The number tiles — a centred, wrapping grid that grows with the box. */
-.io-tiles{position:relative;flex:1;min-height:0;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:10px;}
-.io-tile{position:relative;min-width:var(--iotile);height:var(--iotile);padding:0 12px;display:flex;align-items:center;justify-content:center;border:3px solid #E2E5EA;border-radius:16px;background:#F6F8FB;color:#1F2937;font-weight:900;font-size:var(--iotilefont);font-variant-numeric:tabular-nums;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.10);transition:transform .16s cubic-bezier(.2,.8,.3,1),background .2s ease,border-color .2s ease,box-shadow .2s ease;animation:ioDeal .34s cubic-bezier(.2,.9,.3,1) both;}
-.io-num{line-height:1;}
+/* The number tiles — a centred, wrapping grid of fixed-width columns (sized in
+   JS from the box and the widest number, so millions still tile cleanly). */
+.io-tiles{position:relative;flex:1;min-height:0;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:var(--iogap,10px);}
+.io-tile{position:relative;box-sizing:border-box;width:var(--iotileW);height:var(--iotileH);min-width:0;padding:0 8px;display:flex;align-items:center;justify-content:center;border:3px solid #E2E5EA;border-radius:16px;background:#F6F8FB;color:#1F2937;font-weight:900;font-size:var(--iotilefont);font-variant-numeric:tabular-nums;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.10);transition:transform .16s cubic-bezier(.2,.8,.3,1),background .2s ease,border-color .2s ease,box-shadow .2s ease;animation:ioDeal .34s cubic-bezier(.2,.9,.3,1) both;}
+.io-num{line-height:1;white-space:nowrap;}
 .io-tile:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(0,0,0,.14);}
 .io-tile:not(:disabled):active{transform:scale(.95);}
 .io-tile:disabled{cursor:default;}

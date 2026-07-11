@@ -21,6 +21,7 @@ import {
   clampRounds,
   deckTitle,
   deriveDeck,
+  formatNum,
   goalPrompt,
   isChecked,
   isPickGoal,
@@ -56,7 +57,7 @@ const obj = (over: Partial<OrderObj> = {}): OrderObj => ({
 const RANGE: Record<string, { lo: number; hi: number }> = {
   easy: { lo: 1, hi: 20 },
   medium: { lo: 1, hi: 100 },
-  hard: { lo: 1, hi: 999 },
+  hard: { lo: 1, hi: 9_999_999 },
 };
 
 describe("deriveDeck", () => {
@@ -278,6 +279,13 @@ describe("labels", () => {
     expect(goalPrompt("smallest")).toBe("Tap the smallest");
     expect(goalPrompt("increasing")).toContain("smallest");
     expect(goalPrompt("decreasing")).toContain("biggest");
+  });
+
+  it("formatNum groups thousands only above 999", () => {
+    expect(formatNum(20)).toBe("20");
+    expect(formatNum(999)).toBe("999");
+    expect(formatNum(1234)).toBe("1,234");
+    expect(formatNum(9999999)).toBe("9,999,999");
   });
 });
 

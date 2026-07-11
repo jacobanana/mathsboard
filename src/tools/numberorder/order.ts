@@ -132,8 +132,15 @@ function shuffle<T>(rng: () => number, arr: T[]): T[] {
 const RANGE: Record<Level, { lo: number; hi: number }> = {
   easy: { lo: 1, hi: 20 },
   medium: { lo: 1, hi: 100 },
-  hard: { lo: 1, hi: 999 },
+  // Hard reaches into the millions — seven-digit numbers to compare and order.
+  hard: { lo: 1, hi: 9_999_999 },
 };
+
+/** Numbers read with thousands separators so the big ones stay legible
+ *  ("9,999,999"). Below 1000 this is a no-op ("20" stays "20"). Manual grouping
+ *  keeps it deterministic and locale-free. */
+export const formatNum = (n: number): string =>
+  String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 /** `k` DISTINCT numbers from [lo, hi] (distinct so the order is unambiguous and
  *  the biggest / smallest are unique). */
@@ -354,7 +361,8 @@ export function verdict(correct: number, total: number): { emoji: string; text: 
 }
 
 /** How a round reads back on the summary, e.g. "2, 9, 5". */
-export const roundText = (round: OrderRound): string => round.nums.join(", ");
+export const roundText = (round: OrderRound): string =>
+  round.nums.map(formatNum).join(", ");
 
 // --- session control (the exact patch each transition writes) ---------------
 

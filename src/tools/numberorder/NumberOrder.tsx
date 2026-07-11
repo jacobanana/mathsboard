@@ -23,6 +23,7 @@ import {
   applyTap,
   deckTitle,
   deriveDeck,
+  formatNum,
   goalPrompt,
   isChecked,
   isPickGoal,
@@ -96,15 +97,30 @@ export function NumberOrder({ obj }: WidgetProps<NumberOrderParams>) {
   // --- layout: everything derives from the box, so the card resizes cleanly ---
   const W = obj.w;
   const sceneH = obj.h - HEAD_H;
-  const maxDigits = round ? Math.max(...round.nums.map((n) => String(n).length)) : 1;
-  // Aim for a two-row grid; tiles grow with the box but stay tappable.
-  const perRow = count <= 3 ? count : Math.ceil(count / 2);
-  const tile = Math.round(
-    clamp(Math.min((W - 40) / perRow - 12, (sceneH - 150) / 2), 46, 128),
-  );
-  const tileFont = Math.round(clamp(Math.min(tile * 0.46, (tile * 2.0) / maxDigits), 16, 56));
+  // Tile WIDTH must fit the widest FORMATTED number (commas included), so the
+  // hard level's seven-digit millions still tile into columns instead of
+  // overflowing the card. We lay the tiles on an explicit column grid and size
+  // the font to fit that column, rather than letting the text set the width.
+  const maxDigits = round ? Math.max(...round.nums.map((n) => formatNum(n).length)) : 1;
+  const GAP = 10;
+  const BANNER_H = 44; // instruction banner
+  const FOOT_H = 42; // hint / result row
+  const cols = count <= 2 ? count : count <= 4 ? 2 : 3;
+  const rows = Math.ceil(count / cols);
+  // Scene padding (12 each side) + the card's 1px border each side + a little
+  // slack, so a full row of tiles never overflows by a pixel and wraps early.
+  const innerW = W - 30;
+  const tilesH = Math.max(80, sceneH - 24 - 24 - BANNER_H - FOOT_H); // pad + two 12px gaps
+  const tileW = Math.round(clamp((innerW - GAP * (cols - 1)) / cols, 46, 300));
+  const tileH = Math.round(clamp((tilesH - GAP * (rows - 1)) / rows, 44, 150));
+  // ~0.62em per bold tabular digit/comma; fit to the narrower of width/height.
+  const fontByW = (tileW - 22) / (maxDigits * 0.62);
+  const fontByH = tileH * 0.52;
+  const tileFont = Math.round(clamp(Math.min(fontByW, fontByH), 12, 52));
   const rootVars = {
-    "--iotile": tile + "px",
+    "--iotileW": tileW + "px",
+    "--iotileH": tileH + "px",
+    "--iogap": GAP + "px",
     "--iotilefont": tileFont + "px",
   } as React.CSSProperties;
 
@@ -260,7 +276,7 @@ export function NumberOrder({ obj }: WidgetProps<NumberOrderParams>) {
                   disabled={checked}
                   onClick={() => tap(j)}
                 >
-                  <span className="io-num">{n}</span>
+                  <span className="io-num">{formatNum(n)}</span>
                   {badge != null && <span className="io-badge">{badge}</span>}
                 </button>
               );

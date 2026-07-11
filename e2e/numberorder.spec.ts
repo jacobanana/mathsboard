@@ -23,9 +23,12 @@ async function insertNumberOrder(
   await page.locator(".iorder").waitFor();
 }
 
-/** The current round's tile values, in display order. */
+/** The current round's tile values, in display order (commas stripped — hard
+ *  numbers render with thousands separators). */
 async function tileValues(page: Page): Promise<number[]> {
-  return (await page.locator(".io-tile .io-num").allInnerTexts()).map(Number);
+  return (await page.locator(".io-tile .io-num").allInnerTexts()).map((t) =>
+    Number(t.replace(/,/g, "")),
+  );
 }
 
 test("tapping the biggest is marked right and a wrong tap wrong", async ({ newClient }) => {
