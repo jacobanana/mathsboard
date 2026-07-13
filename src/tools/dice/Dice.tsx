@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
+import { startWidgetCardDrag } from "@/tools/widgetDrag";
 import { track } from "@/analytics";
 import {
   makeSolid,
@@ -217,8 +218,6 @@ function paintDie(
 
 export function Dice({ obj }: WidgetProps<DiceParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
-  const moveObject = useBoardStore((s) => s.moveObject);
-  const pushHistory = useBoardStore((s) => s.pushHistory);
 
   const faces: FaceCount = isFaceCount(obj.faces) ? obj.faces : 6;
   const color = obj.color ?? DEFAULT_DICE_COLOR;
@@ -305,36 +304,9 @@ export function Dice({ obj }: WidgetProps<DiceParams>) {
     track("tool_action", { tool: "dice", action: "rolled" });
   }
 
-  // --- drag (move) vs click (roll) ------------------------------------------
+  // --- drag (tool-aware, like a canvas object) vs click (roll) ---------------
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    e.stopPropagation();
-    const el = e.currentTarget;
-    const scale = useBoardStore.getState().camera.scale;
-    const sx = e.clientX;
-    const sy = e.clientY;
-    const ox = obj.x;
-    const oy = obj.y;
-    let moved = false;
-    try {
-      el.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    const mv = (ev: PointerEvent) => {
-      if (!moved) {
-        if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 3) return;
-        moved = true;
-        pushHistory();
-      }
-      moveObject(obj.id, ox + (ev.clientX - sx) / scale, oy + (ev.clientY - sy) / scale);
-    };
-    const up = () => {
-      el.removeEventListener("pointermove", mv);
-      el.removeEventListener("pointerup", up);
-      if (!moved) roll();
-    };
-    el.addEventListener("pointermove", mv);
-    el.addEventListener("pointerup", up);
+    startWidgetCardDrag(e, obj.id, { x: obj.x, y: obj.y }, roll);
   }
 
   return (

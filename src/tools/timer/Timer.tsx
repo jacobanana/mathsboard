@@ -24,6 +24,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
+import { startWidgetCardDrag } from "@/tools/widgetDrag";
 import { track } from "@/analytics";
 import {
   VIEW,
@@ -68,8 +69,6 @@ let uid = 0;
 
 export function Timer({ obj }: WidgetProps<TimerParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
-  const moveObject = useBoardStore((s) => s.moveObject);
-  const pushHistory = useBoardStore((s) => s.pushHistory);
 
   const mode: TimerMode = obj.mode === "stopwatch" ? "stopwatch" : "countdown";
   const durationMs = Math.max(0, obj.durationMs ?? 0);
@@ -262,35 +261,11 @@ export function Timer({ obj }: WidgetProps<TimerParams>) {
     track("tool_action", { tool: "timer", action: "reset" });
   }
 
-  // --- drag (move) the card --------------------------------------------------
+  // --- drag the card the way a canvas object responds to the tool ------------
+  // The buttons stop their own presses (below), so a press that reaches here is
+  // always on the card's chrome.
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    e.stopPropagation();
-    const el = e.currentTarget;
-    const scale = useBoardStore.getState().camera.scale;
-    const sx = e.clientX;
-    const sy = e.clientY;
-    const ox = obj.x;
-    const oy = obj.y;
-    let moved = false;
-    try {
-      el.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    const mv = (ev: PointerEvent) => {
-      if (!moved) {
-        if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 3) return;
-        moved = true;
-        pushHistory();
-      }
-      moveObject(obj.id, ox + (ev.clientX - sx) / scale, oy + (ev.clientY - sy) / scale);
-    };
-    const up = () => {
-      el.removeEventListener("pointermove", mv);
-      el.removeEventListener("pointerup", up);
-    };
-    el.addEventListener("pointermove", mv);
-    el.addEventListener("pointerup", up);
+    startWidgetCardDrag(e, obj.id, { x: obj.x, y: obj.y });
   }
 
   const initText = formatHMS(restMs, mode === "countdown");

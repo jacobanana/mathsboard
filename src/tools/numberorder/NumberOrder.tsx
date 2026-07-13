@@ -18,6 +18,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
+import { startWidgetCardDrag } from "@/tools/widgetDrag";
 import { track } from "@/analytics";
 import {
   applyTap,
@@ -75,8 +76,6 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 
 export function NumberOrder({ obj }: WidgetProps<NumberOrderParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
-  const moveObject = useBoardStore((s) => s.moveObject);
-  const pushHistory = useBoardStore((s) => s.pushHistory);
 
   const mo = obj as unknown as OrderObj;
   const rounds = clampRounds(obj.rounds);
@@ -201,36 +200,10 @@ export function NumberOrder({ obj }: WidgetProps<NumberOrderParams>) {
     nextRef.current?.focus({ preventScroll: true });
   }, [idx, obj.round, checked, finished]);
 
-  // --- card drag (a press that isn't on a control moves the object) ----------
+  // --- card drag (a press that isn't on a control acts like a canvas object) --
   function onCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest("button, .io-scroll")) return;
-    e.stopPropagation();
-    const cardEl = e.currentTarget;
-    const scale = useBoardStore.getState().camera.scale;
-    const sx = e.clientX;
-    const sy = e.clientY;
-    const ox = obj.x;
-    const oy = obj.y;
-    let moved = false;
-    try {
-      cardEl.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    const mv = (ev: PointerEvent) => {
-      if (!moved) {
-        if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 3) return;
-        moved = true;
-        pushHistory();
-      }
-      moveObject(obj.id, ox + (ev.clientX - sx) / scale, oy + (ev.clientY - sy) / scale);
-    };
-    const up = () => {
-      cardEl.removeEventListener("pointermove", mv);
-      cardEl.removeEventListener("pointerup", up);
-    };
-    cardEl.addEventListener("pointermove", mv);
-    cardEl.addEventListener("pointerup", up);
+    startWidgetCardDrag(e, obj.id, { x: obj.x, y: obj.y });
   }
 
   // --- render ----------------------------------------------------------------

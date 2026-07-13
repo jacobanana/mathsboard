@@ -24,6 +24,7 @@
 import { useLayoutEffect, useRef } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
+import { startWidgetCardDrag } from "@/tools/widgetDrag";
 import {
   ansField,
   genQuestions,
@@ -38,8 +39,6 @@ import {
 export function Worksheet({ obj }: WidgetProps<WorksheetParams>) {
   const updateObject = useBoardStore((s) => s.updateObject);
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
-  const moveObject = useBoardStore((s) => s.moveObject);
-  const pushHistory = useBoardStore((s) => s.pushHistory);
 
   // Shared state, read straight off the object (no local copies to reset).
   const rec = obj as unknown as Record<string, unknown>;
@@ -84,39 +83,11 @@ export function Worksheet({ obj }: WidgetProps<WorksheetParams>) {
     return () => ro.disconnect();
   }, [obj.id, updateWidgetState]);
 
-  // --- card drag (any press that isn't on a control moves the object) ------
+  // --- card drag (any press that isn't on a control acts like a canvas object)
   function onCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest("button, input, select, textarea"))
       return;
-    e.stopPropagation();
-    const card = e.currentTarget;
-    const scale = useBoardStore.getState().camera.scale;
-    const sx = e.clientX;
-    const sy = e.clientY;
-    const ox = obj.x;
-    const oy = obj.y;
-    let moved = false;
-    try {
-      card.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    const mv = (ev: PointerEvent) => {
-      // Push one history entry at the REAL drag start (past a small jitter
-      // threshold) so a plain click-to-select never logs an empty undo step.
-      if (!moved) {
-        if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 3) return;
-        moved = true;
-        pushHistory();
-      }
-      moveObject(obj.id, ox + (ev.clientX - sx) / scale, oy + (ev.clientY - sy) / scale);
-    };
-    const up = () => {
-      card.removeEventListener("pointermove", mv);
-      card.removeEventListener("pointerup", up);
-    };
-    card.addEventListener("pointermove", mv);
-    card.addEventListener("pointerup", up);
+    startWidgetCardDrag(e, obj.id, { x: obj.x, y: obj.y });
   }
 
   // --- check (marks are shared state, the score derives from them) ---------

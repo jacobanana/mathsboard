@@ -16,6 +16,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
+import { startWidgetCardDrag } from "@/tools/widgetDrag";
 import { track } from "@/analytics";
 import { id as newId } from "@/board/types";
 import {
@@ -67,8 +68,6 @@ const easeOutBack = (t: number) => {
 
 export function Money({ obj }: WidgetProps<MoneyParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
-  const moveObject = useBoardStore((s) => s.moveObject);
-  const pushHistory = useBoardStore((s) => s.pushHistory);
 
   const mo = obj as unknown as MoneyObj;
   const cur = getCurrency(obj.currency);
@@ -288,36 +287,11 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
     }
   }
 
-  // Drag the card to move the object (ignores presses on controls / removals).
+  // Drag the card the way a canvas object responds to the tool (ignores presses
+  // on controls / removals).
   function onCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest("button, input, select, textarea")) return;
-    e.stopPropagation();
-    const card = e.currentTarget;
-    const scale = useBoardStore.getState().camera.scale;
-    const sx = e.clientX;
-    const sy = e.clientY;
-    const ox = obj.x;
-    const oy = obj.y;
-    let moved = false;
-    try {
-      card.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    const mv = (ev: PointerEvent) => {
-      if (!moved) {
-        if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 3) return;
-        moved = true;
-        pushHistory();
-      }
-      moveObject(obj.id, ox + (ev.clientX - sx) / scale, oy + (ev.clientY - sy) / scale);
-    };
-    const up = () => {
-      card.removeEventListener("pointermove", mv);
-      card.removeEventListener("pointerup", up);
-    };
-    card.addEventListener("pointermove", mv);
-    card.addEventListener("pointerup", up);
+    startWidgetCardDrag(e, obj.id, { x: obj.x, y: obj.y });
   }
 
   // --- render ----------------------------------------------------------------
