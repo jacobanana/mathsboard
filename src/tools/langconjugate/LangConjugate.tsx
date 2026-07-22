@@ -200,13 +200,15 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
               const bad = checked && !ok;
               return (
                 <div className="cj-row" key={i}>
-                  <span className="cj-pron">{r.pronoun}</span>
+                  {/* The subject column carries the elision, so avoir reads
+                      "j'" + "ai" = j'ai in every mode, never "je ai". */}
+                  <span className="cj-pron">{r.subject}</span>
                   {mode === "learn" ? (
                     <button
                       className={"cj-cell cj-learncell" + (isCovered(mo, i) ? " covered" : "")}
                       onClick={() => toggleCover(i)}
                     >
-                      {isCovered(mo, i) ? "•••" : r.display}
+                      {isCovered(mo, i) ? "•••" : r.form}
                     </button>
                   ) : mode === "type" ? (
                     checked ? (

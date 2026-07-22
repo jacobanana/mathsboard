@@ -67,75 +67,56 @@ export function LangConjugateDialog({
       </p>
 
       <div className="field">
-        <label>Level</label>
-        <div className="flash-opts">
+        <label htmlFor="cjLevel">Level</label>
+        <select
+          id="cjLevel"
+          value={level}
+          onChange={(e) => pickLevel(e.target.value as LevelFilter)}
+        >
           {LEVELS.map((l) => (
-            <button
-              key={l}
-              type="button"
-              disabled={!availLevels.includes(l)}
-              className={"flash-opt" + (level === l ? " active" : "")}
-              onClick={() => pickLevel(l)}
-            >
+            <option key={l} value={l} disabled={!availLevels.includes(l)}>
               {LEVEL_LABEL[l]}
-            </button>
+            </option>
           ))}
-          <button
-            type="button"
-            className={"flash-opt" + (level === "mixed" ? " active" : "")}
-            onClick={() => pickLevel("mixed")}
-          >
-            All
-          </button>
-        </div>
+          <option value="mixed">All</option>
+        </select>
       </div>
 
       <div className="field">
-        <label>Verb</label>
-        <div className="flash-opts">
+        <label htmlFor="cjVerb">Verb</label>
+        <select id="cjVerb" value={verb} onChange={(e) => setVerb(e.target.value)}>
           {verbs.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              className={"flash-opt" + (verb === v.id ? " active" : "")}
-              onClick={() => setVerb(v.id)}
-            >
+            <option key={v.id} value={v.id}>
               {infinitiveOf(v, pair.learning)}
-            </button>
+            </option>
           ))}
-        </div>
+        </select>
       </div>
 
       <div className="field">
-        <label>Tense</label>
-        <div className="flash-opts">
+        <label htmlFor="cjTense">Tense</label>
+        <select id="cjTense" value={tense} onChange={(e) => setTense(e.target.value)}>
           {TENSES.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={"flash-opt" + (tense === t.id ? " active" : "")}
-              onClick={() => setTense(t.id)}
-            >
+            <option key={t.id} value={t.id}>
               {t.label}
-            </button>
+            </option>
           ))}
-        </div>
+        </select>
       </div>
 
       <div className="field">
-        <label>How to practise</label>
-        <div className="flash-opts">
+        <label htmlFor="cjMode">How to practise</label>
+        <select
+          id="cjMode"
+          value={mode}
+          onChange={(e) => setMode(e.target.value as ConjMode)}
+        >
           {(["learn", "pick", "type"] as ConjMode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              className={"flash-opt" + (mode === m ? " active" : "")}
-              onClick={() => setMode(m)}
-            >
+            <option key={m} value={m}>
               {MODE_LABEL[m]}
-            </button>
+            </option>
           ))}
-        </div>
+        </select>
       </div>
 
       <div className="card-actions">

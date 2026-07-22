@@ -12,16 +12,17 @@ import {
   verbsFor,
 } from "@/lang/conjugation";
 
+const STORED_TENSES = ["present", "past", "imperfect", "futureSimple"] as const;
+
 describe("catalogue", () => {
-  it("every verb has 6 present rows in both languages", () => {
+  it("every verb stores 6 forms for every stored tense in both languages", () => {
     for (const v of VERBS) {
       for (const code of ["fr", "en"]) {
-        const rows = v.present[code];
-        expect(rows, `${v.id}/${code}`).toHaveLength(6);
-        rows.forEach((r) => {
-          expect(r.pronoun).not.toBe("");
-          expect(r.form).not.toBe("");
-        });
+        for (const tense of STORED_TENSES) {
+          const forms = v.forms[code][tense];
+          expect(forms, `${v.id}/${code}/${tense}`).toHaveLength(6);
+          forms.forEach((f) => expect(f.trim(), `${v.id}/${code}/${tense}`).not.toBe(""));
+        }
       }
     }
   });
@@ -44,10 +45,21 @@ describe("conjugationFor", () => {
     expect(rows[3]).toEqual({ pronoun: "nous", form: "allons manger" });
   });
 
-  it("derives the English future via will + base", () => {
+  it("derives the English near future via going to + base", () => {
     const rows = conjugationFor("manger", "future", "en");
-    expect(rows[0]).toEqual({ pronoun: "I", form: "will eat" });
-    expect(rows.every((r) => r.form === "will eat")).toBe(true);
+    expect(rows[0]).toEqual({ pronoun: "I", form: "am going to eat" });
+    expect(rows[2]).toEqual({ pronoun: "he", form: "is going to eat" });
+    expect(rows[3]).toEqual({ pronoun: "we", form: "are going to eat" });
+  });
+
+  it("returns the stored passé composé, imperfect and simple future", () => {
+    expect(conjugationFor("avoir", "past", "fr").map((r) => r.form)).toEqual([
+      "ai eu", "as eu", "a eu", "avons eu", "avez eu", "ont eu",
+    ]);
+    expect(conjugationFor("etre", "imperfect", "fr")[0].form).toBe("étais");
+    expect(conjugationFor("aller", "futureSimple", "fr").map((r) => r.form)).toEqual([
+      "irai", "iras", "ira", "irons", "irez", "iront",
+    ]);
   });
 
   it("is empty for an unknown verb or tense", () => {
@@ -55,8 +67,10 @@ describe("conjugationFor", () => {
     expect(conjugationFor("etre", "nope", "fr")).toEqual([]);
   });
 
-  it("offers at least present and future tenses", () => {
-    expect(TENSES.map((t) => t.id)).toEqual(expect.arrayContaining(["present", "future"]));
+  it("offers present, both past tenses and both futures", () => {
+    expect(TENSES.map((t) => t.id)).toEqual(
+      expect.arrayContaining(["present", "past", "imperfect", "future", "futureSimple"]),
+    );
   });
 });
 
@@ -65,6 +79,8 @@ describe("displayLine", () => {
     expect(displayLine({ pronoun: "je", form: "suis" }, "fr")).toBe("je suis");
     expect(displayLine({ pronoun: "je", form: "ai" }, "fr")).toBe("j'ai");
     expect(displayLine({ pronoun: "je", form: "aime" }, "fr")).toBe("j'aime");
+    // Elision also applies to the compound past ("j'ai mangé").
+    expect(displayLine({ pronoun: "je", form: "ai mangé" }, "fr")).toBe("j'ai mangé");
   });
 
   it("does not elide in English", () => {

@@ -13,10 +13,10 @@ import { clamp } from "@/board/geometry";
 import { languageByCode } from "@/lang/data";
 import { CategoryLevelPicker } from "@/lang/CategoryLevelPicker";
 import { useContentPicker } from "@/lang/contentPicker";
+import { categoriesFromObj } from "@/lang/pairs";
 import {
   MAX_COUNT,
   MIN_COUNT,
-  categoryOf,
   levelOf,
   type Direction,
   type LangFlashObj,
@@ -40,7 +40,7 @@ export function LangFlashDialog({
   const picker = useContentPicker(
     "vocab",
     pair,
-    categoryOf(base as unknown as LangFlashObj),
+    categoriesFromObj(base as unknown as LangFlashObj),
     levelOf(base as unknown as LangFlashObj),
   );
   const [direction, setDirection] = useState<Direction>(base.direction);
@@ -54,7 +54,8 @@ export function LangFlashDialog({
     onSubmit({
       known: pair.known,
       learning: pair.learning,
-      category: picker.category,
+      categories: picker.selected,
+      category: picker.selected[0],
       level: picker.level,
       direction,
       count: clamp(parseInt(count, 10) || base.count, MIN_COUNT, MAX_COUNT),
@@ -83,23 +84,15 @@ export function LangFlashDialog({
       )}
 
       <div className="field">
-        <label>Show first</label>
-        <div className="flash-opts">
-          <button
-            type="button"
-            className={"flash-opt" + (direction === "known-first" ? " active" : "")}
-            onClick={() => setDirection("known-first")}
-          >
-            {knownName} → {learningName}
-          </button>
-          <button
-            type="button"
-            className={"flash-opt" + (direction === "learning-first" ? " active" : "")}
-            onClick={() => setDirection("learning-first")}
-          >
-            {learningName} → {knownName}
-          </button>
-        </div>
+        <label htmlFor="lfDir">Show first</label>
+        <select
+          id="lfDir"
+          value={direction}
+          onChange={(e) => setDirection(e.target.value as Direction)}
+        >
+          <option value="known-first">{knownName} → {learningName}</option>
+          <option value="learning-first">{learningName} → {knownName}</option>
+        </select>
       </div>
 
       {!isCustom && (

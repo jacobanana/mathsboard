@@ -17,8 +17,10 @@ import {
 export interface LangMatchParams {
   known: string;
   learning: string;
-  /** Theme (category id). */
-  category: string;
+  /** Themes drawn from. */
+  categories: string[];
+  /** Legacy single theme, kept for older boards / readers. */
+  category?: string;
   /** Difficulty filter: a level, or "mixed". */
   level: LevelFilter;
   count: number;
@@ -29,10 +31,12 @@ export interface LangMatchParams {
 export function defaultLangMatchParams(): LangMatchParams {
   const pair = currentPair();
   const categories = categoriesForVocab(pair, "mixed", MIN_COUNT);
+  const first = categories[0]?.id ?? "colours";
   return {
     known: pair.known,
     learning: pair.learning,
-    category: categories[0]?.id ?? "colours",
+    categories: [first],
+    category: first,
     level: "basic",
     count: DEFAULT_COUNT,
   };

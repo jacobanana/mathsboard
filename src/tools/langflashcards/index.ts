@@ -25,8 +25,10 @@ export interface LangFlashParams {
   known: string;
   /** The language being learned (baked at creation). */
   learning: string;
-  /** Which theme (category id) the deck draws from (ignored when `custom` set). */
-  category: string;
+  /** Which themes the deck draws from (ignored when `custom` set). */
+  categories: string[];
+  /** Legacy single theme, kept for older boards / readers. */
+  category?: string;
   /** Difficulty filter: a level, or "mixed" for all levels. */
   level: LevelFilter;
   /** How many cards (bounded by the theme's size). */
@@ -50,10 +52,12 @@ export interface LangFlashParams {
 export function defaultLangFlashParams(): LangFlashParams {
   const pair = currentPair();
   const categories = categoriesForVocab(pair, "mixed");
+  const first = categories[0]?.id ?? "colours";
   return {
     known: pair.known,
     learning: pair.learning,
-    category: categories[0]?.id ?? "colours",
+    categories: [first],
+    category: first,
     level: "basic",
     count: DEFAULT_COUNT,
     direction: "known-first",

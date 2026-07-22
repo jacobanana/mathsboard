@@ -11,15 +11,21 @@
 // persisted.
 
 import { rngFromSeed, shuffle } from "@/lang/rng";
-import { sentencesFor, type LangPair, type LevelFilter } from "@/lang/pairs";
-import { categoryById } from "@/lang/data";
+import {
+  categoriesFromObj,
+  categoriesLabel,
+  sentencesForCategories,
+  type LangPair,
+  type LevelFilter,
+} from "@/lang/pairs";
 
 /** The shape the component reads: params plus live widget-state (so:*, sc:*). */
 export interface SentenceObj {
   id: string;
   known: string;
   learning: string;
-  /** The theme (category id). Legacy objects may carry `set` instead. */
+  /** The themes drawn from. Older objects carry a single `category`/`set`. */
+  categories?: string[];
   category?: string;
   set?: string;
   /** Difficulty filter; absent = "mixed" (all levels). */
@@ -56,17 +62,17 @@ const pairOf = (obj: SentenceObj): LangPair => ({
   learning: obj.learning,
 });
 
-/** The theme id (new `category`, falling back to a legacy `set`). */
-export const categoryOf = (obj: SentenceObj): string => obj.category ?? obj.set ?? "";
+/** The theme ids drawn from (supports several; legacy single `category`/`set`). */
+export const categoriesOf = (obj: SentenceObj): string[] => categoriesFromObj(obj);
 /** The level filter (absent = every level). */
 export const levelOf = (obj: SentenceObj): LevelFilter => obj.level ?? "mixed";
 
 /** Derive the whole session (its rounds) deterministically from state. */
 export function deriveDeck(obj: SentenceObj): SentenceRound[] {
   const round = obj.round ?? 0;
-  const sentences = sentencesFor(categoryOf(obj), levelOf(obj), pairOf(obj));
+  const sentences = sentencesForCategories(categoriesOf(obj), levelOf(obj), pairOf(obj));
   const rng = rngFromSeed(
-    `${obj.id}:${round}:${categoryOf(obj)}:${levelOf(obj)}:${obj.known}:${obj.learning}`,
+    `${obj.id}:${round}:${categoriesOf(obj).join(",")}:${levelOf(obj)}:${obj.known}:${obj.learning}`,
   );
   const want = Math.min(clampRounds(obj.rounds), sentences.length);
   const chosen = shuffle(rng, sentences).slice(0, want);
@@ -86,8 +92,7 @@ export function deriveDeck(obj: SentenceObj): SentenceRound[] {
 export const deckLength = (obj: SentenceObj): number => deriveDeck(obj).length;
 
 export function deckTitle(obj: SentenceObj): string {
-  const cat = categoryById(categoryOf(obj));
-  return cat ? cat.label : "Sentences";
+  return categoriesLabel(categoriesOf(obj), "Sentences");
 }
 
 // --- correctness ------------------------------------------------------------

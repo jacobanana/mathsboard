@@ -1,15 +1,16 @@
-// A small hook backing the shared category + level picker used by every language
-// tool dialog. It owns the theme/level selection and keeps them consistent: the
-// category list is stable (every theme that has ANY content for this pair), and
-// switching theme snaps the level to one the new theme actually offers.
+// A small hook backing the shared theme + level picker used by every language
+// tool dialog. It owns the theme(s) and level selection and keeps them
+// consistent: SEVERAL themes can be chosen at once, the theme list is stable
+// (every theme that has ANY content for this pair), and the level snaps to one
+// the chosen themes actually offer (their union).
 
 import { useMemo, useState } from "react";
 import type { Category, Level } from "@/lang/data";
 import {
   categoriesForSentences,
   categoriesForVocab,
-  levelsForSentenceCategory,
-  levelsForVocabCategory,
+  levelsForSentenceCategories,
+  levelsForVocabCategories,
   resolveLevel,
   type LangPair,
   type LevelFilter,
@@ -18,26 +19,28 @@ import {
 export type ContentKind = "vocab" | "sentences";
 
 export interface ContentPicker {
-  category: string;
+  /** The chosen theme ids — always at least one. */
+  selected: string[];
   level: LevelFilter;
   /** Themes with content for this pair (stable — independent of level). */
   categories: Category[];
-  /** Levels the CURRENT category can offer (others are disabled). */
+  /** Levels the CURRENT theme set can offer between them (others are disabled). */
   availableLevels: Level[];
-  setCategory(id: string): void;
+  /** Add or remove a theme; the last remaining theme can't be removed. */
+  toggle(id: string): void;
   setLevel(level: LevelFilter): void;
 }
 
 export function useContentPicker(
   kind: ContentKind,
   pair: LangPair,
-  initialCategory: string | undefined,
+  initialCategories: string[] | undefined,
   initialLevel: LevelFilter | undefined,
   /** Minimum items a theme must have (at any level) to be offered. */
   minCategory = 1,
 ): ContentPicker {
   const catsOf = kind === "vocab" ? categoriesForVocab : categoriesForSentences;
-  const levelsOf = kind === "vocab" ? levelsForVocabCategory : levelsForSentenceCategory;
+  const levelsOf = kind === "vocab" ? levelsForVocabCategories : levelsForSentenceCategories;
 
   const categories = useMemo(
     () => catsOf(pair, "mixed", minCategory),
@@ -45,24 +48,32 @@ export function useContentPicker(
     [kind, pair.known, pair.learning, minCategory],
   );
 
-  const [category, setCategoryState] = useState<string>(
-    initialCategory && categories.some((c) => c.id === initialCategory)
-      ? initialCategory
-      : categories[0]?.id ?? "",
-  );
+  const order = useMemo(() => categories.map((c) => c.id), [categories]);
+  const sortByOrder = (ids: string[]): string[] =>
+    ids.slice().sort((a, b) => order.indexOf(a) - order.indexOf(b));
+
+  const [selected, setSelected] = useState<string[]>(() => {
+    const valid = (initialCategories ?? []).filter((id) => order.includes(id));
+    return valid.length ? sortByOrder(valid) : categories[0] ? [categories[0].id] : [];
+  });
   const [level, setLevel] = useState<LevelFilter>(initialLevel ?? "basic");
 
   const availableLevels = useMemo(
-    () => levelsOf(category, pair),
+    () => levelsOf(selected, pair),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [kind, category, pair.known, pair.learning],
+    [kind, selected.join(","), pair.known, pair.learning],
   );
 
-  function setCategory(id: string) {
-    setCategoryState(id);
-    // Keep the level valid for the new theme (snap to one it offers).
-    setLevel((cur) => resolveLevel(levelsOf(id, pair), cur));
+  function toggle(id: string) {
+    const next = selected.includes(id)
+      ? selected.filter((c) => c !== id)
+      : [...selected, id];
+    if (next.length === 0) return; // keep at least one theme selected
+    const sorted = sortByOrder(next);
+    setSelected(sorted);
+    // Keep the level valid for the new theme set (snap to one they offer).
+    setLevel((cur) => resolveLevel(levelsOf(sorted, pair), cur));
   }
 
-  return { category, level, categories, availableLevels, setCategory, setLevel };
+  return { selected, level, categories, availableLevels, toggle, setLevel };
 }

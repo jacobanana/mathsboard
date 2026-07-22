@@ -11,8 +11,13 @@
 // (`ga:<i>` / `gc:<i>`), undo-invisible, synced and persisted.
 
 import { rngFromSeed, shuffle } from "@/lang/rng";
-import { sentencesFor, type LangPair, type LevelFilter } from "@/lang/pairs";
-import { categoryById } from "@/lang/data";
+import {
+  categoriesFromObj,
+  categoriesLabel,
+  sentencesForCategories,
+  type LangPair,
+  type LevelFilter,
+} from "@/lang/pairs";
 
 export type Difficulty = "pick" | "type";
 
@@ -21,7 +26,9 @@ export interface GapObj {
   id: string;
   known: string;
   learning: string;
-  category: string;
+  /** The themes drawn from. Older objects carry a single `category`. */
+  categories?: string[];
+  category?: string;
   level?: LevelFilter;
   difficulty: Difficulty;
   rounds: number;
@@ -68,15 +75,15 @@ export const normalize = (s: string): string =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
 const pairOf = (obj: GapObj): LangPair => ({ known: obj.known, learning: obj.learning });
-export const categoryOf = (obj: GapObj): string => obj.category ?? "";
+export const categoriesOf = (obj: GapObj): string[] => categoriesFromObj(obj);
 export const levelOf = (obj: GapObj): LevelFilter => obj.level ?? "mixed";
 
 /** Derive the whole session deterministically from state. */
 export function deriveDeck(obj: GapObj): GapRound[] {
   const round = obj.round ?? 0;
-  const sentences = sentencesFor(categoryOf(obj), levelOf(obj), pairOf(obj));
+  const sentences = sentencesForCategories(categoriesOf(obj), levelOf(obj), pairOf(obj));
   const rng = rngFromSeed(
-    `${obj.id}:${round}:${categoryOf(obj)}:${levelOf(obj)}:${obj.known}:${obj.learning}`,
+    `${obj.id}:${round}:${categoriesOf(obj).join(",")}:${levelOf(obj)}:${obj.known}:${obj.learning}`,
   );
   const want = Math.min(clampRounds(obj.rounds), sentences.length);
   const chosen = shuffle(rng, sentences).slice(0, want);
@@ -110,8 +117,7 @@ export function deriveDeck(obj: GapObj): GapRound[] {
 export const deckLength = (obj: GapObj): number => deriveDeck(obj).length;
 
 export function deckTitle(obj: GapObj): string {
-  const cat = categoryById(categoryOf(obj));
-  return cat ? cat.label : "Fill the gaps";
+  return categoriesLabel(categoriesOf(obj), "Fill the gaps");
 }
 
 // --- correctness ------------------------------------------------------------
