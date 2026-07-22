@@ -52,7 +52,7 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
   const deck = useMemo(
     () => deriveDeck(mo),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [obj.id, obj.known, obj.learning, obj.category, obj.level, obj.direction, obj.count, obj.round],
+    [obj.id, obj.known, obj.learning, obj.categories, obj.category, obj.level, obj.direction, obj.count, obj.round],
   );
   const count = deck.length || clampCount(obj.count);
 

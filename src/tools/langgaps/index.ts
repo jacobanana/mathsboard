@@ -17,7 +17,10 @@ import {
 export interface LangGapsParams {
   known: string;
   learning: string;
-  category: string;
+  /** Themes drawn from. */
+  categories: string[];
+  /** Legacy single theme, kept for older boards / readers. */
+  category?: string;
   level: LevelFilter;
   /** Easy = pick from words; hard = type the word. */
   difficulty: Difficulty;
@@ -30,10 +33,12 @@ export interface LangGapsParams {
 export function defaultLangGapsParams(): LangGapsParams {
   const pair = currentPair();
   const categories = categoriesForSentences(pair, "mixed");
+  const first = categories[0]?.id ?? "greetings";
   return {
     known: pair.known,
     learning: pair.learning,
-    category: categories[0]?.id ?? "greetings",
+    categories: [first],
+    category: first,
     level: "basic",
     difficulty: "pick",
     rounds: DEFAULT_ROUNDS,

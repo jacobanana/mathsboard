@@ -54,7 +54,7 @@ export function LangSentence({ obj }: WidgetProps<LangSentenceParams>) {
   const deck = useMemo(
     () => deriveDeck(mo),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [obj.id, obj.category, obj.level, obj.known, obj.learning, obj.rounds, obj.round],
+    [obj.id, obj.categories, obj.category, obj.level, obj.known, obj.learning, obj.rounds, obj.round],
   );
   const rounds = deck.length || clampRounds(obj.rounds);
 

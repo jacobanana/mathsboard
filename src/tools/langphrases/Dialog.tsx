@@ -7,6 +7,7 @@ import type { ToolDialogProps } from "@/tools/registry";
 import { languageByCode } from "@/lang/data";
 import { CategoryLevelPicker } from "@/lang/CategoryLevelPicker";
 import { useContentPicker } from "@/lang/contentPicker";
+import { categoriesFromObj } from "@/lang/pairs";
 import type { Direction } from "@/tools/langflashcards/deck";
 import {
   defaultLangPhrasesParams,
@@ -25,7 +26,7 @@ export function LangPhrasesDialog({
   const picker = useContentPicker(
     "sentences",
     pair,
-    base.category ?? base.set,
+    categoriesFromObj(base),
     base.level,
   );
   const [direction, setDirection] = useState<Direction>(base.direction);
@@ -37,7 +38,8 @@ export function LangPhrasesDialog({
     onSubmit({
       known: pair.known,
       learning: pair.learning,
-      category: picker.category,
+      categories: picker.selected,
+      category: picker.selected[0],
       level: picker.level,
       direction,
     });
@@ -53,23 +55,15 @@ export function LangPhrasesDialog({
       <CategoryLevelPicker picker={picker} />
 
       <div className="field">
-        <label>Show</label>
-        <div className="flash-opts">
-          <button
-            type="button"
-            className={"flash-opt" + (direction === "known-first" ? " active" : "")}
-            onClick={() => setDirection("known-first")}
-          >
-            {knownName} → {learningName}
-          </button>
-          <button
-            type="button"
-            className={"flash-opt" + (direction === "learning-first" ? " active" : "")}
-            onClick={() => setDirection("learning-first")}
-          >
-            {learningName} → {knownName}
-          </button>
-        </div>
+        <label htmlFor="phDir">Show</label>
+        <select
+          id="phDir"
+          value={direction}
+          onChange={(e) => setDirection(e.target.value as Direction)}
+        >
+          <option value="known-first">{knownName} → {learningName}</option>
+          <option value="learning-first">{learningName} → {knownName}</option>
+        </select>
       </div>
 
       <div className="card-actions">

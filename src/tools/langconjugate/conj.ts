@@ -15,6 +15,7 @@ import {
   conjugationFor,
   displayLine,
   infinitiveOf,
+  subjectOf,
   tenseById,
   verbById,
   type ConjRow,
@@ -43,7 +44,9 @@ export interface ConjTable {
   infinitiveLearning: string;
   infinitiveKnown: string;
   tenseLabel: string;
-  rows: { pronoun: string; form: string; display: string }[];
+  /** Each row: its pronoun, the elided SUBJECT as written before the form
+   *  ("j'" before a vowel in French), the form, and the full written line. */
+  rows: { pronoun: string; subject: string; form: string; display: string }[];
   /** pick mode: the forms in a scrambled order (indices are "bank slots"). */
   bank: string[];
 }
@@ -66,7 +69,11 @@ export function deriveTable(obj: ConjObj): ConjTable {
     infinitiveLearning: verb ? infinitiveOf(verb, obj.learning) : obj.verb,
     infinitiveKnown: verb ? infinitiveOf(verb, obj.known) : "",
     tenseLabel: tenseById(obj.tense)?.label ?? "",
-    rows: rows.map((r) => ({ ...r, display: displayLine(r, obj.learning) })),
+    rows: rows.map((r) => ({
+      ...r,
+      subject: subjectOf(r, obj.learning),
+      display: displayLine(r, obj.learning),
+    })),
     bank,
   };
 }

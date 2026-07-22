@@ -13,19 +13,21 @@
 
 import { rngFromSeed, shuffle } from "@/lang/rng";
 import {
-  vocabFor,
+  categoriesFromObj,
+  categoriesLabel,
+  vocabForCategories,
   type LangPair,
   type LevelFilter,
   type VocabPair,
 } from "@/lang/pairs";
-import { categoryById } from "@/lang/data";
 
 /** The shape the component reads: params plus live widget-state (mc:*). */
 export interface MatchObj {
   id: string;
   known: string;
   learning: string;
-  /** The theme (category id). Legacy objects may carry `topic` instead. */
+  /** The themes drawn from. Older objects carry a single `category`/`topic`. */
+  categories?: string[];
   category?: string;
   topic?: string;
   /** Difficulty filter; absent = "mixed" (all levels). */
@@ -60,17 +62,17 @@ const pairOf = (obj: MatchObj): LangPair => ({
   learning: obj.learning,
 });
 
-/** The theme id (new `category`, falling back to a legacy `topic`). */
-export const categoryOf = (obj: MatchObj): string => obj.category ?? obj.topic ?? "";
+/** The theme ids drawn from (supports several; legacy single `category`/`topic`). */
+export const categoriesOf = (obj: MatchObj): string[] => categoriesFromObj(obj);
 /** The level filter (absent = every level). */
 export const levelOf = (obj: MatchObj): LevelFilter => obj.level ?? "mixed";
 
 /** Derive a widget's round deterministically from its state. */
 export function deriveRound(obj: MatchObj): MatchRound {
   const round = obj.round ?? 0;
-  const pairs = vocabFor(categoryOf(obj), levelOf(obj), pairOf(obj));
+  const pairs = vocabForCategories(categoriesOf(obj), levelOf(obj), pairOf(obj));
   const rng = rngFromSeed(
-    `${obj.id}:${round}:${categoryOf(obj)}:${levelOf(obj)}:${obj.known}:${obj.learning}`,
+    `${obj.id}:${round}:${categoriesOf(obj).join(",")}:${levelOf(obj)}:${obj.known}:${obj.learning}`,
   );
   const want = Math.min(clampCount(obj.count), pairs.length);
   const items = shuffle(rng, pairs).slice(0, want);
@@ -92,8 +94,7 @@ export function deriveRound(obj: MatchObj): MatchRound {
 export const roundSize = (obj: MatchObj): number => deriveRound(obj).items.length;
 
 export function title(obj: MatchObj): string {
-  const cat = categoryById(categoryOf(obj));
-  return cat ? cat.label : "Match up";
+  return categoriesLabel(categoriesOf(obj), "Match up");
 }
 
 // --- connection validity ----------------------------------------------------

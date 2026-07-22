@@ -19,8 +19,10 @@ import {
 export interface LangSentenceParams {
   known: string;
   learning: string;
-  /** Theme (category id). */
-  category: string;
+  /** Themes drawn from. */
+  categories: string[];
+  /** Legacy single theme, kept for older boards / readers. */
+  category?: string;
   /** Difficulty filter: a level, or "mixed". */
   level: LevelFilter;
   rounds: number;
@@ -32,10 +34,12 @@ export interface LangSentenceParams {
 export function defaultLangSentenceParams(): LangSentenceParams {
   const pair = currentPair();
   const categories = categoriesForSentences(pair, "mixed");
+  const first = categories[0]?.id ?? "greetings";
   return {
     known: pair.known,
     learning: pair.learning,
-    category: categories[0]?.id ?? "greetings",
+    categories: [first],
+    category: first,
     level: "basic",
     rounds: DEFAULT_ROUNDS,
   };

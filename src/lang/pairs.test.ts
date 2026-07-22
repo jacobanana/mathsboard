@@ -7,13 +7,18 @@ import { CATEGORIES, LANGUAGES, LEVELS, SENTENCES, VOCAB } from "@/lang/data";
 import {
   categoriesForSentences,
   categoriesForVocab,
+  categoriesFromObj,
+  categoriesLabel,
   defaultPair,
   isValidPair,
+  levelsForVocabCategories,
   levelsForVocabCategory,
   pairLabel,
   resolveLevel,
   sentencesFor,
+  sentencesForCategories,
   vocabFor,
+  vocabForCategories,
 } from "@/lang/pairs";
 
 const EN_FR = { known: "en", learning: "fr" };
@@ -113,6 +118,55 @@ describe("sentencesFor", () => {
       expect(s.known).not.toBe("");
       expect(s.learning).not.toBe("");
     }
+  });
+});
+
+describe("several themes at once", () => {
+  it("vocabForCategories concatenates the chosen themes and dedupes", () => {
+    const colours = vocabFor("colours", "mixed", EN_FR);
+    const animals = vocabFor("animals", "mixed", EN_FR);
+    const both = vocabForCategories(["colours", "animals"], "mixed", EN_FR);
+    // Union of the two themes, deduped by known+learning.
+    const keys = new Set(both.map((v) => v.known + " " + v.learning));
+    expect(both.length).toBe(keys.size);
+    expect(both.length).toBeGreaterThanOrEqual(Math.max(colours.length, animals.length));
+    expect(both.some((v) => v.known === "red")).toBe(true);
+    // A single theme resolves the same as the singular helper.
+    expect(vocabForCategories(["colours"], "mixed", EN_FR)).toEqual(colours);
+  });
+
+  it("sentencesForCategories merges sentence themes", () => {
+    const both = sentencesForCategories(["greetings", "confidence"], "mixed", EN_FR);
+    const greetings = sentencesFor("greetings", "mixed", EN_FR);
+    expect(both.length).toBeGreaterThan(greetings.length);
+  });
+
+  it("levelsForVocabCategories is the union of each theme's levels", () => {
+    const union = levelsForVocabCategories(["colours", "animals"], EN_FR);
+    expect(union).toContain("basic");
+    expect(union).toEqual(LEVELS.filter((l) => union.includes(l)));
+  });
+});
+
+describe("categoriesFromObj / categoriesLabel", () => {
+  it("prefers `categories`, falls back to a single legacy field", () => {
+    expect(categoriesFromObj({ categories: ["colours", "animals"] })).toEqual([
+      "colours",
+      "animals",
+    ]);
+    expect(categoriesFromObj({ category: "food" })).toEqual(["food"]);
+    expect(categoriesFromObj({ topic: "food" })).toEqual(["food"]);
+    expect(categoriesFromObj({ set: "greetings" })).toEqual(["greetings"]);
+    // An empty `categories` array falls through to the legacy field.
+    expect(categoriesFromObj({ categories: [], category: "food" })).toEqual(["food"]);
+    expect(categoriesFromObj({})).toEqual([]);
+  });
+
+  it("labels one theme by name and several compactly", () => {
+    expect(categoriesLabel(["colours"])).toBe("Colours");
+    expect(categoriesLabel(["colours", "animals"])).toBe("Colours & Animals");
+    expect(categoriesLabel(["colours", "animals", "food"])).toBe("Colours +2");
+    expect(categoriesLabel([], "Vocabulary")).toBe("Vocabulary");
   });
 });
 
