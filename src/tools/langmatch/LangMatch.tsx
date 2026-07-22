@@ -72,10 +72,22 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
   useEffect(() => () => window.clearTimeout(wrongTimer.current), []);
 
   // --- anchor geometry (board-local px; layout is unscaled) -----------------
-  function anchor(el: HTMLElement | null, side: "left" | "right"): Pt | null {
-    if (!el) return null;
-    const x = side === "left" ? el.offsetLeft + el.offsetWidth : el.offsetLeft;
-    return { x, y: el.offsetTop + el.offsetHeight / 2 };
+  // Anchor to the node's DOT centre, measured in screen px and converted to the
+  // board's local unscaled space. Using getBoundingClientRect (not offsetLeft)
+  // is essential: the columns are positioned, so offsetLeft is column-relative,
+  // which would land the right endpoint at the board's left edge. The dot is the
+  // visible join point, so lines meet dot-to-dot across the gap.
+  function anchor(el: HTMLElement | null): Pt | null {
+    const board = boardRef.current;
+    if (!el || !board) return null;
+    const target = (el.querySelector(".lm-dot") as HTMLElement | null) ?? el;
+    const br = board.getBoundingClientRect();
+    const r = target.getBoundingClientRect();
+    const scale = useBoardStore.getState().camera.scale || 1;
+    return {
+      x: (r.left + r.width / 2 - br.left) / scale,
+      y: (r.top + r.height / 2 - br.top) / scale,
+    };
   }
 
   /** Convert a pointer event to board-local (unscaled) coordinates. */
@@ -105,7 +117,7 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
     e.stopPropagation();
     e.preventDefault();
     const startEl = e.currentTarget;
-    const from = anchor(startEl, side);
+    const from = anchor(startEl);
     if (!from) return;
     setPending({ from, to: toLocal(e.clientX, e.clientY) });
 
@@ -200,8 +212,8 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
   const lines: { from: Pt; to: Pt; color: string }[] = [];
   for (let i = 0; i < size; i++) {
     if (!isMatched(mo, i)) continue;
-    const from = anchor(leftRefs.current[i], "left");
-    const to = anchor(rightRefs.current[correctSlotFor(round, i)], "right");
+    const from = anchor(leftRefs.current[i]);
+    const to = anchor(rightRefs.current[correctSlotFor(round, i)]);
     if (from && to) lines.push({ from, to, color: LINE_COLORS[i % LINE_COLORS.length] });
   }
 

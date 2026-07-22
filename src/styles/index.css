@@ -767,7 +767,10 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .lm-word{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
 .lm-dot{flex:0 0 auto;width:11px;height:11px;border-radius:50%;background:#CBD2DC;box-shadow:inset 0 0 0 2px #fff;}
 .lm-node.matched .lm-dot{background:#16A34A;}
+/* Join points sit on the FACING edges: the left box's dot on its right edge,
+   the right box's dot on its left edge — so a line clearly joins dot to dot. */
 .lm-dot-r{margin-left:auto;}
+.lm-dot-l{margin-right:auto;}
 
 /* --- Sentences phrasebook (.iphrases): tap to reveal translations --- */
 .iphrases{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
