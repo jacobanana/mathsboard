@@ -179,7 +179,7 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
             <div className={"if-flip" + (flipped ? " flipped" : "")}>
               {/* FRONT — the prompt word */}
               <div className="if-face if-front" style={{ background: frontBg }}>
-                {card?.emoji && <div className="lf-emoji">{card.emoji}</div>}
+                {obj.easy && card?.emoji && <div className="lf-emoji">{card.emoji}</div>}
                 <div className="if-q lf-word">{card?.front}</div>
                 <button className="if-check" onClick={flip}>
                   Show answer
@@ -188,7 +188,7 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
 
               {/* BACK — the translation + self-rating */}
               <div className="if-face if-back">
-                {card?.emoji && <div className="lf-emoji">{card.emoji}</div>}
+                {obj.easy && card?.emoji && <div className="lf-emoji">{card.emoji}</div>}
                 <div className="if-truth lf-word">{card?.back}</div>
                 <div className="lf-rate">
                   <button className="lf-btn practise" onClick={() => rate(false)}>

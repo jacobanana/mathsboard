@@ -19,11 +19,18 @@ interface WelcomeModalProps {
   onClose: () => void;
   /** Switch to the Boards manager to open a saved board. */
   onOpenBoards: () => void;
+  /**
+   * Override the "New board" action. The language board passes this to ask for
+   * the languages first (langNew modal); when absent, New creates a blank board
+   * straight away (the maths board).
+   */
+  onNewBoard?: () => void;
 }
 
 export function WelcomeModal({
   onClose,
   onOpenBoards,
+  onNewBoard,
 }: WelcomeModalProps): JSX.Element {
   const board = useBoardStore((s) => s.board);
   const sourceId = useBoardStore((s) => s.sourceId);
@@ -75,6 +82,10 @@ export function WelcomeModal({
           id="welcomeNew"
           disabled={pending}
           onClick={() => {
+            if (onNewBoard) {
+              onNewBoard();
+              return;
+            }
             void newBoard();
             onClose();
           }}

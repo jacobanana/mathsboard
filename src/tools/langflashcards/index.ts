@@ -15,6 +15,7 @@ import { LangFlashDialog } from "@/tools/langflashcards/Dialog";
 import {
   DEFAULT_COUNT,
   resetSessionPatch,
+  type CustomPair,
   type Direction,
   type LangFlashObj,
 } from "@/tools/langflashcards/deck";
@@ -24,12 +25,16 @@ export interface LangFlashParams {
   known: string;
   /** The language being learned (baked at creation). */
   learning: string;
-  /** Which vocabulary topic the deck draws from. */
+  /** Which vocabulary topic the deck draws from (ignored when `custom` is set). */
   topic: string;
   /** How many cards (bounded by the topic's size). */
   count: number;
   /** Which face shows first. */
   direction: Direction;
+  /** Easy mode shows the picture cue on each card; off (default) = words only. */
+  easy: boolean;
+  /** The learner's OWN words (from the My words table) — overrides `topic`. */
+  custom?: CustomPair[];
   // --- live widget state (NOT set from the dialog; via updateWidgetState) ---
   round?: number;
   idx?: number;
@@ -37,7 +42,8 @@ export interface LangFlashParams {
   // Self-ratings live as extra "fk:<i>" fields (open record, see deck.ts).
 }
 
-/** Seed a fresh deck from the learner's current pair and the first usable topic. */
+/** Seed a fresh deck from the learner's current pair and the first usable topic.
+ *  Normal (icon-free) mode is the default; easy mode is opt-in. */
 export function defaultLangFlashParams(): LangFlashParams {
   const pair = currentPair();
   const topics = usableTopics(pair);
@@ -47,6 +53,7 @@ export function defaultLangFlashParams(): LangFlashParams {
     topic: topics[0]?.id ?? "colours",
     count: DEFAULT_COUNT,
     direction: "known-first",
+    easy: false,
   };
 }
 

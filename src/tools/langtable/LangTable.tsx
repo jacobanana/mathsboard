@@ -1,24 +1,33 @@
 // WIDGET COMPONENT — the .itable overlay: capture your OWN words and sentences.
 //
 // A two-column table (known language | learning language) the learner fills in
-// themselves. Structural edits — adding and removing rows — are undoable
+// themselves. Cells are auto-growing textareas, so full sentences wrap instead
+// of being clipped. Structural edits — adding and removing rows — are undoable
 // document state (`rowIds`, via updateObject). The typed cell text is live
 // widget-state keyed by row id (`ca:<id>` / `cb:<id>` via updateWidgetState —
-// synced, persisted, undo-invisible, and conflict-free per cell, exactly like
-// the worksheet's answers). A per-column "hide" toggle lets the learner cover a
-// column and test themselves. Like the worksheet the card self-measures and
-// syncs its rendered size back onto the object box. The card body is the drag
-// handle (a press that isn't on a control moves the object).
+// synced, persisted, undo-invisible, and conflict-free per cell, like the
+// worksheet's answers). A per-column "hide" toggle lets the learner cover a
+// column and test themselves, and "Flash cards" turns the filled rows into a
+// flash-cards deck. Like the worksheet the card self-measures and syncs its
+// rendered size back onto the object box. The card body is the drag handle.
 
 import { useLayoutEffect, useRef } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { id as newId } from "@/board/types";
+import { placeObject } from "@/board/commands";
 import { languageByCode } from "@/lang/data";
 import type { LangTableParams } from "@/tools/langtable";
 
 const cellA = (rowId: string): string => "ca:" + rowId;
 const cellB = (rowId: string): string => "cb:" + rowId;
+
+/** Grow a textarea to fit its content (so sentences wrap and stay visible). */
+function autosize(el: HTMLTextAreaElement | null): void {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = Math.max(el.scrollHeight, 22) + "px";
+}
 
 export function LangTable({ obj }: WidgetProps<LangTableParams>) {
   const updateObject = useBoardStore((s) => s.updateObject);
@@ -33,6 +42,14 @@ export function LangTable({ obj }: WidgetProps<LangTableParams>) {
 
   const knownName = languageByCode(obj.known)?.name ?? obj.known;
   const learningName = languageByCode(obj.learning)?.name ?? obj.learning;
+
+  const cellText = (rowId: string, col: "a" | "b"): string =>
+    ((rec[(col === "a" ? cellA : cellB)(rowId)] as string) ?? "");
+
+  // Rows with BOTH sides filled — the deck the "Flash cards" button builds.
+  const filled = rowIds
+    .map((id) => ({ known: cellText(id, "a").trim(), learning: cellText(id, "b").trim() }))
+    .filter((p) => p.known && p.learning);
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const lastSize = useRef({ w: obj.w, h: obj.h });
@@ -77,8 +94,22 @@ export function LangTable({ obj }: WidgetProps<LangTableParams>) {
     updateWidgetState(obj.id, { [key]: rec[key] === 1 ? undefined : 1 });
   }
 
+  // Turn the filled rows into a flash-cards deck (its own words, no topic).
+  function makeFlashcards() {
+    if (filled.length === 0) return;
+    placeObject("langflashcards", {
+      known: obj.known,
+      learning: obj.learning,
+      topic: "custom",
+      count: filled.length,
+      direction: "known-first",
+      easy: false,
+      custom: filled,
+    });
+  }
+
   function onCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if ((e.target as HTMLElement).closest("button, input")) return;
+    if ((e.target as HTMLElement).closest("button, input, textarea")) return;
     e.stopPropagation();
     const card = e.currentTarget;
     const scale = useBoardStore.getState().camera.scale;
@@ -134,20 +165,30 @@ export function LangTable({ obj }: WidgetProps<LangTableParams>) {
 
       {rowIds.map((rowId) => (
         <div className="it-row" key={rowId}>
-          <input
+          <textarea
+            ref={autosize}
+            rows={1}
             className={"it-cell" + (hideA ? " masked" : "")}
             placeholder="…"
             autoComplete="off"
-            value={(rec[cellA(rowId)] as string) ?? ""}
-            onChange={(e) => setCell(rowId, "a", e.target.value)}
+            value={cellText(rowId, "a")}
+            onChange={(e) => {
+              autosize(e.currentTarget);
+              setCell(rowId, "a", e.target.value);
+            }}
             onKeyDown={(e) => e.stopPropagation()}
           />
-          <input
+          <textarea
+            ref={autosize}
+            rows={1}
             className={"it-cell" + (hideB ? " masked" : "")}
             placeholder="…"
             autoComplete="off"
-            value={(rec[cellB(rowId)] as string) ?? ""}
-            onChange={(e) => setCell(rowId, "b", e.target.value)}
+            value={cellText(rowId, "b")}
+            onChange={(e) => {
+              autosize(e.currentTarget);
+              setCell(rowId, "b", e.target.value);
+            }}
             onKeyDown={(e) => e.stopPropagation()}
           />
           <button className="it-del" title="Remove this row" onClick={() => removeRow(rowId)}>
@@ -158,7 +199,19 @@ export function LangTable({ obj }: WidgetProps<LangTableParams>) {
 
       <div className="it-foot">
         <button className="it-add" onClick={addRow}>
-          + Add a word
+          + Add a row
+        </button>
+        <button
+          className="it-flash"
+          disabled={filled.length === 0}
+          title={
+            filled.length === 0
+              ? "Fill in some words first"
+              : "Make flash cards from these words"
+          }
+          onClick={makeFlashcards}
+        >
+          🃏 Flash cards
         </button>
       </div>
     </div>

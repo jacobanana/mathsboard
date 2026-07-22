@@ -24,7 +24,9 @@ export type ModalState =
   | { kind: "join" }
   | { kind: "joinName" }
   | { kind: "help" }
-  | { kind: "about" };
+  | { kind: "about" }
+  // Language board only: choose the languages when starting a new board.
+  | { kind: "langNew" };
 
 /** What a modal body can do to the router. */
 export interface ModalApi {

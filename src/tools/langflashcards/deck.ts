@@ -22,6 +22,12 @@ export type Direction = "known-first" | "learning-first";
 
 export const DIRECTIONS: Direction[] = ["known-first", "learning-first"];
 
+/** A learner-authored word pair (from the "My words" table). */
+export interface CustomPair {
+  known: string;
+  learning: string;
+}
+
 /** The shape the component reads: params plus live widget-state (fk:*). */
 export interface LangFlashObj {
   id: string;
@@ -30,6 +36,11 @@ export interface LangFlashObj {
   topic: string;
   count: number;
   direction: Direction;
+  /** Show the picture cue on each card ("easy" mode); false = words only. */
+  easy?: boolean;
+  /** When present, the deck is the learner's OWN words (from the My words
+   *  table) instead of a preset topic — `topic` is then ignored. */
+  custom?: CustomPair[];
   // --- live widget state (via updateWidgetState, undo-invisible) ---
   /** Monotonic "new deck" counter; the deck is re-derived from it. */
   round?: number;
@@ -67,29 +78,47 @@ function toCard(v: VocabPair, dir: Direction): LangCard {
     : { front: v.learning, back: v.known, emoji: v.emoji };
 }
 
-/** Derive a widget's deck deterministically from its state. Shuffles the topic's
- *  usable pairs by seed and takes up to `count` of them (a topic may hold fewer
- *  than the requested count — the deck is then simply as long as the topic). */
+/** True when this widget runs on the learner's own words rather than a topic. */
+export const isCustom = (obj: LangFlashObj): boolean =>
+  Array.isArray(obj.custom) && obj.custom.length > 0;
+
+/** The pairs a widget draws from: the learner's own words, or a topic's set. */
+function sourcePairs(obj: LangFlashObj): VocabPair[] {
+  if (isCustom(obj)) {
+    return obj.custom!
+      .filter((p) => p.known?.trim() && p.learning?.trim())
+      .map((p) => ({ known: p.known.trim(), learning: p.learning.trim() }));
+  }
+  return vocabForTopic(obj.topic, pairOf(obj));
+}
+
+/** Derive a widget's deck deterministically from its state. Shuffles the source
+ *  pairs by seed and takes up to `count` of them (a source may hold fewer than
+ *  the requested count — the deck is then simply as long as the source). */
 export function deriveDeck(obj: LangFlashObj): LangCard[] {
   const round = obj.round ?? 0;
-  const pairs = vocabForTopic(obj.topic, pairOf(obj));
+  const pairs = sourcePairs(obj);
   // Direction is deliberately NOT in the seed: it only orients each card
   // (front/back), so flipping it keeps the SAME deck order and simply turns the
   // cards over — it never reshuffles the words.
-  const rng = rngFromSeed(
-    `${obj.id}:${round}:${obj.topic}:${obj.known}:${obj.learning}`,
-  );
-  const want = Math.min(clampCount(obj.count), pairs.length);
+  const key = isCustom(obj) ? `custom:${pairs.length}` : obj.topic;
+  const rng = rngFromSeed(`${obj.id}:${round}:${key}:${obj.known}:${obj.learning}`);
+  // Custom decks use every word the learner typed (bounded by MAX); preset
+  // topics honour the chosen count.
+  const want = isCustom(obj)
+    ? Math.min(pairs.length, MAX_COUNT)
+    : Math.min(clampCount(obj.count), pairs.length);
   return shuffle(rng, pairs)
     .slice(0, want)
     .map((v) => toCard(v, obj.direction));
 }
 
-/** The effective card count for a widget (bounded by the topic's size). */
+/** The effective card count for a widget (bounded by the source size). */
 export const deckLength = (obj: LangFlashObj): number => deriveDeck(obj).length;
 
-/** Header title, e.g. "Colours · English → French". */
+/** Header title, e.g. "Colours" — or "My words" for a learner's own deck. */
 export function deckTitle(obj: LangFlashObj): string {
+  if (isCustom(obj)) return "My words";
   const topic = topicById(obj.topic);
   return topic ? topic.label : "Vocabulary";
 }
