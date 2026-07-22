@@ -74,17 +74,21 @@ const atLevel = (level: LevelFilter) => (itemLevel: Level): boolean =>
 
 // --- vocabulary -------------------------------------------------------------
 
-/** Every vocab item of `category` at `level` (or all levels when "mixed") that
- *  has BOTH the known and learning words. */
+const asArray = (c: string | string[]): string[] => (Array.isArray(c) ? c : [c]);
+
+/** Every vocab item of the given category (or categories) at `level` (or all
+ *  levels when "mixed") that has BOTH the known and learning words. Multiple
+ *  categories are gathered in catalogue order. */
 export function vocabFor(
-  category: string,
+  category: string | string[],
   level: LevelFilter,
   pair: LangPair,
 ): VocabPair[] {
+  const cats = new Set(asArray(category));
   const keep = atLevel(level);
   const out: VocabPair[] = [];
   for (const item of VOCAB) {
-    if (item.category !== category || !keep(item.level)) continue;
+    if (!cats.has(item.category) || !keep(item.level)) continue;
     const known = item.terms[pair.known];
     const learning = item.terms[pair.learning];
     if (known && learning) out.push({ known, learning, emoji: item.emoji });
@@ -92,9 +96,9 @@ export function vocabFor(
   return out;
 }
 
-/** Which levels have at least one usable vocab pair in this category, in order.
- *  Lets a dialog disable levels a category can't offer. */
-export function levelsForVocabCategory(category: string, pair: LangPair): Level[] {
+/** Which levels have at least one usable vocab pair across the given
+ *  category/categories, in order. Lets a dialog disable empty levels. */
+export function levelsForVocabCategory(category: string | string[], pair: LangPair): Level[] {
   return LEVELS.filter((l) => vocabFor(category, l, pair).length > 0);
 }
 
@@ -109,17 +113,18 @@ export function categoriesForVocab(
 
 // --- sentences --------------------------------------------------------------
 
-/** Every sentence of `category` at `level` (or all levels when "mixed") that has
- *  BOTH translations. */
+/** Every sentence of the given category (or categories) at `level` (or all
+ *  levels when "mixed") that has BOTH translations. */
 export function sentencesFor(
-  category: string,
+  category: string | string[],
   level: LevelFilter,
   pair: LangPair,
 ): SentencePairText[] {
+  const cats = new Set(asArray(category));
   const keep = atLevel(level);
   const out: SentencePairText[] = [];
   for (const item of SENTENCES) {
-    if (item.category !== category || !keep(item.level)) continue;
+    if (!cats.has(item.category) || !keep(item.level)) continue;
     const known = item.terms[pair.known];
     const learning = item.terms[pair.learning];
     if (known && learning) out.push({ known, learning });
@@ -127,7 +132,7 @@ export function sentencesFor(
   return out;
 }
 
-export function levelsForSentenceCategory(category: string, pair: LangPair): Level[] {
+export function levelsForSentenceCategory(category: string | string[], pair: LangPair): Level[] {
   return LEVELS.filter((l) => sentencesFor(category, l, pair).length > 0);
 }
 
@@ -137,6 +142,22 @@ export function categoriesForSentences(
   min = 1,
 ): Category[] {
   return CATEGORIES.filter((c) => sentencesFor(c.id, level, pair).length >= min);
+}
+
+/**
+ * The selected theme ids for a widget object: the new `categories` array, or a
+ * legacy single `category` / `topic` / `set` key wrapped in an array. Keeps
+ * older boards working after the move to multi-select themes.
+ */
+export function categoriesOf(obj: {
+  categories?: string[];
+  category?: string;
+  topic?: string;
+  set?: string;
+}): string[] {
+  if (Array.isArray(obj.categories) && obj.categories.length > 0) return obj.categories;
+  const single = obj.category ?? obj.topic ?? obj.set;
+  return single ? [single] : [];
 }
 
 // --- shared dialog helpers --------------------------------------------------

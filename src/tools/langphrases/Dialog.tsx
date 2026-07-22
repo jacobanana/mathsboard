@@ -5,6 +5,7 @@
 import { useState } from "react";
 import type { ToolDialogProps } from "@/tools/registry";
 import { languageByCode } from "@/lang/data";
+import { categoriesOf } from "@/lang/pairs";
 import { CategoryLevelPicker } from "@/lang/CategoryLevelPicker";
 import { useContentPicker } from "@/lang/contentPicker";
 import type { Direction } from "@/tools/langflashcards/deck";
@@ -25,7 +26,7 @@ export function LangPhrasesDialog({
   const picker = useContentPicker(
     "sentences",
     pair,
-    base.category ?? base.set,
+    categoriesOf(base as unknown as { categories?: string[]; category?: string; set?: string }),
     base.level,
   );
   const [direction, setDirection] = useState<Direction>(base.direction);
@@ -37,7 +38,7 @@ export function LangPhrasesDialog({
     onSubmit({
       known: pair.known,
       learning: pair.learning,
-      category: picker.category,
+      categories: picker.selected,
       level: picker.level,
       direction,
     });
@@ -53,23 +54,20 @@ export function LangPhrasesDialog({
       <CategoryLevelPicker picker={picker} />
 
       <div className="field">
-        <label>Show</label>
-        <div className="flash-opts">
-          <button
-            type="button"
-            className={"flash-opt" + (direction === "known-first" ? " active" : "")}
-            onClick={() => setDirection("known-first")}
-          >
+        <label htmlFor="phDir">Show</label>
+        <select
+          id="phDir"
+          className="lang-select"
+          value={direction}
+          onChange={(e) => setDirection(e.target.value as Direction)}
+        >
+          <option value="known-first">
             {knownName} → {learningName}
-          </button>
-          <button
-            type="button"
-            className={"flash-opt" + (direction === "learning-first" ? " active" : "")}
-            onClick={() => setDirection("learning-first")}
-          >
+          </option>
+          <option value="learning-first">
             {learningName} → {knownName}
-          </button>
-        </div>
+          </option>
+        </select>
       </div>
 
       <div className="card-actions">

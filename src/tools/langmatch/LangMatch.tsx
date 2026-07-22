@@ -16,6 +16,7 @@ import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
 import {
   allMatched,
+  categoriesOf,
   correctSlotFor,
   deriveRound,
   isConnectionCorrect,
@@ -48,7 +49,7 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
   const round = useMemo(
     () => deriveRound(mo),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [obj.id, obj.category, obj.level, obj.known, obj.learning, obj.count, obj.round],
+    [obj.id, categoriesOf(mo).join(","), obj.level, obj.known, obj.learning, obj.count, obj.round],
   );
   const size = round.items.length;
   const done = allMatched(mo);

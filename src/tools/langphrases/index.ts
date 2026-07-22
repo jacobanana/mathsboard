@@ -12,7 +12,8 @@ import type { Direction } from "@/tools/langflashcards/deck";
 export interface LangPhrasesParams {
   known: string;
   learning: string;
-  /** Theme (category id). Legacy objects may carry `set`. */
+  /** Themes (category ids). Legacy objects carry `category`/`set`. */
+  categories?: string[];
   category?: string;
   set?: string;
   /** Difficulty filter: a level, or "mixed". */
@@ -28,7 +29,7 @@ export function defaultLangPhrasesParams(): LangPhrasesParams {
   return {
     known: pair.known,
     learning: pair.learning,
-    category: categories[0]?.id ?? "greetings",
+    categories: [categories[0]?.id ?? "greetings"],
     level: "mixed",
     direction: "known-first",
   };

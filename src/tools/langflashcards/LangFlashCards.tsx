@@ -14,6 +14,7 @@ import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
 import {
+  categoriesOf,
   clampCount,
   deckTitle,
   deriveDeck,
@@ -52,7 +53,7 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
   const deck = useMemo(
     () => deriveDeck(mo),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [obj.id, obj.known, obj.learning, obj.category, obj.level, obj.direction, obj.count, obj.round],
+    [obj.id, obj.known, obj.learning, categoriesOf(mo).join(","), obj.level, obj.direction, obj.count, obj.round],
   );
   const count = deck.length || clampCount(obj.count);
 

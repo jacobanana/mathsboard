@@ -9,8 +9,8 @@
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
-import { sentencesFor, type LevelFilter } from "@/lang/pairs";
-import { categoryById } from "@/lang/data";
+import { categoriesOf, sentencesFor, type LevelFilter } from "@/lang/pairs";
+import { categoriesLabel } from "@/lang/data";
 import type { LangPhrasesParams } from "@/tools/langphrases";
 
 const HEAD_H = 40;
@@ -23,11 +23,11 @@ export function LangPhrases({ obj }: WidgetProps<LangPhrasesParams>) {
   const pushHistory = useBoardStore((s) => s.pushHistory);
 
   const rec = obj as unknown as Record<string, unknown>;
-  // New objects carry `category`/`level`; legacy ones carried `set`.
-  const category = obj.category ?? obj.set ?? "";
+  // New objects carry `categories`/`level`; legacy ones carried `category`/`set`.
+  const cats = categoriesOf(obj);
   const level: LevelFilter = obj.level ?? "mixed";
-  const items = sentencesFor(category, level, { known: obj.known, learning: obj.learning });
-  const cat = categoryById(category);
+  const items = sentencesFor(cats, level, { known: obj.known, learning: obj.learning });
+  const catLabel = categoriesLabel(cats, "Sentences");
   const promptIsKnown = obj.direction !== "learning-first";
 
   const revealed = (i: number): boolean =>
@@ -87,7 +87,7 @@ export function LangPhrases({ obj }: WidgetProps<LangPhrasesParams>) {
       onPointerDown={onCardPointerDown}
     >
       <div className="ph-head" style={{ height: HEAD_H + "px" }}>
-        <span className="ph-title">{cat ? cat.label : "Sentences"}</span>
+        <span className="ph-title">{catLabel}</span>
         <button className="ph-btn" title="Show or hide every translation" onClick={toggleAll}>
           {allShown ? "Hide all" : "Show all"}
         </button>

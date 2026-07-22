@@ -10,7 +10,7 @@ import { useContentPicker } from "@/lang/contentPicker";
 import {
   MAX_COUNT,
   MIN_COUNT,
-  categoryOf,
+  categoriesOf,
   levelOf,
   type MatchObj,
 } from "@/tools/langmatch/match";
@@ -29,7 +29,7 @@ export function LangMatchDialog({
   const picker = useContentPicker(
     "vocab",
     pair,
-    categoryOf(base as unknown as MatchObj),
+    categoriesOf(base as unknown as MatchObj),
     levelOf(base as unknown as MatchObj),
     MIN_COUNT,
   );
@@ -42,7 +42,7 @@ export function LangMatchDialog({
     onSubmit({
       known: pair.known,
       learning: pair.learning,
-      category: picker.category,
+      categories: picker.selected,
       level: picker.level,
       count: clamp(parseInt(count, 10) || base.count, MIN_COUNT, MAX_COUNT),
     });

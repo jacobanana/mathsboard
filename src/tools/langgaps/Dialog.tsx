@@ -9,7 +9,7 @@ import { useContentPicker } from "@/lang/contentPicker";
 import {
   MAX_ROUNDS,
   MIN_ROUNDS,
-  categoryOf,
+  categoriesOf,
   levelOf,
   type Difficulty,
   type GapObj,
@@ -28,7 +28,7 @@ export function LangGapsDialog({
   const picker = useContentPicker(
     "sentences",
     pair,
-    categoryOf(base as unknown as GapObj),
+    categoriesOf(base as unknown as GapObj),
     levelOf(base as unknown as GapObj),
   );
   const [difficulty, setDifficulty] = useState<Difficulty>(base.difficulty);
@@ -38,7 +38,7 @@ export function LangGapsDialog({
     onSubmit({
       known: pair.known,
       learning: pair.learning,
-      category: picker.category,
+      categories: picker.selected,
       level: picker.level,
       difficulty,
       rounds: clamp(parseInt(rounds, 10) || base.rounds, MIN_ROUNDS, MAX_ROUNDS),
@@ -56,23 +56,16 @@ export function LangGapsDialog({
       <CategoryLevelPicker picker={picker} />
 
       <div className="field">
-        <label>How to answer</label>
-        <div className="flash-opts">
-          <button
-            type="button"
-            className={"flash-opt" + (difficulty === "pick" ? " active" : "")}
-            onClick={() => setDifficulty("pick")}
-          >
-            🟢 Pick a word (easy)
-          </button>
-          <button
-            type="button"
-            className={"flash-opt" + (difficulty === "type" ? " active" : "")}
-            onClick={() => setDifficulty("type")}
-          >
-            ⌨️ Type the word (harder)
-          </button>
-        </div>
+        <label htmlFor="gpDiff">How to answer</label>
+        <select
+          id="gpDiff"
+          className="lang-select"
+          value={difficulty}
+          onChange={(e) => setDifficulty(e.target.value as Difficulty)}
+        >
+          <option value="pick">🟢 Pick a word (easy)</option>
+          <option value="type">⌨️ Type the word (harder)</option>
+        </select>
       </div>
 
       <div className="field">

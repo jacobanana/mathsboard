@@ -12,6 +12,7 @@ import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { placeObject } from "@/board/commands";
 import { track } from "@/analytics";
+import { promptPronoun } from "@/lang/conjugation";
 import {
   allFilled,
   checkPatch,
@@ -198,17 +199,26 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
               const cellStr = rowAnswer(table, mo, i);
               const ok = checked && rowCorrect(table, mo, i);
               const bad = checked && !ok;
+              const pp = promptPronoun(r, obj.learning);
+              // Learn mode reads as one natural line ("j'ai", "je suis"): the
+              // whole displayLine, so the pronoun elision is exact.
+              if (mode === "learn") {
+                return (
+                  <button
+                    className={"cj-learnrow" + (isCovered(mo, i) ? " covered" : "")}
+                    key={i}
+                    onClick={() => toggleCover(i)}
+                  >
+                    {isCovered(mo, i) ? `${pp.label}${pp.tight ? "" : " "}•••` : r.display}
+                  </button>
+                );
+              }
+              // Quiz modes prompt with the elided pronoun ("j'"), the learner
+              // supplies just the form.
               return (
                 <div className="cj-row" key={i}>
-                  <span className="cj-pron">{r.pronoun}</span>
-                  {mode === "learn" ? (
-                    <button
-                      className={"cj-cell cj-learncell" + (isCovered(mo, i) ? " covered" : "")}
-                      onClick={() => toggleCover(i)}
-                    >
-                      {isCovered(mo, i) ? "•••" : r.display}
-                    </button>
-                  ) : mode === "type" ? (
+                  <span className={"cj-pron" + (pp.tight ? " tight" : "")}>{pp.label}</span>
+                  {mode === "type" ? (
                     checked ? (
                       <span className={"cj-cell" + (ok ? " ok" : " no")}>
                         {ok ? cellStr || r.form : r.form}
@@ -227,7 +237,6 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
                       />
                     )
                   ) : (
-                    // pick mode
                     <button
                       className={
                         "cj-cell cj-pickcell" +

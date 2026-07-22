@@ -17,8 +17,8 @@ import {
 export interface LangMatchParams {
   known: string;
   learning: string;
-  /** Theme (category id). */
-  category: string;
+  /** Themes (category ids). */
+  categories: string[];
   /** Difficulty filter: a level, or "mixed". */
   level: LevelFilter;
   count: number;
@@ -32,7 +32,7 @@ export function defaultLangMatchParams(): LangMatchParams {
   return {
     known: pair.known,
     learning: pair.learning,
-    category: categories[0]?.id ?? "colours",
+    categories: [categories[0]?.id ?? "colours"],
     level: "basic",
     count: DEFAULT_COUNT,
   };

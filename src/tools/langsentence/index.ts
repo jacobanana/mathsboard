@@ -19,8 +19,8 @@ import {
 export interface LangSentenceParams {
   known: string;
   learning: string;
-  /** Theme (category id). */
-  category: string;
+  /** Themes (category ids). */
+  categories: string[];
   /** Difficulty filter: a level, or "mixed". */
   level: LevelFilter;
   rounds: number;
@@ -35,7 +35,7 @@ export function defaultLangSentenceParams(): LangSentenceParams {
   return {
     known: pair.known,
     learning: pair.learning,
-    category: categories[0]?.id ?? "greetings",
+    categories: [categories[0]?.id ?? "greetings"],
     level: "basic",
     rounds: DEFAULT_ROUNDS,
   };

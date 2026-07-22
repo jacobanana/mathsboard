@@ -17,7 +17,7 @@ import {
 export interface LangGapsParams {
   known: string;
   learning: string;
-  category: string;
+  categories: string[];
   level: LevelFilter;
   /** Easy = pick from words; hard = type the word. */
   difficulty: Difficulty;
@@ -33,7 +33,7 @@ export function defaultLangGapsParams(): LangGapsParams {
   return {
     known: pair.known,
     learning: pair.learning,
-    category: categories[0]?.id ?? "greetings",
+    categories: [categories[0]?.id ?? "greetings"],
     level: "basic",
     difficulty: "pick",
     rounds: DEFAULT_ROUNDS,

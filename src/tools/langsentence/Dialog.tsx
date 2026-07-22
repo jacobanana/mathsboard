@@ -11,7 +11,7 @@ import { useContentPicker } from "@/lang/contentPicker";
 import {
   MAX_ROUNDS,
   MIN_ROUNDS,
-  categoryOf,
+  categoriesOf,
   levelOf,
   type SentenceObj,
 } from "@/tools/langsentence/builder";
@@ -32,7 +32,7 @@ export function LangSentenceDialog({
   const picker = useContentPicker(
     "sentences",
     pair,
-    categoryOf(base as unknown as SentenceObj),
+    categoriesOf(base as unknown as SentenceObj),
     levelOf(base as unknown as SentenceObj),
   );
   const [rounds, setRounds] = useState<string>(String(base.rounds));
@@ -44,7 +44,7 @@ export function LangSentenceDialog({
     onSubmit({
       known: pair.known,
       learning: pair.learning,
-      category: picker.category,
+      categories: picker.selected,
       level: picker.level,
       rounds: clamp(parseInt(rounds, 10) || base.rounds, MIN_ROUNDS, MAX_ROUNDS),
     });

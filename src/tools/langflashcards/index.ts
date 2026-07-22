@@ -25,8 +25,8 @@ export interface LangFlashParams {
   known: string;
   /** The language being learned (baked at creation). */
   learning: string;
-  /** Which theme (category id) the deck draws from (ignored when `custom` set). */
-  category: string;
+  /** Which themes (category ids) the deck draws from (ignored when `custom` set). */
+  categories: string[];
   /** Difficulty filter: a level, or "mixed" for all levels. */
   level: LevelFilter;
   /** How many cards (bounded by the theme's size). */
@@ -53,7 +53,7 @@ export function defaultLangFlashParams(): LangFlashParams {
   return {
     known: pair.known,
     learning: pair.learning,
-    category: categories[0]?.id ?? "colours",
+    categories: [categories[0]?.id ?? "colours"],
     level: "basic",
     count: DEFAULT_COUNT,
     direction: "known-first",

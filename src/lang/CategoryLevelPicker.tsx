@@ -1,52 +1,42 @@
 // The shared "theme + level" picker rendered inside every language tool dialog.
-// Presentational: it reflects a ContentPicker (see contentPicker.ts). Levels the
-// current theme can't offer are disabled; "Mixed" (all levels) is always there.
+// Presentational: it reflects a ContentPicker (see contentPicker.ts). Themes are
+// a MULTI-select dropdown (choose one or several); level is a dropdown whose
+// options a theme can't offer are disabled. "Mixed" means every level.
 
 import { LEVELS, LEVEL_LABEL } from "@/lang/data";
+import { MultiSelect } from "@/lang/MultiSelect";
 import type { ContentPicker } from "@/lang/contentPicker";
+import type { LevelFilter } from "@/lang/pairs";
 
 export function CategoryLevelPicker({ picker }: { picker: ContentPicker }): JSX.Element {
-  const { category, level, categories, availableLevels, setCategory, setLevel } = picker;
+  const { selected, level, categories, availableLevels, toggleCategory, setLevel } = picker;
   return (
     <>
       <div className="field">
-        <label>Theme</label>
-        <div className="flash-opts">
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className={"flash-opt" + (category === c.id ? " active" : "")}
-              onClick={() => setCategory(c.id)}
-            >
-              {c.emoji} {c.label}
-            </button>
-          ))}
-        </div>
+        <label>Themes</label>
+        <MultiSelect
+          options={categories.map((c) => ({ id: c.id, label: `${c.emoji} ${c.label}` }))}
+          selected={selected}
+          onToggle={toggleCategory}
+          placeholder="Choose a theme…"
+        />
       </div>
 
       <div className="field">
-        <label>Level</label>
-        <div className="flash-opts">
+        <label htmlFor="clpLevel">Level</label>
+        <select
+          id="clpLevel"
+          className="lang-select"
+          value={level}
+          onChange={(e) => setLevel(e.target.value as LevelFilter)}
+        >
           {LEVELS.map((l) => (
-            <button
-              key={l}
-              type="button"
-              disabled={!availableLevels.includes(l)}
-              className={"flash-opt" + (level === l ? " active" : "")}
-              onClick={() => setLevel(l)}
-            >
+            <option key={l} value={l} disabled={!availableLevels.includes(l)}>
               {LEVEL_LABEL[l]}
-            </button>
+            </option>
           ))}
-          <button
-            type="button"
-            className={"flash-opt" + (level === "mixed" ? " active" : "")}
-            onClick={() => setLevel("mixed")}
-          >
-            Mixed
-          </button>
-        </div>
+          <option value="mixed">Mixed (all levels)</option>
+        </select>
       </div>
     </>
   );

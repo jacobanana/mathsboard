@@ -89,6 +89,14 @@ export const CATEGORIES: Category[] = [
 export const categoryById = (id: string): Category | undefined =>
   CATEGORIES.find((c) => c.id === id);
 
+/** A header label for one or several chosen themes: the theme's name for one,
+ *  "Colours +2" for several, `fallback` for none/unknown. */
+export function categoriesLabel(ids: string[], fallback: string): string {
+  if (ids.length === 0) return fallback;
+  const first = categoryById(ids[0])?.label ?? fallback;
+  return ids.length === 1 ? first : `${first} +${ids.length - 1}`;
+}
+
 // --- vocabulary -------------------------------------------------------------
 
 /** One vocabulary concept: its theme, level, an optional picture cue, and its

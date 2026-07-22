@@ -13,6 +13,7 @@ import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
 import {
   affixes,
+  categoriesOf,
   checkPatch,
   clampRounds,
   deckTitle,
@@ -52,7 +53,7 @@ export function LangGaps({ obj }: WidgetProps<LangGapsParams>) {
   const deck = useMemo(
     () => deriveDeck(mo),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [obj.id, obj.category, obj.level, obj.known, obj.learning, obj.rounds, obj.round],
+    [obj.id, categoriesOf(mo).join(","), obj.level, obj.known, obj.learning, obj.rounds, obj.round],
   );
   const rounds = deck.length || clampRounds(obj.rounds);
   const idx = Math.min(obj.idx ?? 0, rounds);

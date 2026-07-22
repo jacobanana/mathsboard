@@ -23,7 +23,7 @@ const obj = (over: Partial<GapObj> = {}): GapObj => ({
   id: "g-1",
   known: "en",
   learning: "fr",
-  category: "greetings",
+  categories: ["greetings"],
   level: "mixed",
   difficulty: "pick",
   rounds: 6,
@@ -67,7 +67,7 @@ describe("deriveDeck", () => {
   });
 
   it("is empty for an unknown category", () => {
-    expect(deriveDeck(obj({ category: "nope" }))).toEqual([]);
+    expect(deriveDeck(obj({ categories: ["nope"] }))).toEqual([]);
   });
 });
 
