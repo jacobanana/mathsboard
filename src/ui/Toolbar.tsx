@@ -31,11 +31,11 @@
 import { isSavedBoard, useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
 import { COLLAB_ENABLED } from "@/config";
-import { INSERT_NOUN } from "@/subject";
+import { PROFILE } from "@/boardProfile";
 import { OptionsStrip } from "@/ui/OptionsStrip";
 import { OverflowMenu } from "@/ui/OverflowMenu";
 import { keyHint } from "@/ui/shortcuts";
-import { TOOL_UI } from "@/ui/toolSpecs";
+import { toolUiFor, type ToolUiSpec } from "@/ui/toolSpecs";
 import {
   ImageIcon,
   UndoIcon,
@@ -60,6 +60,14 @@ export interface ToolbarCallbacks {
   /** Open the About & credits sheet (open source, privacy, licence). */
   onAbout: () => void;
 }
+
+// The dock's tools for THIS board flavour, resolved once from the profile's
+// ordered list (src/boardProfile.ts). A tool absent here is absent from the dock
+// AND from the keyboard (ui/shortcuts.ts reads the same list) — e.g. the maths-
+// notation tool on the language board.
+const DOCK_SPECS: ToolUiSpec[] = PROFILE.dockTools
+  .map(toolUiFor)
+  .filter((s): s is ToolUiSpec => s != null);
 
 export function Toolbar(props: ToolbarCallbacks): JSX.Element {
   const tool = useBoardStore((s) => s.tool);
@@ -173,7 +181,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
           ui/toolSpecs.tsx, not a hand-written button here. */}
       <nav id="dock" aria-label="Tools">
         <div className="island dock-inner">
-          {TOOL_UI.map((t) => {
+          {DOCK_SPECS.map((t) => {
             const Icon = t.icon;
             return (
               <button
@@ -216,7 +224,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
           <button
             className="btn small insert"
             id="insertBtn"
-            title={`Insert a ${INSERT_NOUN} (${keyHint("insert")})`}
+            title={`Insert a ${PROFILE.insertNoun} (${keyHint("insert")})`}
             aria-label="Insert"
             onClick={props.onInsert}
           >

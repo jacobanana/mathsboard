@@ -10,6 +10,8 @@ import { useUiStore } from "@/ui/uiStore";
 import { placeObject, editObject } from "@/board/commands";
 import { getTool } from "@/tools/registry";
 import { setStoredName } from "@/collab/profile";
+import { IS_LANGUAGE } from "@/subject";
+import { LangNewBoard } from "@/lang/LangNewBoard";
 import { WelcomeModal } from "@/ui/WelcomeModal";
 import { InsertGallery } from "@/ui/InsertGallery";
 import { ShortcutsHelp } from "@/ui/ShortcutsHelp";
@@ -51,6 +53,22 @@ const welcomeModal = defineModal("welcome", {
     <WelcomeModal
       onClose={api.close}
       onOpenBoards={() => api.open({ kind: "boards" })}
+      // Language board: "New board" first asks which languages (langNew).
+      onNewBoard={IS_LANGUAGE ? () => api.open({ kind: "langNew" }) : undefined}
+    />
+  ),
+});
+
+// Language board only: choose the languages when starting a new board, then
+// create it. Reached from the welcome screen and the boards manager's New.
+const langNewModal = defineModal("langNew", {
+  render: (_s, api) => (
+    <LangNewBoard
+      onStart={() => {
+        void useBoardStore.getState().newBoard();
+        api.close();
+      }}
+      onCancel={api.close}
     />
   ),
 });
@@ -121,7 +139,14 @@ const dialogModal = defineModal("dialog", {
 });
 
 const boardsModal = defineModal("boards", {
-  render: (_s, api) => <BoardsManager onClose={api.close} />,
+  render: (_s, api) => (
+    <BoardsManager
+      onClose={api.close}
+      // Language board: New board asks languages first (langNew) instead of
+      // creating a blank board straight away.
+      onNewBoard={IS_LANGUAGE ? () => api.open({ kind: "langNew" }) : undefined}
+    />
+  ),
 });
 
 const saveAsModal = defineModal("saveAs", {
@@ -164,6 +189,7 @@ const joinNameModal = defineModal("joinName", {
 
 export const MODALS: ModalDef[] = [
   welcomeModal,
+  langNewModal,
   joinModal,
   insertModal,
   helpModal,

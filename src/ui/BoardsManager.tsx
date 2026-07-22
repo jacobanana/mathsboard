@@ -20,6 +20,12 @@ import { NamePrompt } from "@/ui/NamePrompt";
 
 interface BoardsManagerProps {
   onClose: () => void;
+  /**
+   * Override the "New board" action. The language board passes this to ask for
+   * the languages first (langNew modal); when absent, New creates a blank board
+   * straight away (the maths board).
+   */
+  onNewBoard?: () => void;
 }
 
 type View =
@@ -51,7 +57,7 @@ function lastSaved(ts: number): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function BoardsManager({ onClose }: BoardsManagerProps): JSX.Element {
+export function BoardsManager({ onClose, onNewBoard }: BoardsManagerProps): JSX.Element {
   const board = useBoardStore((s) => s.board);
   const sourceId = useBoardStore((s) => s.sourceId);
   const dirty = useBoardStore((s) => s.dirty);
@@ -126,10 +132,16 @@ export function BoardsManager({ onClose }: BoardsManagerProps): JSX.Element {
 
   const handleNew = useCallback(() => {
     guardedSwitch(async () => {
+      // Language board: hand off to the language-picker step, which creates the
+      // board itself once the pair is chosen. Otherwise create a blank board.
+      if (onNewBoard) {
+        onNewBoard();
+        return;
+      }
       await newBoard();
       onClose();
     });
-  }, [guardedSwitch, newBoard, onClose]);
+  }, [guardedSwitch, newBoard, onClose, onNewBoard]);
 
   const handleOpen = useCallback(
     (b: BoardSummary) => {

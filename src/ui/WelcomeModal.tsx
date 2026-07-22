@@ -10,7 +10,8 @@
 import { useEffect, useRef } from "react";
 import { useBoardStore } from "@/board/store";
 import { COLLAB_ENABLED } from "@/config";
-import { APP_NAME, IS_LANGUAGE } from "@/subject";
+import { IS_LANGUAGE } from "@/subject";
+import { PROFILE } from "@/boardProfile";
 import { LanguagePicker } from "@/lang/LanguagePicker";
 import { JoinForm } from "@/ui/JoinForm";
 
@@ -19,11 +20,18 @@ interface WelcomeModalProps {
   onClose: () => void;
   /** Switch to the Boards manager to open a saved board. */
   onOpenBoards: () => void;
+  /**
+   * Override the "New board" action. The language board passes this to ask for
+   * the languages first (langNew modal); when absent, New creates a blank board
+   * straight away (the maths board).
+   */
+  onNewBoard?: () => void;
 }
 
 export function WelcomeModal({
   onClose,
   onOpenBoards,
+  onNewBoard,
 }: WelcomeModalProps): JSX.Element {
   const board = useBoardStore((s) => s.board);
   const sourceId = useBoardStore((s) => s.sourceId);
@@ -47,7 +55,7 @@ export function WelcomeModal({
 
   return (
     <>
-      <h2>{APP_NAME}</h2>
+      <h2>{PROFILE.appName}</h2>
       <p className="hint">
         {IS_LANGUAGE
           ? "Choose your languages, then pick up where you left off."
@@ -75,6 +83,10 @@ export function WelcomeModal({
           id="welcomeNew"
           disabled={pending}
           onClick={() => {
+            if (onNewBoard) {
+              onNewBoard();
+              return;
+            }
             void newBoard();
             onClose();
           }}

@@ -1,21 +1,25 @@
-// RESOLVING CONTENT FOR A LANGUAGE PAIR.
+// RESOLVING CONTENT FOR A LANGUAGE PAIR, BY CATEGORY AND LEVEL.
 //
 // Every widget works in terms of a { known, learning } pair — the language the
 // learner already speaks and the one they are learning — never English↔French
-// directly. These helpers turn the raw catalogue (data.ts) into the concrete
-// { known, learning } strings a widget shows, dropping any concept that is
-// missing a word in either language so a half-translated entry never surfaces.
-// That is also what makes the app scale: add a language to data.ts and every
-// widget can pair it with any other, with no widget changes.
+// directly. These helpers turn the tagged catalogue (data.ts) into the concrete
+// { known, learning } strings a widget shows, filtered by a chosen category
+// (theme) and level, and dropping any item missing a word in either language so
+// a half-translated entry never surfaces. Vocab and sentences share the SAME
+// category/level system, so the pickers are identical everywhere. This is also
+// what makes the app scale: add a language to data.ts and every widget can pair
+// it with any other, with no widget changes.
 
 import {
+  CATEGORIES,
   LANGUAGES,
-  SENTENCE_SETS,
-  TOPICS,
+  LEVELS,
+  SENTENCES,
+  VOCAB,
   languageByCode,
-  sentenceSetById,
-  topicById,
+  type Category,
   type LangCode,
+  type Level,
 } from "@/lang/data";
 
 /** The learner's languages: what they know, and what they're learning. */
@@ -36,6 +40,9 @@ export interface SentencePairText {
   known: string;
   learning: string;
 }
+
+/** A level filter: one specific level, or "mixed" (every level). */
+export type LevelFilter = Level | "mixed";
 
 /** The default pair when nothing is stored yet: learn the second language using
  *  the first (English → French out of the box). Falls back gracefully if the
@@ -62,12 +69,22 @@ export function pairLabel(p: LangPair): string {
   return `${k} → ${l}`;
 }
 
-/** Every vocab item of a topic that has BOTH the known and learning words. */
-export function vocabForTopic(topicId: string, pair: LangPair): VocabPair[] {
-  const topic = topicById(topicId);
-  if (!topic) return [];
+const atLevel = (level: LevelFilter) => (itemLevel: Level): boolean =>
+  level === "mixed" || itemLevel === level;
+
+// --- vocabulary -------------------------------------------------------------
+
+/** Every vocab item of `category` at `level` (or all levels when "mixed") that
+ *  has BOTH the known and learning words. */
+export function vocabFor(
+  category: string,
+  level: LevelFilter,
+  pair: LangPair,
+): VocabPair[] {
+  const keep = atLevel(level);
   const out: VocabPair[] = [];
-  for (const item of topic.items) {
+  for (const item of VOCAB) {
+    if (item.category !== category || !keep(item.level)) continue;
     const known = item.terms[pair.known];
     const learning = item.terms[pair.learning];
     if (known && learning) out.push({ known, learning, emoji: item.emoji });
@@ -75,15 +92,34 @@ export function vocabForTopic(topicId: string, pair: LangPair): VocabPair[] {
   return out;
 }
 
-/** Every sentence of a set that has BOTH translations. */
-export function sentencesForSet(
-  setId: string,
+/** Which levels have at least one usable vocab pair in this category, in order.
+ *  Lets a dialog disable levels a category can't offer. */
+export function levelsForVocabCategory(category: string, pair: LangPair): Level[] {
+  return LEVELS.filter((l) => vocabFor(category, l, pair).length > 0);
+}
+
+/** Categories with at least `min` usable vocab pairs at `level` (or mixed). */
+export function categoriesForVocab(
+  pair: LangPair,
+  level: LevelFilter,
+  min = 1,
+): Category[] {
+  return CATEGORIES.filter((c) => vocabFor(c.id, level, pair).length >= min);
+}
+
+// --- sentences --------------------------------------------------------------
+
+/** Every sentence of `category` at `level` (or all levels when "mixed") that has
+ *  BOTH translations. */
+export function sentencesFor(
+  category: string,
+  level: LevelFilter,
   pair: LangPair,
 ): SentencePairText[] {
-  const set = sentenceSetById(setId);
-  if (!set) return [];
+  const keep = atLevel(level);
   const out: SentencePairText[] = [];
-  for (const item of set.items) {
+  for (const item of SENTENCES) {
+    if (item.category !== category || !keep(item.level)) continue;
     const known = item.terms[pair.known];
     const learning = item.terms[pair.learning];
     if (known && learning) out.push({ known, learning });
@@ -91,13 +127,27 @@ export function sentencesForSet(
   return out;
 }
 
-/** Topics that have at least `min` usable pairs for this language pair — so the
- *  dialogs never offer a topic that would come up empty. */
-export function usableTopics(pair: LangPair, min = 2): typeof TOPICS {
-  return TOPICS.filter((t) => vocabForTopic(t.id, pair).length >= min);
+export function levelsForSentenceCategory(category: string, pair: LangPair): Level[] {
+  return LEVELS.filter((l) => sentencesFor(category, l, pair).length > 0);
 }
 
-/** Sentence sets with at least `min` usable sentences for this pair. */
-export function usableSentenceSets(pair: LangPair, min = 1): typeof SENTENCE_SETS {
-  return SENTENCE_SETS.filter((s) => sentencesForSet(s.id, pair).length >= min);
+export function categoriesForSentences(
+  pair: LangPair,
+  level: LevelFilter,
+  min = 1,
+): Category[] {
+  return CATEGORIES.filter((c) => sentencesFor(c.id, level, pair).length >= min);
+}
+
+// --- shared dialog helpers --------------------------------------------------
+
+/** Resolve a starting level for a category: keep `wanted` if the category has
+ *  content at it, else fall back to the first available level, else "mixed". */
+export function resolveLevel(
+  available: Level[],
+  wanted: LevelFilter,
+): LevelFilter {
+  if (wanted === "mixed") return "mixed";
+  if (available.includes(wanted)) return wanted;
+  return available[0] ?? "mixed";
 }

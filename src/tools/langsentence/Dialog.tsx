@@ -1,12 +1,20 @@
-// Settings dialog for the Sentence builder. Pick the sentence SET and how many
-// rounds; the languages come from the learner's current pair (shown read-only).
+// Settings dialog for the Sentence builder. Pick the THEME + LEVEL (shared
+// picker) and how many rounds; the languages come from the learner's current
+// pair (shown read-only).
 
 import { useState } from "react";
 import type { ToolDialogProps } from "@/tools/registry";
 import { clamp } from "@/board/geometry";
 import { languageByCode } from "@/lang/data";
-import { usableSentenceSets } from "@/lang/pairs";
-import { MAX_ROUNDS, MIN_ROUNDS } from "@/tools/langsentence/builder";
+import { CategoryLevelPicker } from "@/lang/CategoryLevelPicker";
+import { useContentPicker } from "@/lang/contentPicker";
+import {
+  MAX_ROUNDS,
+  MIN_ROUNDS,
+  categoryOf,
+  levelOf,
+  type SentenceObj,
+} from "@/tools/langsentence/builder";
 import {
   defaultLangSentenceParams,
   type LangSentenceParams,
@@ -20,9 +28,13 @@ export function LangSentenceDialog({
   const editing = initial != null;
   const base = initial ?? defaultLangSentenceParams();
   const pair = { known: base.known, learning: base.learning };
-  const sets = usableSentenceSets(pair);
 
-  const [set, setSet] = useState<string>(base.set);
+  const picker = useContentPicker(
+    "sentences",
+    pair,
+    categoryOf(base as unknown as SentenceObj),
+    levelOf(base as unknown as SentenceObj),
+  );
   const [rounds, setRounds] = useState<string>(String(base.rounds));
 
   const knownName = languageByCode(pair.known)?.name ?? pair.known;
@@ -32,7 +44,8 @@ export function LangSentenceDialog({
     onSubmit({
       known: pair.known,
       learning: pair.learning,
-      set,
+      category: picker.category,
+      level: picker.level,
       rounds: clamp(parseInt(rounds, 10) || base.rounds, MIN_ROUNDS, MAX_ROUNDS),
     });
   }
@@ -45,21 +58,7 @@ export function LangSentenceDialog({
         words into the right order.
       </p>
 
-      <div className="field">
-        <label>Sentences</label>
-        <div className="flash-opts">
-          {sets.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className={"flash-opt" + (set === s.id ? " active" : "")}
-              onClick={() => setSet(s.id)}
-            >
-              {s.emoji} {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <CategoryLevelPicker picker={picker} />
 
       <div className="field">
         <label htmlFor="sbRounds">How many sentences</label>

@@ -4,11 +4,12 @@
 
 import { defineWidgetTool } from "@/tools/registry";
 import { currentPair } from "@/lang/store";
-import { usableTopics } from "@/lang/pairs";
+import { categoriesForVocab, type LevelFilter } from "@/lang/pairs";
 import { LangMatch } from "@/tools/langmatch/LangMatch";
 import { LangMatchDialog } from "@/tools/langmatch/Dialog";
 import {
   DEFAULT_COUNT,
+  MIN_COUNT,
   resetSessionPatch,
   type MatchObj,
 } from "@/tools/langmatch/match";
@@ -16,7 +17,10 @@ import {
 export interface LangMatchParams {
   known: string;
   learning: string;
-  topic: string;
+  /** Theme (category id). */
+  category: string;
+  /** Difficulty filter: a level, or "mixed". */
+  level: LevelFilter;
   count: number;
   // --- live widget state (via updateWidgetState) ---
   round?: number;
@@ -24,11 +28,12 @@ export interface LangMatchParams {
 
 export function defaultLangMatchParams(): LangMatchParams {
   const pair = currentPair();
-  const topics = usableTopics(pair, 3);
+  const categories = categoriesForVocab(pair, "mixed", MIN_COUNT);
   return {
     known: pair.known,
     learning: pair.learning,
-    topic: topics[0]?.id ?? "colours",
+    category: categories[0]?.id ?? "colours",
+    level: "basic",
     count: DEFAULT_COUNT,
   };
 }

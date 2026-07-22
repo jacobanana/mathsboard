@@ -25,7 +25,8 @@ const obj = (over: Partial<MatchObj> = {}): MatchObj => ({
   id: "m-1",
   known: "en",
   learning: "fr",
-  topic: "colours",
+  category: "colours",
+  level: "mixed",
   count: 5,
   ...over,
 });
@@ -61,8 +62,8 @@ describe("deriveRound", () => {
     );
   });
 
-  it("is empty for an unknown topic", () => {
-    expect(deriveRound(obj({ topic: "nope" })).items).toEqual([]);
+  it("is empty for an unknown category", () => {
+    expect(deriveRound(obj({ category: "nope" })).items).toEqual([]);
   });
 });
 

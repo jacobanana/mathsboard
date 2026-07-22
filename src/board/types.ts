@@ -5,6 +5,11 @@
 //     collaborators later. Every object & stroke has a stable string `id`.
 //   - EPHEMERAL state (camera, tool, colour, selection): local-only, never synced.
 
+// The active board profile supplies the starting paper for a new document. The
+// import is runtime-safe (boardProfile only imports this module for TYPES, which
+// are erased) so there is no evaluation cycle.
+import { PROFILE } from "@/boardProfile";
+
 /** Every placed object shares this geometric base. */
 export interface BoardObjectBase {
   id: string;
@@ -121,13 +126,20 @@ export const id = (): string => crypto.randomUUID();
 /** Default name for a board that has never been explicitly saved. */
 export const UNTITLED_NAME = "Untitled board";
 
-/** Build a blank, in-memory board document. Does NOT persist it anywhere. */
-export function newBoardDocument(name: string = UNTITLED_NAME): BoardDocument {
+/**
+ * Build a blank, in-memory board document. Does NOT persist it anywhere. The
+ * starting paper defaults to the active board profile's (squares for maths,
+ * lines for language); pass `background` to override.
+ */
+export function newBoardDocument(
+  name: string = UNTITLED_NAME,
+  background: Background = PROFILE.defaultBackground,
+): BoardDocument {
   const now = Date.now();
   return {
     id: id(),
     name,
-    background: "squared",
+    background,
     objects: [],
     strokes: [],
     createdAt: now,

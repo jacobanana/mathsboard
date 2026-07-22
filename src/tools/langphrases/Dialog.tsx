@@ -1,10 +1,12 @@
-// Settings dialog for the phrasebook. Pick the sentence SET and which language
-// shows as the prompt; the languages come from the learner's current pair.
+// Settings dialog for the phrasebook. Pick the THEME + LEVEL (shared picker) and
+// which language shows as the prompt; the languages come from the learner's
+// current pair.
 
 import { useState } from "react";
 import type { ToolDialogProps } from "@/tools/registry";
 import { languageByCode } from "@/lang/data";
-import { usableSentenceSets } from "@/lang/pairs";
+import { CategoryLevelPicker } from "@/lang/CategoryLevelPicker";
+import { useContentPicker } from "@/lang/contentPicker";
 import type { Direction } from "@/tools/langflashcards/deck";
 import {
   defaultLangPhrasesParams,
@@ -19,16 +21,26 @@ export function LangPhrasesDialog({
   const editing = initial != null;
   const base = initial ?? defaultLangPhrasesParams();
   const pair = { known: base.known, learning: base.learning };
-  const sets = usableSentenceSets(pair);
 
-  const [set, setSet] = useState<string>(base.set);
+  const picker = useContentPicker(
+    "sentences",
+    pair,
+    base.category ?? base.set,
+    base.level,
+  );
   const [direction, setDirection] = useState<Direction>(base.direction);
 
   const knownName = languageByCode(pair.known)?.name ?? pair.known;
   const learningName = languageByCode(pair.learning)?.name ?? pair.learning;
 
   function submit() {
-    onSubmit({ known: pair.known, learning: pair.learning, set, direction });
+    onSubmit({
+      known: pair.known,
+      learning: pair.learning,
+      category: picker.category,
+      level: picker.level,
+      direction,
+    });
   }
 
   return (
@@ -38,21 +50,7 @@ export function LangPhrasesDialog({
         A little phrasebook. Tap a sentence to reveal its translation.
       </p>
 
-      <div className="field">
-        <label>Sentences</label>
-        <div className="flash-opts">
-          {sets.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className={"flash-opt" + (set === s.id ? " active" : "")}
-              onClick={() => setSet(s.id)}
-            >
-              {s.emoji} {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <CategoryLevelPicker picker={picker} />
 
       <div className="field">
         <label>Show</label>

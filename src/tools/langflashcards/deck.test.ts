@@ -8,8 +8,10 @@ import {
   MAX_COUNT,
   MIN_COUNT,
   clampCount,
+  deckTitle,
   deriveDeck,
   flipPatch,
+  isCustom,
   knewField,
   knewIt,
   newDeckPatch,
@@ -27,7 +29,8 @@ const obj = (over: Partial<LangFlashObj> = {}): LangFlashObj => ({
   id: "lf-1",
   known: "en",
   learning: "fr",
-  topic: "colours",
+  category: "colours",
+  level: "mixed",
   count: 8,
   direction: "known-first",
   ...over,
@@ -61,8 +64,43 @@ describe("deriveDeck", () => {
     expect(deriveDeck(obj({ count: 1 })).length).toBeGreaterThan(0);
   });
 
-  it("is empty for an unknown topic", () => {
-    expect(deriveDeck(obj({ topic: "nope" }))).toEqual([]);
+  it("is empty for an unknown category", () => {
+    expect(deriveDeck(obj({ category: "nope" }))).toEqual([]);
+  });
+
+  it("filters the deck by level", () => {
+    const basic = deriveDeck(obj({ category: "colours", level: "basic", count: 20 }));
+    const mixed = deriveDeck(obj({ category: "colours", level: "mixed", count: 20 }));
+    expect(basic.length).toBeGreaterThan(0);
+    expect(basic.length).toBeLessThan(mixed.length);
+  });
+});
+
+describe("custom decks (My words)", () => {
+  const custom = [
+    { known: "hello", learning: "bonjour" },
+    { known: "thanks", learning: "merci" },
+    { known: "  ", learning: "empty" }, // half-empty rows are dropped
+  ];
+
+  it("uses the learner's own words instead of a topic", () => {
+    const o = obj({ custom });
+    expect(isCustom(o)).toBe(true);
+    const deck = deriveDeck(o);
+    expect(deck).toHaveLength(2); // the blank-known row is dropped
+    const fronts = deck.map((c) => c.front).sort();
+    expect(fronts).toEqual(["hello", "thanks"]);
+    expect(deckTitle(o)).toBe("My words");
+  });
+
+  it("orients custom cards by direction", () => {
+    const kf = deriveDeck(obj({ custom, direction: "known-first" }));
+    const lf = deriveDeck(obj({ custom, direction: "learning-first" }));
+    expect(kf.map((c) => c.front).sort()).toEqual(lf.map((c) => c.back).sort());
+  });
+
+  it("a topic deck is not custom", () => {
+    expect(isCustom(obj())).toBe(false);
   });
 });
 

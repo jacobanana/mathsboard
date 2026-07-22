@@ -7,11 +7,11 @@ import "@/styles/index.css";
 import { logVersions, FRONTEND_VERSION } from "@/version";
 import { initAnalytics } from "@/analytics";
 import { COLLAB_ENABLED } from "@/config";
-import { APP_NAME } from "@/subject";
+import { PROFILE } from "@/boardProfile";
 
 // Name the tab for whichever board this page is (the language build shares this
 // entry, so the title is set here rather than only in the static HTML).
-document.title = APP_NAME;
+document.title = PROFILE.appName;
 
 logVersions();
 // Session properties for Umami: which build (full app vs static Pages), whether
