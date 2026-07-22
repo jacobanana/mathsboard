@@ -24,6 +24,7 @@ import {
   removeImportedPack,
   subscribeContent,
 } from "@/lang/content/registry";
+import { ContentReview, type ReviewSource } from "@/lang/ContentReview";
 
 /** Trigger a browser download of `text` as a file named `filename`. */
 function download(filename: string, text: string, type = "application/json"): void {
@@ -51,9 +52,22 @@ export function ContentStudio(): JSX.Element {
   const fileRef = useRef<HTMLInputElement>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [copied, setCopied] = useState(false);
+  const [review, setReview] = useState<{ source: ReviewSource; title: string } | null>(null);
 
   const content = currentContent();
   const packs = importedPacks();
+
+  // Reviewing a pack's actual content takes over the whole page (with a Back
+  // button) so the listing is easy to read.
+  if (review) {
+    return (
+      <ContentReview
+        source={review.source}
+        title={review.title}
+        onBack={() => setReview(null)}
+      />
+    );
+  }
 
   function handleFiles(files: FileList | null): void {
     if (!files || files.length === 0) return;
@@ -185,19 +199,42 @@ export function ContentStudio(): JSX.Element {
         {content.vocab.length} words · {content.sentences.length} sentences ·{" "}
         {content.verbs.length} verbs
       </p>
-      {packs.length === 0 ? (
-        <p className="hint">
-          Only the built-in pack is loaded. Imported packs appear here.
-        </p>
-      ) : (
-        <ul className="cs-packs">
-          {packs.map((p) => (
-            <li key={p.id}>
-              <span className="cs-pack-name">
-                {p.name} <code>{p.id}</code>
-              </span>
+      <button
+        className="btn cs-browse-all"
+        onClick={() => setReview({ source: content, title: "All loaded content" })}
+      >
+        Browse every word, sentence &amp; verb →
+      </button>
+
+      <ul className="cs-packs">
+        {/* The built-in content is reviewable too. */}
+        <li>
+          <span className="cs-pack-name">
+            {BASE_PACK.name} <span className="cs-badge">built-in</span>
+          </span>
+          <span className="cs-pack-actions">
+            <button
+              className="btn small"
+              onClick={() => setReview({ source: BASE_PACK, title: BASE_PACK.name })}
+            >
+              View content
+            </button>
+          </span>
+        </li>
+        {packs.map((p) => (
+          <li key={p.id}>
+            <span className="cs-pack-name">
+              {p.name} <code>{p.id}</code>
+            </span>
+            <span className="cs-pack-actions">
               <button
                 className="btn small"
+                onClick={() => setReview({ source: p, title: p.name })}
+              >
+                View content
+              </button>
+              <button
+                className="btn small cs-remove"
                 onClick={() => {
                   removeImportedPack(p.id);
                   setFeedback(null);
@@ -205,10 +242,10 @@ export function ContentStudio(): JSX.Element {
               >
                 Remove
               </button>
-            </li>
-          ))}
-        </ul>
-      )}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
