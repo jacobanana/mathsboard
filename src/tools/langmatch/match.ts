@@ -2,11 +2,14 @@
 //
 // A widget shows two columns: words in the known language on the left, their
 // translations (scrambled) on the right. The learner draws a line from a word to
-// its translation; a correct line locks green, a wrong one is rejected. Like the
-// other language widgets the round is re-derived from the widget's identity +
-// `round` counter (seeded shuffles), so every collaborator sees the SAME columns
-// with no write races, and the response — which left words are matched — is live
-// widget-state (`mm:<i>` flags), undo-invisible, synced and persisted.
+// its translation. Every connection is KEPT and coloured by correctness: green
+// when right, red when wrong. A correct line locks; a wrong one can be removed by
+// tapping the line (or either of its words) to try again. Like the other
+// language widgets the round is re-derived from the widget's identity + `round`
+// counter (seeded shuffles), so every collaborator sees the SAME columns with no
+// write races, and the response — each left word's connection — is live
+// widget-state (`mc:<leftIdx>` = the right slot it joins to), undo-invisible,
+// synced and persisted.
 
 import { rngFromSeed, shuffle } from "@/lang/rng";
 import {
@@ -17,7 +20,7 @@ import {
 } from "@/lang/pairs";
 import { categoryById } from "@/lang/data";
 
-/** The shape the component reads: params plus live widget-state (mm:*). */
+/** The shape the component reads: params plus live widget-state (mc:*). */
 export interface MatchObj {
   id: string;
   known: string;
@@ -31,7 +34,7 @@ export interface MatchObj {
   // --- live widget state (via updateWidgetState, undo-invisible) ---
   /** Monotonic "new game" counter; the round is re-derived from it. */
   round?: number;
-  [field: string]: unknown; // mm:<leftIdx> -> 1 once that word is matched
+  [field: string]: unknown; // mc:<leftIdx> -> the right slot it is joined to
 }
 
 /** A resolved round: the vocab items (left order), plus the scrambled order in
@@ -110,42 +113,82 @@ export function isConnectionCorrect(
   return round.rightOrder[rightSlot] === leftIdx;
 }
 
-// --- matched state (the learner's live state) -------------------------------
+// --- connections (the learner's live state) ---------------------------------
+// Each left word stores the right SLOT it is joined to, in `mc:<leftIdx>`. A
+// left word has at most one connection; correctness is derived from the round,
+// never stored, so it can't drift.
 
-export const MATCH_PREFIX = "mm:";
-export const matchField = (i: number): string => MATCH_PREFIX + i;
+export const CONN_PREFIX = "mc:";
+export const connField = (i: number): string => CONN_PREFIX + i;
 
-export const isMatched = (obj: MatchObj, i: number): boolean =>
-  obj[matchField(i)] === 1 || obj[matchField(i)] === true;
+/** The right slot left word `i` is joined to, or null if it isn't joined. */
+export function connectionSlot(obj: MatchObj, i: number): number | null {
+  const v = obj[connField(i)];
+  return typeof v === "number" ? v : null;
+}
 
-export function matchedCount(obj: MatchObj, size: number): number {
+export interface Connection {
+  left: number;
+  right: number;
+  correct: boolean;
+}
+
+/** Every current connection, resolved with its correctness for the round. */
+export function connections(round: MatchRound, obj: MatchObj): Connection[] {
+  const out: Connection[] = [];
+  for (let left = 0; left < round.items.length; left++) {
+    const right = connectionSlot(obj, left);
+    if (right == null) continue;
+    out.push({ left, right, correct: isConnectionCorrect(round, left, right) });
+  }
+  return out;
+}
+
+/** Right slots that already have a connection into them (occupied). */
+export function occupiedRightSlots(round: MatchRound, obj: MatchObj): Set<number> {
+  return new Set(connections(round, obj).map((c) => c.right));
+}
+
+/** Is left word `i` joined AND correct? */
+export function leftIsCorrect(round: MatchRound, obj: MatchObj, i: number): boolean {
+  const right = connectionSlot(obj, i);
+  return right != null && isConnectionCorrect(round, i, right);
+}
+
+/** How many left words are correctly joined. */
+export function correctCount(round: MatchRound, obj: MatchObj): number {
   let n = 0;
-  for (let i = 0; i < size; i++) if (isMatched(obj, i)) n++;
+  for (let i = 0; i < round.items.length; i++) if (leftIsCorrect(round, obj, i)) n++;
   return n;
 }
 
 export const allMatched = (obj: MatchObj): boolean => {
-  const size = roundSize(obj);
-  return size > 0 && matchedCount(obj, size) === size;
+  const round = deriveRound(obj);
+  return round.items.length > 0 && correctCount(round, obj) === round.items.length;
 };
 
-/** Patch marking left word `i` matched. */
-export const matchPatch = (i: number): Record<string, unknown> => ({
-  [matchField(i)]: 1,
+/** Join left word `left` to right slot `right`. */
+export const connectPatch = (left: number, right: number): Record<string, unknown> => ({
+  [connField(left)]: right,
 });
 
-export function pruneMatches(obj: MatchObj): Record<string, undefined> {
+/** Remove left word `left`'s connection (a wrong-line "try again"). */
+export const disconnectPatch = (left: number): Record<string, unknown> => ({
+  [connField(left)]: undefined,
+});
+
+export function pruneConnections(obj: MatchObj): Record<string, undefined> {
   const patch: Record<string, undefined> = {};
-  for (const k of Object.keys(obj)) if (k.startsWith(MATCH_PREFIX)) patch[k] = undefined;
+  for (const k of Object.keys(obj)) if (k.startsWith(CONN_PREFIX)) patch[k] = undefined;
   return patch;
 }
 
-/** A fresh scramble: new right order (bump round) with nothing matched. */
+/** A fresh scramble: new right order (bump round) with nothing joined. */
 export const newRoundPatch = (obj: MatchObj): Record<string, unknown> => ({
   round: (obj.round ?? 0) + 1,
-  ...pruneMatches(obj),
+  ...pruneConnections(obj),
 });
 
-/** Reset after a settings edit (see resetOnEdit): clear the matches. */
+/** Reset after a settings edit (see resetOnEdit): clear the connections. */
 export const resetSessionPatch = (obj: MatchObj): Record<string, unknown> =>
-  pruneMatches(obj);
+  pruneConnections(obj);

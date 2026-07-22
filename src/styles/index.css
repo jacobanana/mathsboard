@@ -760,13 +760,16 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .lm-col{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:space-around;gap:8px;min-width:0;flex:1;}
 .lm-node{position:relative;display:flex;align-items:center;gap:8px;font-family:inherit;font-weight:800;font-size:15px;padding:9px 12px;border-radius:12px;border:2px solid #E2E5EA;background:#fff;color:#1F2937;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.08);touch-action:none;min-width:0;}
 .lm-node-r{justify-content:flex-end;text-align:right;}
-.lm-node:hover:not(.matched){border-color:#8B7BF9;}
+.lm-node:hover:not(.matched):not(.wrong){border-color:#8B7BF9;}
+/* Correct = green, locked. Wrong = red, and tappable to remove ("try again"). */
 .lm-node.matched{border-color:#16A34A;background:#EAF7EE;color:#166534;cursor:default;}
-.lm-node.wrong{animation:ifShake .4s ease;border-color:#DC2626;background:#FBECEC;}
+.lm-node.wrong{border-color:#DC2626;background:#FBECEC;color:#B91C1C;cursor:pointer;}
+.lm-node.wrong:hover{background:#FADCDC;}
 .lm-emoji{flex:0 0 auto;font-size:19px;}
 .lm-word{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
 .lm-dot{flex:0 0 auto;width:11px;height:11px;border-radius:50%;background:#CBD2DC;box-shadow:inset 0 0 0 2px #fff;}
 .lm-node.matched .lm-dot{background:#16A34A;}
+.lm-node.wrong .lm-dot{background:#DC2626;}
 /* Join points sit on the FACING edges: the left box's dot on its right edge,
    the right box's dot on its left edge — so a line clearly joins dot to dot. */
 .lm-dot-r{margin-left:auto;}

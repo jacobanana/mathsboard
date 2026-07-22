@@ -3,12 +3,13 @@
 //
 // Two columns: known words on the left, scrambled translations on the right. The
 // learner presses a word and drags to its translation; a live line follows the
-// pointer, and on release the connection is checked — correct locks a green
-// line, wrong flashes red and is dropped. The matched set is live widget-state
-// (`mm:<i>` flags via updateWidgetState — synced, persisted, undo-invisible);
-// the lines are DERIVED from it and re-drawn from the node positions, so they
-// survive reload and resize. The card body is the drag handle (a press that
-// isn't on a node/button moves the object). See match.ts for the pure engine.
+// pointer, and on release the connection is KEPT and coloured by correctness —
+// GREEN when right (locked), RED when wrong. A wrong line can be undone by
+// tapping the line itself, or either of its two words, which removes it so the
+// learner can try again. Connections are live widget-state (`mc:<i>` = the joined
+// right slot, via updateWidgetState — synced, persisted, undo-invisible); the
+// lines are DERIVED and re-drawn from the node positions, so they survive reload
+// and resize. The card body is the drag handle. See match.ts for the pure engine.
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WidgetProps } from "@/tools/registry";
@@ -16,23 +17,24 @@ import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
 import {
   allMatched,
-  correctSlotFor,
+  connectPatch,
+  connectionSlot,
+  connections,
+  correctCount,
   deriveRound,
-  isConnectionCorrect,
-  isMatched,
-  matchPatch,
-  matchedCount,
+  disconnectPatch,
   newRoundPatch,
+  occupiedRightSlots,
   title,
+  type Connection,
   type MatchObj,
 } from "@/tools/langmatch/match";
 import type { LangMatchParams } from "@/tools/langmatch";
 
 const HEAD_H = 40;
 
-/** Line colours for the connections (locked matches cycle through them so a
- *  finished board looks like a tangle of happy threads). */
-const LINE_COLORS = ["#6D5EF6", "#0D9488", "#DB2777", "#2563EB", "#7C3AED", "#EA580C", "#16A34A", "#DC2626"];
+const GREEN = "#16A34A";
+const RED = "#DC2626";
 
 interface Pt {
   x: number;
@@ -52,7 +54,12 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
   );
   const size = round.items.length;
   const done = allMatched(mo);
-  const matched = matchedCount(mo, size);
+  const correct = correctCount(round, mo);
+
+  // Resolve the current connections and index them by endpoint.
+  const conns = connections(round, mo);
+  const byLeft = new Map<number, Connection>(conns.map((c) => [c.left, c]));
+  const byRight = new Map<number, Connection>(conns.map((c) => [c.right, c]));
 
   // --- refs for measuring node anchors --------------------------------------
   const boardRef = useRef<HTMLDivElement | null>(null);
@@ -61,22 +68,18 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
 
   // A live drag line, in board-local (unscaled) coordinates.
   const [pending, setPending] = useState<{ from: Pt; to: Pt } | null>(null);
-  const [wrong, setWrong] = useState<number | null>(null); // left index flashing
-  const wrongTimer = useRef(0);
-  // Bumped after mount and on any size/round change so the derived match lines
-  // recompute once the node refs (and their offsets) are in place.
+  // Bumped after mount and on any size/round/connection change so the derived
+  // lines recompute once the node refs (and their offsets) are in place.
   const [, setMeasure] = useState(0);
   useLayoutEffect(() => {
     setMeasure((n) => n + 1);
-  }, [obj.w, obj.h, obj.round, matched, size]);
-  useEffect(() => () => window.clearTimeout(wrongTimer.current), []);
+  }, [obj.w, obj.h, obj.round, conns.length, size]);
+  useEffect(() => setMeasure((n) => n + 1), []);
 
   // --- anchor geometry (board-local px; layout is unscaled) -----------------
   // Anchor to the node's DOT centre, measured in screen px and converted to the
-  // board's local unscaled space. Using getBoundingClientRect (not offsetLeft)
-  // is essential: the columns are positioned, so offsetLeft is column-relative,
-  // which would land the right endpoint at the board's left edge. The dot is the
-  // visible join point, so lines meet dot-to-dot across the gap.
+  // board's local unscaled space (getBoundingClientRect, not offsetLeft, since
+  // the columns are positioned). The dot is the visible join point.
   function anchor(el: HTMLElement | null): Pt | null {
     const board = boardRef.current;
     if (!el || !board) return null;
@@ -95,8 +98,8 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
     const r = boardRef.current?.getBoundingClientRect();
     const scale = useBoardStore.getState().camera.scale || 1;
     return {
-      x: ((clientX - (r?.left ?? 0)) / scale),
-      y: ((clientY - (r?.top ?? 0)) / scale),
+      x: (clientX - (r?.left ?? 0)) / scale,
+      y: (clientY - (r?.top ?? 0)) / scale,
     };
   }
 
@@ -111,9 +114,6 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
     index: number,
     e: React.PointerEvent<HTMLButtonElement>,
   ) {
-    // Already-matched endpoints are inert.
-    if (side === "left" && isMatched(mo, index)) return;
-    if (side === "right" && isMatched(mo, round.rightOrder[index])) return;
     e.stopPropagation();
     e.preventDefault();
     const startEl = e.currentTarget;
@@ -134,14 +134,10 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
     window.addEventListener("pointerup", up);
   }
 
-  /** Resolve which opposite-column node the pointer was released over, and
-   *  validate the connection. */
-  function drop(
-    side: "left" | "right",
-    index: number,
-    clientX: number,
-    clientY: number,
-  ) {
+  /** Resolve which opposite-column node the pointer was released over, then join
+   *  the two — KEEPING the connection whether right or wrong (its colour tells
+   *  the learner which). Only joins when BOTH endpoints are still free. */
+  function drop(side: "left" | "right", index: number, clientX: number, clientY: number) {
     const targets = side === "left" ? rightRefs.current : leftRefs.current;
     let hit = -1;
     for (let i = 0; i < targets.length; i++) {
@@ -156,19 +152,18 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
     if (hit < 0) return;
     const leftIdx = side === "left" ? index : hit;
     const rightSlot = side === "left" ? hit : index;
-    if (isMatched(mo, leftIdx)) return;
-    if (isConnectionCorrect(round, leftIdx, rightSlot)) {
-      updateWidgetState(obj.id, matchPatch(leftIdx));
-      track("tool_action", { tool: "langmatch", action: "match" });
-    } else {
-      flashWrong(leftIdx);
-    }
+    // Re-read the latest state so two quick joins can't collide.
+    const m = fresh() ?? mo;
+    const rnd = deriveRound(m);
+    if (connectionSlot(m, leftIdx) != null) return; // left already joined
+    if (occupiedRightSlots(rnd, m).has(rightSlot)) return; // right already used
+    updateWidgetState(obj.id, connectPatch(leftIdx, rightSlot));
+    track("tool_action", { tool: "langmatch", action: "connect" });
   }
 
-  function flashWrong(leftIdx: number) {
-    setWrong(leftIdx);
-    window.clearTimeout(wrongTimer.current);
-    wrongTimer.current = window.setTimeout(() => setWrong(null), 500);
+  function removeConn(left: number) {
+    updateWidgetState(obj.id, disconnectPatch(left));
+    track("tool_action", { tool: "langmatch", action: "remove" });
   }
 
   function newGame() {
@@ -178,7 +173,7 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
 
   // --- card drag (a press that isn't on a node/button moves the object) -----
   function onCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if ((e.target as HTMLElement).closest("button")) return;
+    if ((e.target as HTMLElement).closest("button, .lm-hit")) return;
     e.stopPropagation();
     const cardEl = e.currentTarget;
     const scale = useBoardStore.getState().camera.scale;
@@ -208,14 +203,14 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
     cardEl.addEventListener("pointerup", up);
   }
 
-  // --- locked match lines (derived from the matched flags) ------------------
-  const lines: { from: Pt; to: Pt; color: string }[] = [];
-  for (let i = 0; i < size; i++) {
-    if (!isMatched(mo, i)) continue;
-    const from = anchor(leftRefs.current[i]);
-    const to = anchor(rightRefs.current[correctSlotFor(round, i)]);
-    if (from && to) lines.push({ from, to, color: LINE_COLORS[i % LINE_COLORS.length] });
-  }
+  // --- lines (derived from the connections) ---------------------------------
+  const lines = conns
+    .map((c) => {
+      const from = anchor(leftRefs.current[c.left]);
+      const to = anchor(rightRefs.current[c.right]);
+      return from && to ? { ...c, from, to } : null;
+    })
+    .filter((l): l is Connection & { from: Pt; to: Pt } => l != null);
 
   return (
     <div
@@ -226,9 +221,7 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
     >
       <div className="lm-head" style={{ height: HEAD_H + "px" }}>
         <span className="lm-title">{title(mo)}</span>
-        <span className="lm-progress">
-          {done ? "Done! 🎉" : `${matched} / ${size}`}
-        </span>
+        <span className="lm-progress">{done ? "Done! 🎉" : `${correct} / ${size}`}</span>
         <button className="lm-new" title="New game" onClick={newGame}>
           New
         </button>
@@ -238,19 +231,39 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
         <div className="lf-empty">No words yet for this topic.</div>
       ) : (
         <div className="lm-board" ref={boardRef}>
-          {/* the connecting lines (locked + the live drag) */}
-          <svg className="lm-lines" aria-hidden>
-            {lines.map((l, i) => (
-              <line
-                key={i}
-                x1={l.from.x}
-                y1={l.from.y}
-                x2={l.to.x}
-                y2={l.to.y}
-                stroke={l.color}
-                strokeWidth={4}
-                strokeLinecap="round"
-              />
+          {/* the connecting lines (green = correct/locked, red = wrong/removable),
+              plus the live drag line */}
+          <svg className="lm-lines" aria-hidden={false}>
+            {lines.map((l) => (
+              <g key={l.left}>
+                {/* A wide, invisible hit line so tapping the RED line removes it
+                    (the visible line is thin; correct green lines aren't clickable). */}
+                {!l.correct && (
+                  <line
+                    className="lm-hit"
+                    x1={l.from.x}
+                    y1={l.from.y}
+                    x2={l.to.x}
+                    y2={l.to.y}
+                    stroke="transparent"
+                    strokeWidth={20}
+                    strokeLinecap="round"
+                    style={{ pointerEvents: "stroke", cursor: "pointer" }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => removeConn(l.left)}
+                  />
+                )}
+                <line
+                  x1={l.from.x}
+                  y1={l.from.y}
+                  x2={l.to.x}
+                  y2={l.to.y}
+                  stroke={l.correct ? GREEN : RED}
+                  strokeWidth={4}
+                  strokeLinecap="round"
+                  style={{ pointerEvents: "none" }}
+                />
+              </g>
             ))}
             {pending && (
               <line
@@ -262,38 +275,44 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
                 strokeWidth={4}
                 strokeDasharray="7 6"
                 strokeLinecap="round"
+                style={{ pointerEvents: "none" }}
               />
             )}
           </svg>
 
           <div className="lm-col lm-left">
-            {round.left.map((w, i) => (
-              <button
-                key={i}
-                ref={(el) => (leftRefs.current[i] = el)}
-                className={
-                  "lm-node" +
-                  (isMatched(mo, i) ? " matched" : "") +
-                  (wrong === i ? " wrong" : "")
-                }
-                onPointerDown={(e) => startConnect("left", i, e)}
-              >
-                {round.emojis[i] && <span className="lm-emoji">{round.emojis[i]}</span>}
-                <span className="lm-word">{w}</span>
-                <span className="lm-dot lm-dot-r" />
-              </button>
-            ))}
+            {round.left.map((w, i) => {
+              const c = byLeft.get(i);
+              const state = c ? (c.correct ? "matched" : "wrong") : "free";
+              return (
+                <button
+                  key={i}
+                  ref={(el) => (leftRefs.current[i] = el)}
+                  className={"lm-node" + (state !== "free" ? " " + state : "")}
+                  title={state === "wrong" ? "Not quite — tap to remove" : undefined}
+                  onPointerDown={state === "free" ? (e) => startConnect("left", i, e) : undefined}
+                  onClick={state === "wrong" ? () => removeConn(i) : undefined}
+                >
+                  {round.emojis[i] && <span className="lm-emoji">{round.emojis[i]}</span>}
+                  <span className="lm-word">{w}</span>
+                  <span className="lm-dot lm-dot-r" />
+                </button>
+              );
+            })}
           </div>
 
           <div className="lm-col lm-right">
             {round.right.map((w, r) => {
-              const owner = round.rightOrder[r];
+              const c = byRight.get(r);
+              const state = c ? (c.correct ? "matched" : "wrong") : "free";
               return (
                 <button
                   key={r}
                   ref={(el) => (rightRefs.current[r] = el)}
-                  className={"lm-node lm-node-r" + (isMatched(mo, owner) ? " matched" : "")}
-                  onPointerDown={(e) => startConnect("right", r, e)}
+                  className={"lm-node lm-node-r" + (state !== "free" ? " " + state : "")}
+                  title={state === "wrong" ? "Not quite — tap to remove" : undefined}
+                  onPointerDown={state === "free" ? (e) => startConnect("right", r, e) : undefined}
+                  onClick={state === "wrong" && c ? () => removeConn(c.left) : undefined}
                 >
                   <span className="lm-dot lm-dot-l" />
                   <span className="lm-word">{w}</span>

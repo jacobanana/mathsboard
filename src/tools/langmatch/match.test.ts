@@ -7,15 +7,20 @@ import {
   DEFAULT_COUNT,
   MAX_COUNT,
   MIN_COUNT,
+  allMatched,
   clampCount,
+  connectPatch,
+  connections,
+  connectionSlot,
+  correctCount,
   correctSlotFor,
   deriveRound,
+  disconnectPatch,
   isConnectionCorrect,
-  isMatched,
-  matchPatch,
-  matchedCount,
+  leftIsCorrect,
   newRoundPatch,
-  pruneMatches,
+  occupiedRightSlots,
+  pruneConnections,
   resetSessionPatch,
   roundSize,
   type MatchObj,
@@ -86,31 +91,63 @@ describe("connection validity", () => {
   });
 });
 
-describe("matched state + patches", () => {
-  it("matchPatch marks a left word, isMatched reads it", () => {
-    const o = obj({ ...matchPatch(2) });
-    expect(isMatched(o, 2)).toBe(true);
-    expect(isMatched(o, 0)).toBe(false);
-    expect(matchedCount(o, 5)).toBe(1);
+describe("connections + patches", () => {
+  it("connectPatch joins a left word to a right slot; connectionSlot reads it", () => {
+    const o = obj({ ...connectPatch(2, 4) });
+    expect(connectionSlot(o, 2)).toBe(4);
+    expect(connectionSlot(o, 0)).toBeNull();
   });
 
-  it("pruneMatches clears every mm: field", () => {
-    const o = obj({ ...matchPatch(0), ...matchPatch(3) });
-    const patch = pruneMatches(o);
-    expect(patch).toEqual({ "mm:0": undefined, "mm:3": undefined });
+  it("keeps BOTH correct and wrong connections, tagged by correctness", () => {
+    const round = deriveRound(obj());
+    const goodSlot = correctSlotFor(round, 0);
+    const badSlot = (goodSlot + 1) % round.items.length;
+    const o = obj({ ...connectPatch(0, goodSlot), ...connectPatch(1, badSlot) });
+    const cs = connections(round, o);
+    expect(cs).toEqual(
+      expect.arrayContaining([
+        { left: 0, right: goodSlot, correct: true },
+        { left: 1, right: badSlot, correct: false },
+      ]),
+    );
+    expect(leftIsCorrect(round, o, 0)).toBe(true);
+    expect(leftIsCorrect(round, o, 1)).toBe(false);
+    // only the correct one counts toward completion
+    expect(correctCount(round, o)).toBe(1);
+    expect(occupiedRightSlots(round, o)).toEqual(new Set([goodSlot, badSlot]));
   });
 
-  it("newRound bumps round and clears matches", () => {
-    const o = obj({ round: 1, ...matchPatch(1) });
+  it("disconnectPatch removes a connection", () => {
+    const patch = disconnectPatch(1);
+    expect(patch).toEqual({ "mc:1": undefined });
+  });
+
+  it("allMatched is true only when every left is correctly joined", () => {
+    const round = deriveRound(obj());
+    const patch: Record<string, unknown> = {};
+    for (let i = 0; i < round.items.length; i++) patch[`mc:${i}`] = correctSlotFor(round, i);
+    expect(allMatched(obj({ ...patch }))).toBe(true);
+    // break one → not done
+    patch["mc:0"] = (correctSlotFor(round, 0) + 1) % round.items.length;
+    expect(allMatched(obj({ ...patch }))).toBe(false);
+  });
+
+  it("pruneConnections clears every mc: field", () => {
+    const o = obj({ ...connectPatch(0, 1), ...connectPatch(3, 2) });
+    expect(pruneConnections(o)).toEqual({ "mc:0": undefined, "mc:3": undefined });
+  });
+
+  it("newRound bumps round and clears connections", () => {
+    const o = obj({ round: 1, ...connectPatch(1, 0) });
     const patch = newRoundPatch(o);
     expect(patch.round).toBe(2);
-    expect(patch["mm:1"]).toBeUndefined();
+    expect(patch["mc:1"]).toBeUndefined();
   });
 
-  it("reset clears matches without touching round", () => {
-    const o = obj({ round: 3, ...matchPatch(0) });
+  it("reset clears connections without touching round", () => {
+    const o = obj({ round: 3, ...connectPatch(0, 2) });
     const patch = resetSessionPatch(o);
-    expect(patch).toEqual({ "mm:0": undefined });
+    expect(patch).toEqual({ "mc:0": undefined });
     expect(patch).not.toHaveProperty("round");
   });
 });
