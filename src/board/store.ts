@@ -41,10 +41,13 @@ import { migrateDocument } from "@/board/migrations";
 import { localRepository } from "@/board/persistence/LocalBoardRepository";
 import { theme } from "@/styles/theme";
 import * as session from "@/collab/session";
-import { SEED_ORIGIN } from "@/collab/docModel";
+import { LOCAL_ORIGIN, SEED_ORIGIN } from "@/collab/docModel";
 import { useCollabStore } from "@/collab/collabStore";
 import { getStoredName } from "@/collab/profile";
 import { track, trackBoardActivated } from "@/analytics";
+import { IS_LANGUAGE } from "@/subject";
+import { setBoardPacks, importedPacks } from "@/lang/content/registry";
+import { packsUsedBy, dedupePacks } from "@/lang/content/embed";
 
 /**
  * The current selection. Holds object ids AND stroke ids so freehand "arcs" can
@@ -973,6 +976,45 @@ export const useBoardStore = create<BoardState>((set, get) => {
   };
 });
 
+// --- custom-content <-> board wiring (language board) -----------------------
+// Two directions, both funnelled through onBoardChange so every path (load,
+// open, join, remote sync, local edit) is covered by one place:
+//   • REGISTER — make the packs a board carries available so its widgets
+//     resolve, even for someone who never imported them.
+//   • EMBED — on the author's own edits, keep the board's embedded set equal to
+//     the imported packs its widgets now use, so Save/Share carry the content.
+const samePackIds = (
+  a: NonNullable<BoardDocument["contentPacks"]>,
+  b: NonNullable<BoardDocument["contentPacks"]>,
+): boolean => {
+  if (a.length !== b.length) return false;
+  const ids = new Set(a.map((p) => p.id));
+  return b.every((p) => ids.has(p.id));
+};
+
+function syncBoardContent(board: BoardDocument, origin: unknown): void {
+  if (!IS_LANGUAGE) return;
+  // REGISTER: whatever the board carries (a no-op when unchanged).
+  setBoardPacks(Array.isArray(board.contentPacks) ? board.contentPacks : []);
+  // EMBED: only react to THIS user's edits — remote/seed writes are already
+  // authored elsewhere, and reacting to them would have every peer race to
+  // rewrite the same value.
+  if (origin !== LOCAL_ORIGIN) return;
+  const available = dedupePacks([...importedPacks(), ...(board.contentPacks ?? [])]);
+  const used = packsUsedBy(board.objects, available);
+  const current = board.contentPacks ?? [];
+  if (samePackIds(used, current)) return;
+  // Defer the write: mutating the doc from inside its own change callback is
+  // avoided, and the resulting SEED-origin change comes back here as a no-op.
+  queueMicrotask(() => {
+    try {
+      session.setContentPacks(used.length > 0 ? used : undefined);
+    } catch {
+      /* the board was swapped out before the microtask ran — nothing to embed */
+    }
+  });
+}
+
 // --- Yjs session -> store wiring --------------------------------------------
 // Every committed transaction (local edit, remote edit, undo/redo, seed) lands
 // here with the fresh mirror. Keep the selection valid (drop ids whose shape no
@@ -985,6 +1027,7 @@ session.registerSessionCallbacks({
     // current document migrateDocument returns the SAME reference, so this is a
     // cheap no-op that preserves the mirror's referential stability.
     const board = migrateDocument(rawBoard);
+    syncBoardContent(board, origin);
     const state = useBoardStore.getState();
     const objIds = new Set(board.objects.map((o) => o.id));
     const strokeIds = new Set(board.strokes.map((s) => s.id));

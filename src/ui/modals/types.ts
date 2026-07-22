@@ -26,7 +26,9 @@ export type ModalState =
   | { kind: "help" }
   | { kind: "about" }
   // Language board only: choose the languages when starting a new board.
-  | { kind: "langNew" };
+  | { kind: "langNew" }
+  // Language board only: create/import custom content packs.
+  | { kind: "content" };
 
 /** What a modal body can do to the router. */
 export interface ModalApi {

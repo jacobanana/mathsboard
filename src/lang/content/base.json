@@ -1,0 +1,3646 @@
+{
+  "$schema": "https://mathsboard.mixedmode.ch/schemas/language-content.schema.json",
+  "formatVersion": 1,
+  "id": "base",
+  "name": "Base content — English & French",
+  "description": "The content that ships with the Language Board: vocabulary, sentences and verb conjugations for English and French.",
+  "languages": [
+    {
+      "code": "en",
+      "name": "English",
+      "nativeName": "English",
+      "flag": "🇬🇧"
+    },
+    {
+      "code": "fr",
+      "name": "French",
+      "nativeName": "Français",
+      "flag": "🇫🇷"
+    }
+  ],
+  "categories": [
+    {
+      "id": "greetings",
+      "label": "Greetings",
+      "emoji": "👋"
+    },
+    {
+      "id": "confidence",
+      "label": "Confidence",
+      "emoji": "💪"
+    },
+    {
+      "id": "feelings",
+      "label": "Feelings",
+      "emoji": "😊"
+    },
+    {
+      "id": "numbers",
+      "label": "Numbers",
+      "emoji": "🔢"
+    },
+    {
+      "id": "colours",
+      "label": "Colours",
+      "emoji": "🎨"
+    },
+    {
+      "id": "animals",
+      "label": "Animals",
+      "emoji": "🐾"
+    },
+    {
+      "id": "food",
+      "label": "Food & drink",
+      "emoji": "🍎"
+    },
+    {
+      "id": "family",
+      "label": "Family",
+      "emoji": "👨‍👩‍👧"
+    },
+    {
+      "id": "body",
+      "label": "Body",
+      "emoji": "🧍"
+    },
+    {
+      "id": "clothes",
+      "label": "Clothes",
+      "emoji": "👕"
+    },
+    {
+      "id": "school",
+      "label": "School",
+      "emoji": "🏫"
+    },
+    {
+      "id": "home",
+      "label": "Home",
+      "emoji": "🏠"
+    },
+    {
+      "id": "weather",
+      "label": "Weather",
+      "emoji": "🌤️"
+    },
+    {
+      "id": "nature",
+      "label": "Nature",
+      "emoji": "🌳"
+    },
+    {
+      "id": "sport",
+      "label": "Games & sport",
+      "emoji": "⚽"
+    },
+    {
+      "id": "time",
+      "label": "Days & time",
+      "emoji": "📅"
+    },
+    {
+      "id": "actions",
+      "label": "Actions",
+      "emoji": "🏃"
+    },
+    {
+      "id": "describing",
+      "label": "Describing",
+      "emoji": "↔️"
+    },
+    {
+      "id": "pronouns",
+      "label": "Pronouns",
+      "emoji": "🧑"
+    },
+    {
+      "id": "prepositions",
+      "label": "Prepositions",
+      "emoji": "📍"
+    },
+    {
+      "id": "questions",
+      "label": "Question words",
+      "emoji": "❓"
+    },
+    {
+      "id": "connectors",
+      "label": "Linking words",
+      "emoji": "🔗"
+    }
+  ],
+  "pronouns": {
+    "fr": [
+      "je",
+      "tu",
+      "il",
+      "nous",
+      "vous",
+      "ils"
+    ],
+    "en": [
+      "I",
+      "you",
+      "he",
+      "we",
+      "you",
+      "they"
+    ]
+  },
+  "vocab": [
+    {
+      "category": "greetings",
+      "level": "basic",
+      "emoji": "👋",
+      "terms": {
+        "en": "hello",
+        "fr": "bonjour"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "basic",
+      "emoji": "🙋",
+      "terms": {
+        "en": "hi",
+        "fr": "salut"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "basic",
+      "emoji": "✅",
+      "terms": {
+        "en": "yes",
+        "fr": "oui"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "basic",
+      "emoji": "❌",
+      "terms": {
+        "en": "no",
+        "fr": "non"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "basic",
+      "emoji": "🙏",
+      "terms": {
+        "en": "please",
+        "fr": "s'il te plaît"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "basic",
+      "emoji": "😊",
+      "terms": {
+        "en": "thank you",
+        "fr": "merci"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "basic",
+      "emoji": "👋",
+      "terms": {
+        "en": "goodbye",
+        "fr": "au revoir"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "medium",
+      "emoji": "🌅",
+      "terms": {
+        "en": "good morning",
+        "fr": "bonjour"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "medium",
+      "emoji": "🌆",
+      "terms": {
+        "en": "good evening",
+        "fr": "bonsoir"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "medium",
+      "emoji": "🌙",
+      "terms": {
+        "en": "good night",
+        "fr": "bonne nuit"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "medium",
+      "terms": {
+        "en": "sorry",
+        "fr": "pardon"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "medium",
+      "terms": {
+        "en": "excuse me",
+        "fr": "excusez-moi"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "advanced",
+      "terms": {
+        "en": "you're welcome",
+        "fr": "de rien"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "advanced",
+      "terms": {
+        "en": "see you soon",
+        "fr": "à bientôt"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "advanced",
+      "terms": {
+        "en": "welcome",
+        "fr": "bienvenue"
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "basic",
+      "emoji": "🎉",
+      "terms": {
+        "en": "well done",
+        "fr": "bravo"
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "basic",
+      "emoji": "🌟",
+      "terms": {
+        "en": "great",
+        "fr": "super"
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "basic",
+      "emoji": "😎",
+      "terms": {
+        "en": "cool",
+        "fr": "génial"
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "medium",
+      "emoji": "✨",
+      "terms": {
+        "en": "brilliant",
+        "fr": "excellent"
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "medium",
+      "terms": {
+        "en": "of course",
+        "fr": "bien sûr"
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "advanced",
+      "emoji": "💪",
+      "terms": {
+        "en": "keep going",
+        "fr": "continue"
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "advanced",
+      "terms": {
+        "en": "almost",
+        "fr": "presque"
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "basic",
+      "emoji": "😀",
+      "terms": {
+        "en": "happy",
+        "fr": "content"
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "basic",
+      "emoji": "😢",
+      "terms": {
+        "en": "sad",
+        "fr": "triste"
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "basic",
+      "emoji": "😴",
+      "terms": {
+        "en": "tired",
+        "fr": "fatigué"
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "medium",
+      "emoji": "🍽️",
+      "terms": {
+        "en": "hungry",
+        "fr": "affamé"
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "medium",
+      "emoji": "🥤",
+      "terms": {
+        "en": "thirsty",
+        "fr": "assoiffé"
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "medium",
+      "emoji": "😨",
+      "terms": {
+        "en": "scared",
+        "fr": "effrayé"
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "medium",
+      "emoji": "😠",
+      "terms": {
+        "en": "angry",
+        "fr": "fâché"
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "advanced",
+      "emoji": "🤩",
+      "terms": {
+        "en": "excited",
+        "fr": "excité"
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "advanced",
+      "emoji": "🥱",
+      "terms": {
+        "en": "bored",
+        "fr": "ennuyé"
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "advanced",
+      "emoji": "😌",
+      "terms": {
+        "en": "proud",
+        "fr": "fier"
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "advanced",
+      "emoji": "😲",
+      "terms": {
+        "en": "surprised",
+        "fr": "surpris"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "basic",
+      "emoji": "1️⃣",
+      "terms": {
+        "en": "one",
+        "fr": "un"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "basic",
+      "emoji": "2️⃣",
+      "terms": {
+        "en": "two",
+        "fr": "deux"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "basic",
+      "emoji": "3️⃣",
+      "terms": {
+        "en": "three",
+        "fr": "trois"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "basic",
+      "emoji": "4️⃣",
+      "terms": {
+        "en": "four",
+        "fr": "quatre"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "basic",
+      "emoji": "5️⃣",
+      "terms": {
+        "en": "five",
+        "fr": "cinq"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "basic",
+      "emoji": "6️⃣",
+      "terms": {
+        "en": "six",
+        "fr": "six"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "basic",
+      "emoji": "7️⃣",
+      "terms": {
+        "en": "seven",
+        "fr": "sept"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "basic",
+      "emoji": "8️⃣",
+      "terms": {
+        "en": "eight",
+        "fr": "huit"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "basic",
+      "emoji": "9️⃣",
+      "terms": {
+        "en": "nine",
+        "fr": "neuf"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "basic",
+      "emoji": "🔟",
+      "terms": {
+        "en": "ten",
+        "fr": "dix"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "medium",
+      "terms": {
+        "en": "eleven",
+        "fr": "onze"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "medium",
+      "terms": {
+        "en": "twelve",
+        "fr": "douze"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "medium",
+      "terms": {
+        "en": "thirteen",
+        "fr": "treize"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "medium",
+      "terms": {
+        "en": "fifteen",
+        "fr": "quinze"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "medium",
+      "terms": {
+        "en": "twenty",
+        "fr": "vingt"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "advanced",
+      "terms": {
+        "en": "thirty",
+        "fr": "trente"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "advanced",
+      "terms": {
+        "en": "fifty",
+        "fr": "cinquante"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "advanced",
+      "terms": {
+        "en": "hundred",
+        "fr": "cent"
+      }
+    },
+    {
+      "category": "numbers",
+      "level": "advanced",
+      "terms": {
+        "en": "thousand",
+        "fr": "mille"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "basic",
+      "emoji": "🔴",
+      "terms": {
+        "en": "red",
+        "fr": "rouge"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "basic",
+      "emoji": "🔵",
+      "terms": {
+        "en": "blue",
+        "fr": "bleu"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "basic",
+      "emoji": "🟢",
+      "terms": {
+        "en": "green",
+        "fr": "vert"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "basic",
+      "emoji": "🟡",
+      "terms": {
+        "en": "yellow",
+        "fr": "jaune"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "basic",
+      "emoji": "⚫",
+      "terms": {
+        "en": "black",
+        "fr": "noir"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "basic",
+      "emoji": "⚪",
+      "terms": {
+        "en": "white",
+        "fr": "blanc"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "medium",
+      "emoji": "🟠",
+      "terms": {
+        "en": "orange",
+        "fr": "orange"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "medium",
+      "emoji": "🟣",
+      "terms": {
+        "en": "purple",
+        "fr": "violet"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "medium",
+      "emoji": "🩷",
+      "terms": {
+        "en": "pink",
+        "fr": "rose"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "medium",
+      "emoji": "🟤",
+      "terms": {
+        "en": "brown",
+        "fr": "marron"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "medium",
+      "terms": {
+        "en": "grey",
+        "fr": "gris"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "advanced",
+      "terms": {
+        "en": "gold",
+        "fr": "doré"
+      }
+    },
+    {
+      "category": "colours",
+      "level": "advanced",
+      "terms": {
+        "en": "silver",
+        "fr": "argenté"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "basic",
+      "emoji": "🐶",
+      "terms": {
+        "en": "dog",
+        "fr": "chien"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "basic",
+      "emoji": "🐱",
+      "terms": {
+        "en": "cat",
+        "fr": "chat"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "basic",
+      "emoji": "🐦",
+      "terms": {
+        "en": "bird",
+        "fr": "oiseau"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "basic",
+      "emoji": "🐟",
+      "terms": {
+        "en": "fish",
+        "fr": "poisson"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "basic",
+      "emoji": "🐰",
+      "terms": {
+        "en": "rabbit",
+        "fr": "lapin"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "medium",
+      "emoji": "🐴",
+      "terms": {
+        "en": "horse",
+        "fr": "cheval"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "medium",
+      "emoji": "🐮",
+      "terms": {
+        "en": "cow",
+        "fr": "vache"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "medium",
+      "emoji": "🐷",
+      "terms": {
+        "en": "pig",
+        "fr": "cochon"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "medium",
+      "emoji": "🐑",
+      "terms": {
+        "en": "sheep",
+        "fr": "mouton"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "medium",
+      "emoji": "🐭",
+      "terms": {
+        "en": "mouse",
+        "fr": "souris"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "advanced",
+      "emoji": "🐬",
+      "terms": {
+        "en": "dolphin",
+        "fr": "dauphin"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "advanced",
+      "emoji": "🦅",
+      "terms": {
+        "en": "eagle",
+        "fr": "aigle"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "advanced",
+      "emoji": "🐍",
+      "terms": {
+        "en": "snake",
+        "fr": "serpent"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "advanced",
+      "emoji": "🐺",
+      "terms": {
+        "en": "wolf",
+        "fr": "loup"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "advanced",
+      "emoji": "🦊",
+      "terms": {
+        "en": "fox",
+        "fr": "renard"
+      }
+    },
+    {
+      "category": "food",
+      "level": "basic",
+      "emoji": "🍎",
+      "terms": {
+        "en": "apple",
+        "fr": "pomme"
+      }
+    },
+    {
+      "category": "food",
+      "level": "basic",
+      "emoji": "🍞",
+      "terms": {
+        "en": "bread",
+        "fr": "pain"
+      }
+    },
+    {
+      "category": "food",
+      "level": "basic",
+      "emoji": "💧",
+      "terms": {
+        "en": "water",
+        "fr": "eau"
+      }
+    },
+    {
+      "category": "food",
+      "level": "basic",
+      "emoji": "🥛",
+      "terms": {
+        "en": "milk",
+        "fr": "lait"
+      }
+    },
+    {
+      "category": "food",
+      "level": "medium",
+      "emoji": "🧀",
+      "terms": {
+        "en": "cheese",
+        "fr": "fromage"
+      }
+    },
+    {
+      "category": "food",
+      "level": "medium",
+      "emoji": "🥚",
+      "terms": {
+        "en": "egg",
+        "fr": "œuf"
+      }
+    },
+    {
+      "category": "food",
+      "level": "medium",
+      "emoji": "🍫",
+      "terms": {
+        "en": "chocolate",
+        "fr": "chocolat"
+      }
+    },
+    {
+      "category": "food",
+      "level": "medium",
+      "emoji": "🍓",
+      "terms": {
+        "en": "strawberry",
+        "fr": "fraise"
+      }
+    },
+    {
+      "category": "food",
+      "level": "medium",
+      "emoji": "🍏",
+      "terms": {
+        "en": "pear",
+        "fr": "poire"
+      }
+    },
+    {
+      "category": "food",
+      "level": "advanced",
+      "emoji": "🥕",
+      "terms": {
+        "en": "vegetable",
+        "fr": "légume"
+      }
+    },
+    {
+      "category": "food",
+      "level": "advanced",
+      "emoji": "🍖",
+      "terms": {
+        "en": "meat",
+        "fr": "viande"
+      }
+    },
+    {
+      "category": "food",
+      "level": "advanced",
+      "emoji": "🥐",
+      "terms": {
+        "en": "breakfast",
+        "fr": "petit-déjeuner"
+      }
+    },
+    {
+      "category": "food",
+      "level": "advanced",
+      "emoji": "🍽️",
+      "terms": {
+        "en": "meal",
+        "fr": "repas"
+      }
+    },
+    {
+      "category": "family",
+      "level": "basic",
+      "emoji": "👩",
+      "terms": {
+        "en": "mother",
+        "fr": "mère"
+      }
+    },
+    {
+      "category": "family",
+      "level": "basic",
+      "emoji": "👨",
+      "terms": {
+        "en": "father",
+        "fr": "père"
+      }
+    },
+    {
+      "category": "family",
+      "level": "basic",
+      "emoji": "👧",
+      "terms": {
+        "en": "sister",
+        "fr": "sœur"
+      }
+    },
+    {
+      "category": "family",
+      "level": "basic",
+      "emoji": "👦",
+      "terms": {
+        "en": "brother",
+        "fr": "frère"
+      }
+    },
+    {
+      "category": "family",
+      "level": "medium",
+      "emoji": "👵",
+      "terms": {
+        "en": "grandmother",
+        "fr": "grand-mère"
+      }
+    },
+    {
+      "category": "family",
+      "level": "medium",
+      "emoji": "👴",
+      "terms": {
+        "en": "grandfather",
+        "fr": "grand-père"
+      }
+    },
+    {
+      "category": "family",
+      "level": "medium",
+      "emoji": "👶",
+      "terms": {
+        "en": "baby",
+        "fr": "bébé"
+      }
+    },
+    {
+      "category": "family",
+      "level": "medium",
+      "emoji": "👫",
+      "terms": {
+        "en": "friend",
+        "fr": "ami"
+      }
+    },
+    {
+      "category": "family",
+      "level": "advanced",
+      "terms": {
+        "en": "cousin",
+        "fr": "cousin"
+      }
+    },
+    {
+      "category": "family",
+      "level": "advanced",
+      "terms": {
+        "en": "uncle",
+        "fr": "oncle"
+      }
+    },
+    {
+      "category": "family",
+      "level": "advanced",
+      "terms": {
+        "en": "aunt",
+        "fr": "tante"
+      }
+    },
+    {
+      "category": "family",
+      "level": "advanced",
+      "terms": {
+        "en": "parents",
+        "fr": "parents"
+      }
+    },
+    {
+      "category": "body",
+      "level": "basic",
+      "emoji": "🙂",
+      "terms": {
+        "en": "head",
+        "fr": "tête"
+      }
+    },
+    {
+      "category": "body",
+      "level": "basic",
+      "emoji": "✋",
+      "terms": {
+        "en": "hand",
+        "fr": "main"
+      }
+    },
+    {
+      "category": "body",
+      "level": "basic",
+      "emoji": "🦶",
+      "terms": {
+        "en": "foot",
+        "fr": "pied"
+      }
+    },
+    {
+      "category": "body",
+      "level": "basic",
+      "emoji": "👁️",
+      "terms": {
+        "en": "eye",
+        "fr": "œil"
+      }
+    },
+    {
+      "category": "body",
+      "level": "medium",
+      "emoji": "👂",
+      "terms": {
+        "en": "ear",
+        "fr": "oreille"
+      }
+    },
+    {
+      "category": "body",
+      "level": "medium",
+      "emoji": "👃",
+      "terms": {
+        "en": "nose",
+        "fr": "nez"
+      }
+    },
+    {
+      "category": "body",
+      "level": "medium",
+      "emoji": "👄",
+      "terms": {
+        "en": "mouth",
+        "fr": "bouche"
+      }
+    },
+    {
+      "category": "body",
+      "level": "medium",
+      "emoji": "💪",
+      "terms": {
+        "en": "arm",
+        "fr": "bras"
+      }
+    },
+    {
+      "category": "body",
+      "level": "medium",
+      "emoji": "🦵",
+      "terms": {
+        "en": "leg",
+        "fr": "jambe"
+      }
+    },
+    {
+      "category": "body",
+      "level": "medium",
+      "emoji": "💇",
+      "terms": {
+        "en": "hair",
+        "fr": "cheveux"
+      }
+    },
+    {
+      "category": "body",
+      "level": "advanced",
+      "terms": {
+        "en": "finger",
+        "fr": "doigt"
+      }
+    },
+    {
+      "category": "body",
+      "level": "advanced",
+      "terms": {
+        "en": "knee",
+        "fr": "genou"
+      }
+    },
+    {
+      "category": "body",
+      "level": "advanced",
+      "emoji": "🦷",
+      "terms": {
+        "en": "tooth",
+        "fr": "dent"
+      }
+    },
+    {
+      "category": "body",
+      "level": "advanced",
+      "terms": {
+        "en": "shoulder",
+        "fr": "épaule"
+      }
+    },
+    {
+      "category": "clothes",
+      "level": "basic",
+      "emoji": "👕",
+      "terms": {
+        "en": "t-shirt",
+        "fr": "tee-shirt"
+      }
+    },
+    {
+      "category": "clothes",
+      "level": "basic",
+      "emoji": "👖",
+      "terms": {
+        "en": "trousers",
+        "fr": "pantalon"
+      }
+    },
+    {
+      "category": "clothes",
+      "level": "basic",
+      "emoji": "👟",
+      "terms": {
+        "en": "shoes",
+        "fr": "chaussures"
+      }
+    },
+    {
+      "category": "clothes",
+      "level": "basic",
+      "emoji": "🎩",
+      "terms": {
+        "en": "hat",
+        "fr": "chapeau"
+      }
+    },
+    {
+      "category": "clothes",
+      "level": "medium",
+      "emoji": "👗",
+      "terms": {
+        "en": "dress",
+        "fr": "robe"
+      }
+    },
+    {
+      "category": "clothes",
+      "level": "medium",
+      "emoji": "🧥",
+      "terms": {
+        "en": "coat",
+        "fr": "manteau"
+      }
+    },
+    {
+      "category": "clothes",
+      "level": "medium",
+      "emoji": "🧦",
+      "terms": {
+        "en": "socks",
+        "fr": "chaussettes"
+      }
+    },
+    {
+      "category": "clothes",
+      "level": "medium",
+      "emoji": "🧤",
+      "terms": {
+        "en": "gloves",
+        "fr": "gants"
+      }
+    },
+    {
+      "category": "clothes",
+      "level": "medium",
+      "emoji": "🧣",
+      "terms": {
+        "en": "scarf",
+        "fr": "écharpe"
+      }
+    },
+    {
+      "category": "clothes",
+      "level": "advanced",
+      "terms": {
+        "en": "jumper",
+        "fr": "pull"
+      }
+    },
+    {
+      "category": "clothes",
+      "level": "advanced",
+      "emoji": "🥾",
+      "terms": {
+        "en": "boots",
+        "fr": "bottes"
+      }
+    },
+    {
+      "category": "clothes",
+      "level": "advanced",
+      "terms": {
+        "en": "jacket",
+        "fr": "veste"
+      }
+    },
+    {
+      "category": "school",
+      "level": "basic",
+      "emoji": "📕",
+      "terms": {
+        "en": "book",
+        "fr": "livre"
+      }
+    },
+    {
+      "category": "school",
+      "level": "basic",
+      "emoji": "✏️",
+      "terms": {
+        "en": "pencil",
+        "fr": "crayon"
+      }
+    },
+    {
+      "category": "school",
+      "level": "basic",
+      "emoji": "🖊️",
+      "terms": {
+        "en": "pen",
+        "fr": "stylo"
+      }
+    },
+    {
+      "category": "school",
+      "level": "basic",
+      "emoji": "🎒",
+      "terms": {
+        "en": "bag",
+        "fr": "sac"
+      }
+    },
+    {
+      "category": "school",
+      "level": "medium",
+      "emoji": "📓",
+      "terms": {
+        "en": "notebook",
+        "fr": "cahier"
+      }
+    },
+    {
+      "category": "school",
+      "level": "medium",
+      "emoji": "🪑",
+      "terms": {
+        "en": "chair",
+        "fr": "chaise"
+      }
+    },
+    {
+      "category": "school",
+      "level": "medium",
+      "emoji": "🧑‍🏫",
+      "terms": {
+        "en": "teacher",
+        "fr": "professeur"
+      }
+    },
+    {
+      "category": "school",
+      "level": "medium",
+      "emoji": "🏫",
+      "terms": {
+        "en": "school",
+        "fr": "école"
+      }
+    },
+    {
+      "category": "school",
+      "level": "advanced",
+      "terms": {
+        "en": "homework",
+        "fr": "devoirs"
+      }
+    },
+    {
+      "category": "school",
+      "level": "advanced",
+      "terms": {
+        "en": "lesson",
+        "fr": "leçon"
+      }
+    },
+    {
+      "category": "school",
+      "level": "advanced",
+      "emoji": "📏",
+      "terms": {
+        "en": "ruler",
+        "fr": "règle"
+      }
+    },
+    {
+      "category": "school",
+      "level": "advanced",
+      "terms": {
+        "en": "rubber",
+        "fr": "gomme"
+      }
+    },
+    {
+      "category": "home",
+      "level": "basic",
+      "emoji": "🏠",
+      "terms": {
+        "en": "house",
+        "fr": "maison"
+      }
+    },
+    {
+      "category": "home",
+      "level": "basic",
+      "emoji": "🚪",
+      "terms": {
+        "en": "door",
+        "fr": "porte"
+      }
+    },
+    {
+      "category": "home",
+      "level": "basic",
+      "emoji": "🪟",
+      "terms": {
+        "en": "window",
+        "fr": "fenêtre"
+      }
+    },
+    {
+      "category": "home",
+      "level": "basic",
+      "emoji": "🛏️",
+      "terms": {
+        "en": "bed",
+        "fr": "lit"
+      }
+    },
+    {
+      "category": "home",
+      "level": "medium",
+      "emoji": "🍳",
+      "terms": {
+        "en": "kitchen",
+        "fr": "cuisine"
+      }
+    },
+    {
+      "category": "home",
+      "level": "medium",
+      "emoji": "🏡",
+      "terms": {
+        "en": "garden",
+        "fr": "jardin"
+      }
+    },
+    {
+      "category": "home",
+      "level": "medium",
+      "emoji": "🔑",
+      "terms": {
+        "en": "key",
+        "fr": "clé"
+      }
+    },
+    {
+      "category": "home",
+      "level": "medium",
+      "emoji": "💡",
+      "terms": {
+        "en": "lamp",
+        "fr": "lampe"
+      }
+    },
+    {
+      "category": "home",
+      "level": "advanced",
+      "emoji": "🛁",
+      "terms": {
+        "en": "bathroom",
+        "fr": "salle de bain"
+      }
+    },
+    {
+      "category": "home",
+      "level": "advanced",
+      "terms": {
+        "en": "stairs",
+        "fr": "escalier"
+      }
+    },
+    {
+      "category": "home",
+      "level": "advanced",
+      "terms": {
+        "en": "wall",
+        "fr": "mur"
+      }
+    },
+    {
+      "category": "home",
+      "level": "advanced",
+      "terms": {
+        "en": "roof",
+        "fr": "toit"
+      }
+    },
+    {
+      "category": "weather",
+      "level": "basic",
+      "emoji": "☀️",
+      "terms": {
+        "en": "sun",
+        "fr": "soleil"
+      }
+    },
+    {
+      "category": "weather",
+      "level": "basic",
+      "emoji": "🌧️",
+      "terms": {
+        "en": "rain",
+        "fr": "pluie"
+      }
+    },
+    {
+      "category": "weather",
+      "level": "basic",
+      "emoji": "☁️",
+      "terms": {
+        "en": "cloud",
+        "fr": "nuage"
+      }
+    },
+    {
+      "category": "weather",
+      "level": "basic",
+      "emoji": "💨",
+      "terms": {
+        "en": "wind",
+        "fr": "vent"
+      }
+    },
+    {
+      "category": "weather",
+      "level": "medium",
+      "emoji": "❄️",
+      "terms": {
+        "en": "snow",
+        "fr": "neige"
+      }
+    },
+    {
+      "category": "weather",
+      "level": "medium",
+      "emoji": "🥵",
+      "terms": {
+        "en": "hot",
+        "fr": "chaud"
+      }
+    },
+    {
+      "category": "weather",
+      "level": "medium",
+      "emoji": "🥶",
+      "terms": {
+        "en": "cold",
+        "fr": "froid"
+      }
+    },
+    {
+      "category": "weather",
+      "level": "advanced",
+      "emoji": "⛈️",
+      "terms": {
+        "en": "storm",
+        "fr": "orage"
+      }
+    },
+    {
+      "category": "weather",
+      "level": "advanced",
+      "emoji": "🌈",
+      "terms": {
+        "en": "rainbow",
+        "fr": "arc-en-ciel"
+      }
+    },
+    {
+      "category": "weather",
+      "level": "advanced",
+      "emoji": "🌫️",
+      "terms": {
+        "en": "fog",
+        "fr": "brouillard"
+      }
+    },
+    {
+      "category": "nature",
+      "level": "basic",
+      "emoji": "🌳",
+      "terms": {
+        "en": "tree",
+        "fr": "arbre"
+      }
+    },
+    {
+      "category": "nature",
+      "level": "basic",
+      "emoji": "🌸",
+      "terms": {
+        "en": "flower",
+        "fr": "fleur"
+      }
+    },
+    {
+      "category": "nature",
+      "level": "basic",
+      "emoji": "🌙",
+      "terms": {
+        "en": "moon",
+        "fr": "lune"
+      }
+    },
+    {
+      "category": "nature",
+      "level": "basic",
+      "emoji": "⭐",
+      "terms": {
+        "en": "star",
+        "fr": "étoile"
+      }
+    },
+    {
+      "category": "nature",
+      "level": "medium",
+      "emoji": "🌊",
+      "terms": {
+        "en": "sea",
+        "fr": "mer"
+      }
+    },
+    {
+      "category": "nature",
+      "level": "medium",
+      "emoji": "⛰️",
+      "terms": {
+        "en": "mountain",
+        "fr": "montagne"
+      }
+    },
+    {
+      "category": "nature",
+      "level": "medium",
+      "emoji": "🏞️",
+      "terms": {
+        "en": "river",
+        "fr": "rivière"
+      }
+    },
+    {
+      "category": "nature",
+      "level": "medium",
+      "emoji": "🍃",
+      "terms": {
+        "en": "leaf",
+        "fr": "feuille"
+      }
+    },
+    {
+      "category": "nature",
+      "level": "advanced",
+      "emoji": "🌲",
+      "terms": {
+        "en": "forest",
+        "fr": "forêt"
+      }
+    },
+    {
+      "category": "nature",
+      "level": "advanced",
+      "emoji": "🏖️",
+      "terms": {
+        "en": "beach",
+        "fr": "plage"
+      }
+    },
+    {
+      "category": "nature",
+      "level": "advanced",
+      "terms": {
+        "en": "field",
+        "fr": "champ"
+      }
+    },
+    {
+      "category": "nature",
+      "level": "advanced",
+      "emoji": "🪨",
+      "terms": {
+        "en": "stone",
+        "fr": "pierre"
+      }
+    },
+    {
+      "category": "sport",
+      "level": "basic",
+      "emoji": "⚽",
+      "terms": {
+        "en": "ball",
+        "fr": "ballon"
+      }
+    },
+    {
+      "category": "sport",
+      "level": "basic",
+      "emoji": "🎮",
+      "terms": {
+        "en": "game",
+        "fr": "jeu"
+      }
+    },
+    {
+      "category": "sport",
+      "level": "basic",
+      "emoji": "🚲",
+      "terms": {
+        "en": "bike",
+        "fr": "vélo"
+      }
+    },
+    {
+      "category": "sport",
+      "level": "medium",
+      "emoji": "🧸",
+      "terms": {
+        "en": "toy",
+        "fr": "jouet"
+      }
+    },
+    {
+      "category": "sport",
+      "level": "medium",
+      "emoji": "🪁",
+      "terms": {
+        "en": "kite",
+        "fr": "cerf-volant"
+      }
+    },
+    {
+      "category": "sport",
+      "level": "medium",
+      "emoji": "🃏",
+      "terms": {
+        "en": "cards",
+        "fr": "cartes"
+      }
+    },
+    {
+      "category": "sport",
+      "level": "medium",
+      "emoji": "🏊",
+      "terms": {
+        "en": "swimming",
+        "fr": "natation"
+      }
+    },
+    {
+      "category": "sport",
+      "level": "advanced",
+      "emoji": "⚽",
+      "terms": {
+        "en": "football",
+        "fr": "football"
+      }
+    },
+    {
+      "category": "sport",
+      "level": "advanced",
+      "emoji": "🏃",
+      "terms": {
+        "en": "running",
+        "fr": "course"
+      }
+    },
+    {
+      "category": "sport",
+      "level": "advanced",
+      "terms": {
+        "en": "team",
+        "fr": "équipe"
+      }
+    },
+    {
+      "category": "sport",
+      "level": "advanced",
+      "emoji": "🏆",
+      "terms": {
+        "en": "winner",
+        "fr": "gagnant"
+      }
+    },
+    {
+      "category": "time",
+      "level": "basic",
+      "terms": {
+        "en": "Monday",
+        "fr": "lundi"
+      }
+    },
+    {
+      "category": "time",
+      "level": "basic",
+      "terms": {
+        "en": "Tuesday",
+        "fr": "mardi"
+      }
+    },
+    {
+      "category": "time",
+      "level": "basic",
+      "terms": {
+        "en": "Wednesday",
+        "fr": "mercredi"
+      }
+    },
+    {
+      "category": "time",
+      "level": "basic",
+      "terms": {
+        "en": "Thursday",
+        "fr": "jeudi"
+      }
+    },
+    {
+      "category": "time",
+      "level": "basic",
+      "terms": {
+        "en": "Friday",
+        "fr": "vendredi"
+      }
+    },
+    {
+      "category": "time",
+      "level": "basic",
+      "terms": {
+        "en": "Saturday",
+        "fr": "samedi"
+      }
+    },
+    {
+      "category": "time",
+      "level": "basic",
+      "terms": {
+        "en": "Sunday",
+        "fr": "dimanche"
+      }
+    },
+    {
+      "category": "time",
+      "level": "medium",
+      "terms": {
+        "en": "today",
+        "fr": "aujourd'hui"
+      }
+    },
+    {
+      "category": "time",
+      "level": "medium",
+      "terms": {
+        "en": "tomorrow",
+        "fr": "demain"
+      }
+    },
+    {
+      "category": "time",
+      "level": "medium",
+      "terms": {
+        "en": "yesterday",
+        "fr": "hier"
+      }
+    },
+    {
+      "category": "time",
+      "level": "medium",
+      "emoji": "🌅",
+      "terms": {
+        "en": "morning",
+        "fr": "matin"
+      }
+    },
+    {
+      "category": "time",
+      "level": "medium",
+      "emoji": "🌙",
+      "terms": {
+        "en": "night",
+        "fr": "nuit"
+      }
+    },
+    {
+      "category": "time",
+      "level": "advanced",
+      "terms": {
+        "en": "week",
+        "fr": "semaine"
+      }
+    },
+    {
+      "category": "time",
+      "level": "advanced",
+      "terms": {
+        "en": "month",
+        "fr": "mois"
+      }
+    },
+    {
+      "category": "time",
+      "level": "advanced",
+      "terms": {
+        "en": "year",
+        "fr": "année"
+      }
+    },
+    {
+      "category": "time",
+      "level": "advanced",
+      "emoji": "⏰",
+      "terms": {
+        "en": "hour",
+        "fr": "heure"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "basic",
+      "terms": {
+        "en": "to be",
+        "fr": "être"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "basic",
+      "terms": {
+        "en": "to have",
+        "fr": "avoir"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "basic",
+      "terms": {
+        "en": "to go",
+        "fr": "aller"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "basic",
+      "emoji": "🍽️",
+      "terms": {
+        "en": "to eat",
+        "fr": "manger"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "basic",
+      "emoji": "🥤",
+      "terms": {
+        "en": "to drink",
+        "fr": "boire"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "medium",
+      "terms": {
+        "en": "to do",
+        "fr": "faire"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "medium",
+      "emoji": "🗣️",
+      "terms": {
+        "en": "to speak",
+        "fr": "parler"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "medium",
+      "emoji": "👀",
+      "terms": {
+        "en": "to see",
+        "fr": "voir"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "medium",
+      "emoji": "❤️",
+      "terms": {
+        "en": "to like",
+        "fr": "aimer"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "medium",
+      "emoji": "🎲",
+      "terms": {
+        "en": "to play",
+        "fr": "jouer"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "advanced",
+      "emoji": "📖",
+      "terms": {
+        "en": "to read",
+        "fr": "lire"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "advanced",
+      "emoji": "✍️",
+      "terms": {
+        "en": "to write",
+        "fr": "écrire"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "advanced",
+      "emoji": "😴",
+      "terms": {
+        "en": "to sleep",
+        "fr": "dormir"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "advanced",
+      "emoji": "🏃",
+      "terms": {
+        "en": "to run",
+        "fr": "courir"
+      }
+    },
+    {
+      "category": "actions",
+      "level": "advanced",
+      "terms": {
+        "en": "to learn",
+        "fr": "apprendre"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "basic",
+      "terms": {
+        "en": "big",
+        "fr": "grand"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "basic",
+      "terms": {
+        "en": "small",
+        "fr": "petit"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "basic",
+      "terms": {
+        "en": "good",
+        "fr": "bon"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "basic",
+      "terms": {
+        "en": "bad",
+        "fr": "mauvais"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "medium",
+      "terms": {
+        "en": "new",
+        "fr": "nouveau"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "medium",
+      "terms": {
+        "en": "old",
+        "fr": "vieux"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "medium",
+      "terms": {
+        "en": "fast",
+        "fr": "rapide"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "medium",
+      "terms": {
+        "en": "slow",
+        "fr": "lent"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "medium",
+      "terms": {
+        "en": "nice",
+        "fr": "gentil"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "advanced",
+      "terms": {
+        "en": "beautiful",
+        "fr": "beau"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "advanced",
+      "terms": {
+        "en": "easy",
+        "fr": "facile"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "advanced",
+      "terms": {
+        "en": "difficult",
+        "fr": "difficile"
+      }
+    },
+    {
+      "category": "describing",
+      "level": "advanced",
+      "terms": {
+        "en": "funny",
+        "fr": "drôle"
+      }
+    },
+    {
+      "category": "pronouns",
+      "level": "basic",
+      "terms": {
+        "en": "I",
+        "fr": "je"
+      }
+    },
+    {
+      "category": "pronouns",
+      "level": "basic",
+      "terms": {
+        "en": "you",
+        "fr": "tu"
+      }
+    },
+    {
+      "category": "pronouns",
+      "level": "basic",
+      "terms": {
+        "en": "he",
+        "fr": "il"
+      }
+    },
+    {
+      "category": "pronouns",
+      "level": "basic",
+      "terms": {
+        "en": "she",
+        "fr": "elle"
+      }
+    },
+    {
+      "category": "pronouns",
+      "level": "medium",
+      "terms": {
+        "en": "we",
+        "fr": "nous"
+      }
+    },
+    {
+      "category": "pronouns",
+      "level": "medium",
+      "terms": {
+        "en": "you (all)",
+        "fr": "vous"
+      }
+    },
+    {
+      "category": "pronouns",
+      "level": "medium",
+      "terms": {
+        "en": "they",
+        "fr": "ils"
+      }
+    },
+    {
+      "category": "pronouns",
+      "level": "advanced",
+      "terms": {
+        "en": "they (girls)",
+        "fr": "elles"
+      }
+    },
+    {
+      "category": "prepositions",
+      "level": "basic",
+      "terms": {
+        "en": "in",
+        "fr": "dans"
+      }
+    },
+    {
+      "category": "prepositions",
+      "level": "basic",
+      "terms": {
+        "en": "on",
+        "fr": "sur"
+      }
+    },
+    {
+      "category": "prepositions",
+      "level": "basic",
+      "terms": {
+        "en": "under",
+        "fr": "sous"
+      }
+    },
+    {
+      "category": "prepositions",
+      "level": "basic",
+      "terms": {
+        "en": "with",
+        "fr": "avec"
+      }
+    },
+    {
+      "category": "prepositions",
+      "level": "medium",
+      "terms": {
+        "en": "without",
+        "fr": "sans"
+      }
+    },
+    {
+      "category": "prepositions",
+      "level": "medium",
+      "terms": {
+        "en": "for",
+        "fr": "pour"
+      }
+    },
+    {
+      "category": "prepositions",
+      "level": "medium",
+      "terms": {
+        "en": "to",
+        "fr": "à"
+      }
+    },
+    {
+      "category": "prepositions",
+      "level": "medium",
+      "terms": {
+        "en": "of",
+        "fr": "de"
+      }
+    },
+    {
+      "category": "prepositions",
+      "level": "advanced",
+      "terms": {
+        "en": "in front of",
+        "fr": "devant"
+      }
+    },
+    {
+      "category": "prepositions",
+      "level": "advanced",
+      "terms": {
+        "en": "behind",
+        "fr": "derrière"
+      }
+    },
+    {
+      "category": "prepositions",
+      "level": "advanced",
+      "terms": {
+        "en": "between",
+        "fr": "entre"
+      }
+    },
+    {
+      "category": "questions",
+      "level": "basic",
+      "terms": {
+        "en": "who",
+        "fr": "qui"
+      }
+    },
+    {
+      "category": "questions",
+      "level": "basic",
+      "terms": {
+        "en": "what",
+        "fr": "quoi"
+      }
+    },
+    {
+      "category": "questions",
+      "level": "basic",
+      "terms": {
+        "en": "where",
+        "fr": "où"
+      }
+    },
+    {
+      "category": "questions",
+      "level": "medium",
+      "terms": {
+        "en": "when",
+        "fr": "quand"
+      }
+    },
+    {
+      "category": "questions",
+      "level": "medium",
+      "terms": {
+        "en": "why",
+        "fr": "pourquoi"
+      }
+    },
+    {
+      "category": "questions",
+      "level": "medium",
+      "terms": {
+        "en": "how",
+        "fr": "comment"
+      }
+    },
+    {
+      "category": "questions",
+      "level": "advanced",
+      "terms": {
+        "en": "how many",
+        "fr": "combien"
+      }
+    },
+    {
+      "category": "questions",
+      "level": "advanced",
+      "terms": {
+        "en": "which",
+        "fr": "quel"
+      }
+    },
+    {
+      "category": "connectors",
+      "level": "basic",
+      "terms": {
+        "en": "and",
+        "fr": "et"
+      }
+    },
+    {
+      "category": "connectors",
+      "level": "basic",
+      "terms": {
+        "en": "or",
+        "fr": "ou"
+      }
+    },
+    {
+      "category": "connectors",
+      "level": "basic",
+      "terms": {
+        "en": "but",
+        "fr": "mais"
+      }
+    },
+    {
+      "category": "connectors",
+      "level": "medium",
+      "terms": {
+        "en": "because",
+        "fr": "parce que"
+      }
+    },
+    {
+      "category": "connectors",
+      "level": "medium",
+      "terms": {
+        "en": "so",
+        "fr": "donc"
+      }
+    },
+    {
+      "category": "connectors",
+      "level": "medium",
+      "terms": {
+        "en": "if",
+        "fr": "si"
+      }
+    },
+    {
+      "category": "connectors",
+      "level": "advanced",
+      "terms": {
+        "en": "then",
+        "fr": "puis"
+      }
+    },
+    {
+      "category": "connectors",
+      "level": "advanced",
+      "terms": {
+        "en": "very",
+        "fr": "très"
+      }
+    },
+    {
+      "category": "connectors",
+      "level": "advanced",
+      "terms": {
+        "en": "also",
+        "fr": "aussi"
+      }
+    }
+  ],
+  "sentences": [
+    {
+      "category": "greetings",
+      "level": "basic",
+      "terms": {
+        "en": "Hello!",
+        "fr": "Bonjour !"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "basic",
+      "terms": {
+        "en": "How are you?",
+        "fr": "Comment ça va ?"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "basic",
+      "terms": {
+        "en": "I am fine, thank you.",
+        "fr": "Ça va bien, merci."
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "medium",
+      "terms": {
+        "en": "My name is Alex.",
+        "fr": "Je m'appelle Alex."
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "medium",
+      "terms": {
+        "en": "What is your name?",
+        "fr": "Comment tu t'appelles ?"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "medium",
+      "terms": {
+        "en": "See you tomorrow!",
+        "fr": "À demain !"
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "advanced",
+      "terms": {
+        "en": "Nice to meet you.",
+        "fr": "Enchanté."
+      }
+    },
+    {
+      "category": "greetings",
+      "level": "advanced",
+      "terms": {
+        "en": "Have a nice day.",
+        "fr": "Bonne journée."
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "basic",
+      "terms": {
+        "en": "I can do it!",
+        "fr": "Je peux le faire !"
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "basic",
+      "terms": {
+        "en": "Well done!",
+        "fr": "Bravo !"
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "basic",
+      "terms": {
+        "en": "I like French.",
+        "fr": "J'aime le français."
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "medium",
+      "terms": {
+        "en": "I am learning French.",
+        "fr": "J'apprends le français."
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "medium",
+      "terms": {
+        "en": "I am getting better.",
+        "fr": "Je progresse."
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "medium",
+      "terms": {
+        "en": "Don't worry!",
+        "fr": "Ne t'inquiète pas !"
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "advanced",
+      "terms": {
+        "en": "I get better every day.",
+        "fr": "Je progresse chaque jour."
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "advanced",
+      "terms": {
+        "en": "Mistakes help me learn.",
+        "fr": "Les erreurs m'aident à apprendre."
+      }
+    },
+    {
+      "category": "confidence",
+      "level": "advanced",
+      "terms": {
+        "en": "You can do it too!",
+        "fr": "Tu peux le faire aussi !"
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "basic",
+      "terms": {
+        "en": "I am happy.",
+        "fr": "Je suis content."
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "basic",
+      "terms": {
+        "en": "I am tired.",
+        "fr": "Je suis fatigué."
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "medium",
+      "terms": {
+        "en": "I am hungry.",
+        "fr": "J'ai faim."
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "medium",
+      "terms": {
+        "en": "I am thirsty.",
+        "fr": "J'ai soif."
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "advanced",
+      "terms": {
+        "en": "I am a bit nervous.",
+        "fr": "Je suis un peu nerveux."
+      }
+    },
+    {
+      "category": "feelings",
+      "level": "advanced",
+      "terms": {
+        "en": "I feel great today!",
+        "fr": "Je me sens bien aujourd'hui !"
+      }
+    },
+    {
+      "category": "food",
+      "level": "basic",
+      "terms": {
+        "en": "I want some water.",
+        "fr": "Je veux de l'eau."
+      }
+    },
+    {
+      "category": "food",
+      "level": "basic",
+      "terms": {
+        "en": "I like apples.",
+        "fr": "J'aime les pommes."
+      }
+    },
+    {
+      "category": "food",
+      "level": "medium",
+      "terms": {
+        "en": "Can I have some bread?",
+        "fr": "Je peux avoir du pain ?"
+      }
+    },
+    {
+      "category": "food",
+      "level": "medium",
+      "terms": {
+        "en": "I don't like cheese.",
+        "fr": "Je n'aime pas le fromage."
+      }
+    },
+    {
+      "category": "food",
+      "level": "advanced",
+      "terms": {
+        "en": "What's for dinner?",
+        "fr": "Qu'est-ce qu'on mange ?"
+      }
+    },
+    {
+      "category": "food",
+      "level": "advanced",
+      "terms": {
+        "en": "This is delicious!",
+        "fr": "C'est délicieux !"
+      }
+    },
+    {
+      "category": "animals",
+      "level": "basic",
+      "terms": {
+        "en": "The dog is big.",
+        "fr": "Le chien est grand."
+      }
+    },
+    {
+      "category": "animals",
+      "level": "basic",
+      "terms": {
+        "en": "I have a cat.",
+        "fr": "J'ai un chat."
+      }
+    },
+    {
+      "category": "animals",
+      "level": "medium",
+      "terms": {
+        "en": "The cat is black.",
+        "fr": "Le chat est noir."
+      }
+    },
+    {
+      "category": "animals",
+      "level": "advanced",
+      "terms": {
+        "en": "My favourite animal is the dolphin.",
+        "fr": "Mon animal préféré est le dauphin."
+      }
+    },
+    {
+      "category": "school",
+      "level": "basic",
+      "terms": {
+        "en": "I read a book.",
+        "fr": "Je lis un livre."
+      }
+    },
+    {
+      "category": "school",
+      "level": "basic",
+      "terms": {
+        "en": "I go to school.",
+        "fr": "Je vais à l'école."
+      }
+    },
+    {
+      "category": "school",
+      "level": "medium",
+      "terms": {
+        "en": "Where is my pencil?",
+        "fr": "Où est mon crayon ?"
+      }
+    },
+    {
+      "category": "school",
+      "level": "medium",
+      "terms": {
+        "en": "The teacher is nice.",
+        "fr": "Le professeur est gentil."
+      }
+    },
+    {
+      "category": "school",
+      "level": "advanced",
+      "terms": {
+        "en": "I don't understand.",
+        "fr": "Je ne comprends pas."
+      }
+    },
+    {
+      "category": "school",
+      "level": "advanced",
+      "terms": {
+        "en": "Can you help me, please?",
+        "fr": "Peux-tu m'aider, s'il te plaît ?"
+      }
+    },
+    {
+      "category": "home",
+      "level": "basic",
+      "terms": {
+        "en": "I have a red bag.",
+        "fr": "J'ai un sac rouge."
+      }
+    },
+    {
+      "category": "home",
+      "level": "medium",
+      "terms": {
+        "en": "The sky is blue.",
+        "fr": "Le ciel est bleu."
+      }
+    },
+    {
+      "category": "home",
+      "level": "medium",
+      "terms": {
+        "en": "I am ten years old.",
+        "fr": "J'ai dix ans."
+      }
+    },
+    {
+      "category": "home",
+      "level": "advanced",
+      "terms": {
+        "en": "My favourite colour is blue.",
+        "fr": "Ma couleur préférée est le bleu."
+      }
+    },
+    {
+      "category": "home",
+      "level": "advanced",
+      "terms": {
+        "en": "I have two brothers.",
+        "fr": "J'ai deux frères."
+      }
+    },
+    {
+      "category": "sport",
+      "level": "basic",
+      "terms": {
+        "en": "I play football.",
+        "fr": "Je joue au football."
+      }
+    },
+    {
+      "category": "sport",
+      "level": "medium",
+      "terms": {
+        "en": "Let's play together!",
+        "fr": "On joue ensemble !"
+      }
+    },
+    {
+      "category": "sport",
+      "level": "advanced",
+      "terms": {
+        "en": "Our team won the game!",
+        "fr": "Notre équipe a gagné le match !"
+      }
+    },
+    {
+      "category": "weather",
+      "level": "basic",
+      "terms": {
+        "en": "It is sunny.",
+        "fr": "Il fait beau."
+      }
+    },
+    {
+      "category": "weather",
+      "level": "medium",
+      "terms": {
+        "en": "It is raining.",
+        "fr": "Il pleut."
+      }
+    },
+    {
+      "category": "weather",
+      "level": "advanced",
+      "terms": {
+        "en": "It is cold today.",
+        "fr": "Il fait froid aujourd'hui."
+      }
+    }
+  ],
+  "verbs": [
+    {
+      "id": "etre",
+      "level": "basic",
+      "infinitive": {
+        "en": "to be",
+        "fr": "être"
+      },
+      "forms": {
+        "fr": {
+          "present": [
+            "suis",
+            "es",
+            "est",
+            "sommes",
+            "êtes",
+            "sont"
+          ],
+          "past": [
+            "ai été",
+            "as été",
+            "a été",
+            "avons été",
+            "avez été",
+            "ont été"
+          ],
+          "imperfect": [
+            "étais",
+            "étais",
+            "était",
+            "étions",
+            "étiez",
+            "étaient"
+          ],
+          "futureSimple": [
+            "serai",
+            "seras",
+            "sera",
+            "serons",
+            "serez",
+            "seront"
+          ]
+        },
+        "en": {
+          "present": [
+            "am",
+            "are",
+            "is",
+            "are",
+            "are",
+            "are"
+          ],
+          "past": [
+            "was",
+            "were",
+            "was",
+            "were",
+            "were",
+            "were"
+          ],
+          "imperfect": [
+            "used to be",
+            "used to be",
+            "used to be",
+            "used to be",
+            "used to be",
+            "used to be"
+          ],
+          "futureSimple": [
+            "will be",
+            "will be",
+            "will be",
+            "will be",
+            "will be",
+            "will be"
+          ]
+        }
+      }
+    },
+    {
+      "id": "avoir",
+      "level": "basic",
+      "infinitive": {
+        "en": "to have",
+        "fr": "avoir"
+      },
+      "forms": {
+        "fr": {
+          "present": [
+            "ai",
+            "as",
+            "a",
+            "avons",
+            "avez",
+            "ont"
+          ],
+          "past": [
+            "ai eu",
+            "as eu",
+            "a eu",
+            "avons eu",
+            "avez eu",
+            "ont eu"
+          ],
+          "imperfect": [
+            "avais",
+            "avais",
+            "avait",
+            "avions",
+            "aviez",
+            "avaient"
+          ],
+          "futureSimple": [
+            "aurai",
+            "auras",
+            "aura",
+            "aurons",
+            "aurez",
+            "auront"
+          ]
+        },
+        "en": {
+          "present": [
+            "have",
+            "have",
+            "has",
+            "have",
+            "have",
+            "have"
+          ],
+          "past": [
+            "had",
+            "had",
+            "had",
+            "had",
+            "had",
+            "had"
+          ],
+          "imperfect": [
+            "used to have",
+            "used to have",
+            "used to have",
+            "used to have",
+            "used to have",
+            "used to have"
+          ],
+          "futureSimple": [
+            "will have",
+            "will have",
+            "will have",
+            "will have",
+            "will have",
+            "will have"
+          ]
+        }
+      }
+    },
+    {
+      "id": "aller",
+      "level": "basic",
+      "infinitive": {
+        "en": "to go",
+        "fr": "aller"
+      },
+      "forms": {
+        "fr": {
+          "present": [
+            "vais",
+            "vas",
+            "va",
+            "allons",
+            "allez",
+            "vont"
+          ],
+          "past": [
+            "suis allé",
+            "es allé",
+            "est allé",
+            "sommes allés",
+            "êtes allés",
+            "sont allés"
+          ],
+          "imperfect": [
+            "allais",
+            "allais",
+            "allait",
+            "allions",
+            "alliez",
+            "allaient"
+          ],
+          "futureSimple": [
+            "irai",
+            "iras",
+            "ira",
+            "irons",
+            "irez",
+            "iront"
+          ]
+        },
+        "en": {
+          "present": [
+            "go",
+            "go",
+            "goes",
+            "go",
+            "go",
+            "go"
+          ],
+          "past": [
+            "went",
+            "went",
+            "went",
+            "went",
+            "went",
+            "went"
+          ],
+          "imperfect": [
+            "used to go",
+            "used to go",
+            "used to go",
+            "used to go",
+            "used to go",
+            "used to go"
+          ],
+          "futureSimple": [
+            "will go",
+            "will go",
+            "will go",
+            "will go",
+            "will go",
+            "will go"
+          ]
+        }
+      }
+    },
+    {
+      "id": "manger",
+      "level": "basic",
+      "infinitive": {
+        "en": "to eat",
+        "fr": "manger"
+      },
+      "forms": {
+        "fr": {
+          "present": [
+            "mange",
+            "manges",
+            "mange",
+            "mangeons",
+            "mangez",
+            "mangent"
+          ],
+          "past": [
+            "ai mangé",
+            "as mangé",
+            "a mangé",
+            "avons mangé",
+            "avez mangé",
+            "ont mangé"
+          ],
+          "imperfect": [
+            "mangeais",
+            "mangeais",
+            "mangeait",
+            "mangions",
+            "mangiez",
+            "mangeaient"
+          ],
+          "futureSimple": [
+            "mangerai",
+            "mangeras",
+            "mangera",
+            "mangerons",
+            "mangerez",
+            "mangeront"
+          ]
+        },
+        "en": {
+          "present": [
+            "eat",
+            "eat",
+            "eats",
+            "eat",
+            "eat",
+            "eat"
+          ],
+          "past": [
+            "ate",
+            "ate",
+            "ate",
+            "ate",
+            "ate",
+            "ate"
+          ],
+          "imperfect": [
+            "used to eat",
+            "used to eat",
+            "used to eat",
+            "used to eat",
+            "used to eat",
+            "used to eat"
+          ],
+          "futureSimple": [
+            "will eat",
+            "will eat",
+            "will eat",
+            "will eat",
+            "will eat",
+            "will eat"
+          ]
+        }
+      }
+    },
+    {
+      "id": "parler",
+      "level": "medium",
+      "infinitive": {
+        "en": "to speak",
+        "fr": "parler"
+      },
+      "forms": {
+        "fr": {
+          "present": [
+            "parle",
+            "parles",
+            "parle",
+            "parlons",
+            "parlez",
+            "parlent"
+          ],
+          "past": [
+            "ai parlé",
+            "as parlé",
+            "a parlé",
+            "avons parlé",
+            "avez parlé",
+            "ont parlé"
+          ],
+          "imperfect": [
+            "parlais",
+            "parlais",
+            "parlait",
+            "parlions",
+            "parliez",
+            "parlaient"
+          ],
+          "futureSimple": [
+            "parlerai",
+            "parleras",
+            "parlera",
+            "parlerons",
+            "parlerez",
+            "parleront"
+          ]
+        },
+        "en": {
+          "present": [
+            "speak",
+            "speak",
+            "speaks",
+            "speak",
+            "speak",
+            "speak"
+          ],
+          "past": [
+            "spoke",
+            "spoke",
+            "spoke",
+            "spoke",
+            "spoke",
+            "spoke"
+          ],
+          "imperfect": [
+            "used to speak",
+            "used to speak",
+            "used to speak",
+            "used to speak",
+            "used to speak",
+            "used to speak"
+          ],
+          "futureSimple": [
+            "will speak",
+            "will speak",
+            "will speak",
+            "will speak",
+            "will speak",
+            "will speak"
+          ]
+        }
+      }
+    },
+    {
+      "id": "aimer",
+      "level": "medium",
+      "infinitive": {
+        "en": "to like",
+        "fr": "aimer"
+      },
+      "forms": {
+        "fr": {
+          "present": [
+            "aime",
+            "aimes",
+            "aime",
+            "aimons",
+            "aimez",
+            "aiment"
+          ],
+          "past": [
+            "ai aimé",
+            "as aimé",
+            "a aimé",
+            "avons aimé",
+            "avez aimé",
+            "ont aimé"
+          ],
+          "imperfect": [
+            "aimais",
+            "aimais",
+            "aimait",
+            "aimions",
+            "aimiez",
+            "aimaient"
+          ],
+          "futureSimple": [
+            "aimerai",
+            "aimeras",
+            "aimera",
+            "aimerons",
+            "aimerez",
+            "aimeront"
+          ]
+        },
+        "en": {
+          "present": [
+            "like",
+            "like",
+            "likes",
+            "like",
+            "like",
+            "like"
+          ],
+          "past": [
+            "liked",
+            "liked",
+            "liked",
+            "liked",
+            "liked",
+            "liked"
+          ],
+          "imperfect": [
+            "used to like",
+            "used to like",
+            "used to like",
+            "used to like",
+            "used to like",
+            "used to like"
+          ],
+          "futureSimple": [
+            "will like",
+            "will like",
+            "will like",
+            "will like",
+            "will like",
+            "will like"
+          ]
+        }
+      }
+    },
+    {
+      "id": "faire",
+      "level": "medium",
+      "infinitive": {
+        "en": "to do",
+        "fr": "faire"
+      },
+      "forms": {
+        "fr": {
+          "present": [
+            "fais",
+            "fais",
+            "fait",
+            "faisons",
+            "faites",
+            "font"
+          ],
+          "past": [
+            "ai fait",
+            "as fait",
+            "a fait",
+            "avons fait",
+            "avez fait",
+            "ont fait"
+          ],
+          "imperfect": [
+            "faisais",
+            "faisais",
+            "faisait",
+            "faisions",
+            "faisiez",
+            "faisaient"
+          ],
+          "futureSimple": [
+            "ferai",
+            "feras",
+            "fera",
+            "ferons",
+            "ferez",
+            "feront"
+          ]
+        },
+        "en": {
+          "present": [
+            "do",
+            "do",
+            "does",
+            "do",
+            "do",
+            "do"
+          ],
+          "past": [
+            "did",
+            "did",
+            "did",
+            "did",
+            "did",
+            "did"
+          ],
+          "imperfect": [
+            "used to do",
+            "used to do",
+            "used to do",
+            "used to do",
+            "used to do",
+            "used to do"
+          ],
+          "futureSimple": [
+            "will do",
+            "will do",
+            "will do",
+            "will do",
+            "will do",
+            "will do"
+          ]
+        }
+      }
+    },
+    {
+      "id": "voir",
+      "level": "advanced",
+      "infinitive": {
+        "en": "to see",
+        "fr": "voir"
+      },
+      "forms": {
+        "fr": {
+          "present": [
+            "vois",
+            "vois",
+            "voit",
+            "voyons",
+            "voyez",
+            "voient"
+          ],
+          "past": [
+            "ai vu",
+            "as vu",
+            "a vu",
+            "avons vu",
+            "avez vu",
+            "ont vu"
+          ],
+          "imperfect": [
+            "voyais",
+            "voyais",
+            "voyait",
+            "voyions",
+            "voyiez",
+            "voyaient"
+          ],
+          "futureSimple": [
+            "verrai",
+            "verras",
+            "verra",
+            "verrons",
+            "verrez",
+            "verront"
+          ]
+        },
+        "en": {
+          "present": [
+            "see",
+            "see",
+            "sees",
+            "see",
+            "see",
+            "see"
+          ],
+          "past": [
+            "saw",
+            "saw",
+            "saw",
+            "saw",
+            "saw",
+            "saw"
+          ],
+          "imperfect": [
+            "used to see",
+            "used to see",
+            "used to see",
+            "used to see",
+            "used to see",
+            "used to see"
+          ],
+          "futureSimple": [
+            "will see",
+            "will see",
+            "will see",
+            "will see",
+            "will see",
+            "will see"
+          ]
+        }
+      }
+    },
+    {
+      "id": "vouloir",
+      "level": "advanced",
+      "infinitive": {
+        "en": "to want",
+        "fr": "vouloir"
+      },
+      "forms": {
+        "fr": {
+          "present": [
+            "veux",
+            "veux",
+            "veut",
+            "voulons",
+            "voulez",
+            "veulent"
+          ],
+          "past": [
+            "ai voulu",
+            "as voulu",
+            "a voulu",
+            "avons voulu",
+            "avez voulu",
+            "ont voulu"
+          ],
+          "imperfect": [
+            "voulais",
+            "voulais",
+            "voulait",
+            "voulions",
+            "vouliez",
+            "voulaient"
+          ],
+          "futureSimple": [
+            "voudrai",
+            "voudras",
+            "voudra",
+            "voudrons",
+            "voudrez",
+            "voudront"
+          ]
+        },
+        "en": {
+          "present": [
+            "want",
+            "want",
+            "wants",
+            "want",
+            "want",
+            "want"
+          ],
+          "past": [
+            "wanted",
+            "wanted",
+            "wanted",
+            "wanted",
+            "wanted",
+            "wanted"
+          ],
+          "imperfect": [
+            "used to want",
+            "used to want",
+            "used to want",
+            "used to want",
+            "used to want",
+            "used to want"
+          ],
+          "futureSimple": [
+            "will want",
+            "will want",
+            "will want",
+            "will want",
+            "will want",
+            "will want"
+          ]
+        }
+      }
+    },
+    {
+      "id": "finir",
+      "level": "advanced",
+      "infinitive": {
+        "en": "to finish",
+        "fr": "finir"
+      },
+      "forms": {
+        "fr": {
+          "present": [
+            "finis",
+            "finis",
+            "finit",
+            "finissons",
+            "finissez",
+            "finissent"
+          ],
+          "past": [
+            "ai fini",
+            "as fini",
+            "a fini",
+            "avons fini",
+            "avez fini",
+            "ont fini"
+          ],
+          "imperfect": [
+            "finissais",
+            "finissais",
+            "finissait",
+            "finissions",
+            "finissiez",
+            "finissaient"
+          ],
+          "futureSimple": [
+            "finirai",
+            "finiras",
+            "finira",
+            "finirons",
+            "finirez",
+            "finiront"
+          ]
+        },
+        "en": {
+          "present": [
+            "finish",
+            "finish",
+            "finishes",
+            "finish",
+            "finish",
+            "finish"
+          ],
+          "past": [
+            "finished",
+            "finished",
+            "finished",
+            "finished",
+            "finished",
+            "finished"
+          ],
+          "imperfect": [
+            "used to finish",
+            "used to finish",
+            "used to finish",
+            "used to finish",
+            "used to finish",
+            "used to finish"
+          ],
+          "futureSimple": [
+            "will finish",
+            "will finish",
+            "will finish",
+            "will finish",
+            "will finish",
+            "will finish"
+          ]
+        }
+      }
+    }
+  ]
+}

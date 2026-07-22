@@ -9,6 +9,7 @@
 // import is runtime-safe (boardProfile only imports this module for TYPES, which
 // are erased) so there is no evaluation cycle.
 import { PROFILE } from "@/boardProfile";
+import type { ContentPack } from "@/lang/content/schema";
 
 /** Every placed object shares this geometric base. */
 export interface BoardObjectBase {
@@ -80,6 +81,18 @@ export interface BoardDocument {
   strokes: Stroke[];
   createdAt: number;
   updatedAt: number;
+  /**
+   * CUSTOM CONTENT THAT TRAVELS WITH THE BOARD (language board). Language
+   * widgets store only references (theme ids, level, language codes) and resolve
+   * the actual words live from the per-device content catalogue. So a board
+   * built from an IMPORTED content pack would look empty to a collaborator (or
+   * on another device) that never imported it. To prevent that, the pack(s) a
+   * board's widgets actually draw from are embedded here, and re-registered into
+   * the catalogue when the board is loaded or joined. Absent on boards that use
+   * only the built-in content (the common case), so ordinary boards are
+   * unchanged.
+   */
+  contentPacks?: ContentPack[];
 }
 
 /** Lightweight listing entry (no objects/strokes), for the boards gallery. */

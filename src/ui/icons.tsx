@@ -265,6 +265,17 @@ export function AboutIcon(): JSX.Element {
   );
 }
 
+export function ContentIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
+      <path d="M14 4v5h5" />
+      <path d="M12 18v-6" />
+      <path d="M9 15h6" />
+    </svg>
+  );
+}
+
 export function EyeIcon(): JSX.Element {
   return (
     <svg {...svgProps}>

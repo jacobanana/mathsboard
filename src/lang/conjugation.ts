@@ -15,6 +15,12 @@
 // stays DERIVED so it is always regular and beginner-friendly.
 
 import type { LangCode, Level } from "@/lang/data";
+import { registerContentConsumer } from "@/lang/content/registry";
+import type {
+  PackVerb,
+  PackVerbForms,
+  StoredTense as PackStoredTense,
+} from "@/lang/content/schema";
 
 /** One person's line of a conjugation: the pronoun and the verb form. */
 export interface ConjRow {
@@ -40,185 +46,29 @@ export const TENSES: Tense[] = [
 
 /** The tenses whose forms are stored on each verb (everything but the near
  *  future, which is derived). */
-export type StoredTense = "present" | "past" | "imperfect" | "futureSimple";
+export type StoredTense = PackStoredTense;
 
 export const tenseById = (id: string): Tense | undefined => TENSES.find((t) => t.id === id);
 
 /** A verb's stored tables: the six forms (in pronoun order) for each stored
  *  tense. */
-export type VerbForms = Record<StoredTense, string[]>;
+export type VerbForms = PackVerbForms;
 
-export interface Verb {
-  id: string;
-  level: Level;
-  /** The infinitive per language: { en: "to be", fr: "être" }. */
-  infinitive: Record<LangCode, string>;
-  /** The stored tense tables per language (the near future is derived). */
-  forms: Record<LangCode, VerbForms>;
-}
+export type Verb = PackVerb;
 
-/** Subject pronouns per language, in table order (je, tu, il, nous, vous, ils). */
-export const PRONOUNS: Record<LangCode, string[]> = {
-  fr: ["je", "tu", "il", "nous", "vous", "ils"],
-  en: ["I", "you", "he", "we", "you", "they"],
-};
+/** Subject pronouns per language, in table order (je, tu, il, nous, vous, ils).
+ *  Populated from the loaded content packs. */
+export const PRONOUNS: Record<LangCode, string[]> = {};
 
-/** Build a verb entry, keeping the long catalogue below readable. */
-const verb = (
-  id: string,
-  level: Level,
-  infinitive: Record<LangCode, string>,
-  fr: VerbForms,
-  en: VerbForms,
-): Verb => ({ id, level, infinitive, forms: { fr, en } });
+/** The verbs the conjugation game teaches — built-in plus any imported pack's,
+ *  kept in sync in place by the content registry. */
+export const VERBS: Verb[] = [];
 
-/** English past/imperfect/future are regular around a base, so a tiny helper
- *  keeps the English column terse: base for the simple past is given, the
- *  imperfect is "used to <inf>", the future "will <inf>". */
-const enForms = (
-  present: string[],
-  simplePast: string,
-  base: string,
-): VerbForms => ({
-  present,
-  past: Array(6).fill(simplePast),
-  imperfect: Array(6).fill(`used to ${base}`),
-  futureSimple: Array(6).fill(`will ${base}`),
+registerContentConsumer((content) => {
+  for (const code of Object.keys(PRONOUNS)) delete PRONOUNS[code];
+  Object.assign(PRONOUNS, content.pronouns);
+  VERBS.splice(0, VERBS.length, ...content.verbs);
 });
-
-export const VERBS: Verb[] = [
-  verb(
-    "etre",
-    "basic",
-    { en: "to be", fr: "être" },
-    {
-      present: ["suis", "es", "est", "sommes", "êtes", "sont"],
-      past: ["ai été", "as été", "a été", "avons été", "avez été", "ont été"],
-      imperfect: ["étais", "étais", "était", "étions", "étiez", "étaient"],
-      futureSimple: ["serai", "seras", "sera", "serons", "serez", "seront"],
-    },
-    {
-      present: ["am", "are", "is", "are", "are", "are"],
-      past: ["was", "were", "was", "were", "were", "were"],
-      imperfect: Array(6).fill("used to be"),
-      futureSimple: Array(6).fill("will be"),
-    },
-  ),
-  verb(
-    "avoir",
-    "basic",
-    { en: "to have", fr: "avoir" },
-    {
-      present: ["ai", "as", "a", "avons", "avez", "ont"],
-      past: ["ai eu", "as eu", "a eu", "avons eu", "avez eu", "ont eu"],
-      imperfect: ["avais", "avais", "avait", "avions", "aviez", "avaient"],
-      futureSimple: ["aurai", "auras", "aura", "aurons", "aurez", "auront"],
-    },
-    {
-      present: ["have", "have", "has", "have", "have", "have"],
-      past: Array(6).fill("had"),
-      imperfect: Array(6).fill("used to have"),
-      futureSimple: Array(6).fill("will have"),
-    },
-  ),
-  verb(
-    "aller",
-    "basic",
-    { en: "to go", fr: "aller" },
-    {
-      present: ["vais", "vas", "va", "allons", "allez", "vont"],
-      // passé composé with être — masculine forms (the beginner default).
-      past: ["suis allé", "es allé", "est allé", "sommes allés", "êtes allés", "sont allés"],
-      imperfect: ["allais", "allais", "allait", "allions", "alliez", "allaient"],
-      futureSimple: ["irai", "iras", "ira", "irons", "irez", "iront"],
-    },
-    enForms(["go", "go", "goes", "go", "go", "go"], "went", "go"),
-  ),
-  verb(
-    "manger",
-    "basic",
-    { en: "to eat", fr: "manger" },
-    {
-      present: ["mange", "manges", "mange", "mangeons", "mangez", "mangent"],
-      past: ["ai mangé", "as mangé", "a mangé", "avons mangé", "avez mangé", "ont mangé"],
-      imperfect: ["mangeais", "mangeais", "mangeait", "mangions", "mangiez", "mangeaient"],
-      futureSimple: ["mangerai", "mangeras", "mangera", "mangerons", "mangerez", "mangeront"],
-    },
-    enForms(["eat", "eat", "eats", "eat", "eat", "eat"], "ate", "eat"),
-  ),
-  verb(
-    "parler",
-    "medium",
-    { en: "to speak", fr: "parler" },
-    {
-      present: ["parle", "parles", "parle", "parlons", "parlez", "parlent"],
-      past: ["ai parlé", "as parlé", "a parlé", "avons parlé", "avez parlé", "ont parlé"],
-      imperfect: ["parlais", "parlais", "parlait", "parlions", "parliez", "parlaient"],
-      futureSimple: ["parlerai", "parleras", "parlera", "parlerons", "parlerez", "parleront"],
-    },
-    enForms(["speak", "speak", "speaks", "speak", "speak", "speak"], "spoke", "speak"),
-  ),
-  verb(
-    "aimer",
-    "medium",
-    { en: "to like", fr: "aimer" },
-    {
-      present: ["aime", "aimes", "aime", "aimons", "aimez", "aiment"],
-      past: ["ai aimé", "as aimé", "a aimé", "avons aimé", "avez aimé", "ont aimé"],
-      imperfect: ["aimais", "aimais", "aimait", "aimions", "aimiez", "aimaient"],
-      futureSimple: ["aimerai", "aimeras", "aimera", "aimerons", "aimerez", "aimeront"],
-    },
-    enForms(["like", "like", "likes", "like", "like", "like"], "liked", "like"),
-  ),
-  verb(
-    "faire",
-    "medium",
-    { en: "to do", fr: "faire" },
-    {
-      present: ["fais", "fais", "fait", "faisons", "faites", "font"],
-      past: ["ai fait", "as fait", "a fait", "avons fait", "avez fait", "ont fait"],
-      imperfect: ["faisais", "faisais", "faisait", "faisions", "faisiez", "faisaient"],
-      futureSimple: ["ferai", "feras", "fera", "ferons", "ferez", "feront"],
-    },
-    enForms(["do", "do", "does", "do", "do", "do"], "did", "do"),
-  ),
-  verb(
-    "voir",
-    "advanced",
-    { en: "to see", fr: "voir" },
-    {
-      present: ["vois", "vois", "voit", "voyons", "voyez", "voient"],
-      past: ["ai vu", "as vu", "a vu", "avons vu", "avez vu", "ont vu"],
-      imperfect: ["voyais", "voyais", "voyait", "voyions", "voyiez", "voyaient"],
-      futureSimple: ["verrai", "verras", "verra", "verrons", "verrez", "verront"],
-    },
-    enForms(["see", "see", "sees", "see", "see", "see"], "saw", "see"),
-  ),
-  verb(
-    "vouloir",
-    "advanced",
-    { en: "to want", fr: "vouloir" },
-    {
-      present: ["veux", "veux", "veut", "voulons", "voulez", "veulent"],
-      past: ["ai voulu", "as voulu", "a voulu", "avons voulu", "avez voulu", "ont voulu"],
-      imperfect: ["voulais", "voulais", "voulait", "voulions", "vouliez", "voulaient"],
-      futureSimple: ["voudrai", "voudras", "voudra", "voudrons", "voudrez", "voudront"],
-    },
-    enForms(["want", "want", "wants", "want", "want", "want"], "wanted", "want"),
-  ),
-  verb(
-    "finir",
-    "advanced",
-    { en: "to finish", fr: "finir" },
-    {
-      present: ["finis", "finis", "finit", "finissons", "finissez", "finissent"],
-      past: ["ai fini", "as fini", "a fini", "avons fini", "avez fini", "ont fini"],
-      imperfect: ["finissais", "finissais", "finissait", "finissions", "finissiez", "finissaient"],
-      futureSimple: ["finirai", "finiras", "finira", "finirons", "finirez", "finiront"],
-    },
-    enForms(["finish", "finish", "finishes", "finish", "finish", "finish"], "finished", "finish"),
-  ),
-];
 
 export const verbById = (id: string): Verb | undefined => VERBS.find((v) => v.id === id);
 
