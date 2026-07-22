@@ -7,6 +7,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json tsconfig.node.json vite.config.ts index.html ./
+# The language board is a second Vite page (language/index.html served at
+# /language/ — see vite.config.ts rollupOptions.input). It's a build entry, so
+# it must be in the context or the multi-page build can't resolve it.
+COPY language ./language
 # The About page (burger menu) imports this repo-root doc verbatim via Vite's
 # `?raw` (src/ui/About.tsx), so it must be in the build context. Copied before
 # src so edits to src/ don't bust this layer.
