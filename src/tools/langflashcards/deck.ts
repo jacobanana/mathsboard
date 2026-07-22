@@ -13,8 +13,13 @@
 // widgets use.
 
 import { rngFromSeed, shuffle } from "@/lang/rng";
-import { vocabForTopic, type LangPair, type VocabPair } from "@/lang/pairs";
-import { topicById } from "@/lang/data";
+import {
+  vocabFor,
+  type LangPair,
+  type LevelFilter,
+  type VocabPair,
+} from "@/lang/pairs";
+import { categoryById } from "@/lang/data";
 
 /** Which face shows first: the known word (produce the new language) or the
  *  learning word (recognise it). */
@@ -33,7 +38,11 @@ export interface LangFlashObj {
   id: string;
   known: string;
   learning: string;
-  topic: string;
+  /** The theme (category id). Legacy objects may carry `topic` instead. */
+  category?: string;
+  topic?: string;
+  /** Difficulty filter; absent = "mixed" (all levels). */
+  level?: LevelFilter;
   count: number;
   direction: Direction;
   /** Show the picture cue on each card ("easy" mode); false = words only. */
@@ -71,6 +80,11 @@ const pairOf = (obj: LangFlashObj): LangPair => ({
   learning: obj.learning,
 });
 
+/** The theme id (new `category`, falling back to a legacy `topic`). */
+export const categoryOf = (obj: LangFlashObj): string => obj.category ?? obj.topic ?? "";
+/** The level filter (absent = every level). */
+export const levelOf = (obj: LangFlashObj): LevelFilter => obj.level ?? "mixed";
+
 /** Orient a resolved vocab pair onto a card per the chosen direction. */
 function toCard(v: VocabPair, dir: Direction): LangCard {
   return dir === "known-first"
@@ -89,7 +103,7 @@ function sourcePairs(obj: LangFlashObj): VocabPair[] {
       .filter((p) => p.known?.trim() && p.learning?.trim())
       .map((p) => ({ known: p.known.trim(), learning: p.learning.trim() }));
   }
-  return vocabForTopic(obj.topic, pairOf(obj));
+  return vocabFor(categoryOf(obj), levelOf(obj), pairOf(obj));
 }
 
 /** Derive a widget's deck deterministically from its state. Shuffles the source
@@ -101,7 +115,7 @@ export function deriveDeck(obj: LangFlashObj): LangCard[] {
   // Direction is deliberately NOT in the seed: it only orients each card
   // (front/back), so flipping it keeps the SAME deck order and simply turns the
   // cards over — it never reshuffles the words.
-  const key = isCustom(obj) ? `custom:${pairs.length}` : obj.topic;
+  const key = isCustom(obj) ? `custom:${pairs.length}` : `${categoryOf(obj)}:${levelOf(obj)}`;
   const rng = rngFromSeed(`${obj.id}:${round}:${key}:${obj.known}:${obj.learning}`);
   // Custom decks use every word the learner typed (bounded by MAX); preset
   // topics honour the chosen count.
@@ -119,8 +133,8 @@ export const deckLength = (obj: LangFlashObj): number => deriveDeck(obj).length;
 /** Header title, e.g. "Colours" — or "My words" for a learner's own deck. */
 export function deckTitle(obj: LangFlashObj): string {
   if (isCustom(obj)) return "My words";
-  const topic = topicById(obj.topic);
-  return topic ? topic.label : "Vocabulary";
+  const cat = categoryById(categoryOf(obj));
+  return cat ? cat.label : "Vocabulary";
 }
 
 // --- self-rating (the learner's live state) ---------------------------------

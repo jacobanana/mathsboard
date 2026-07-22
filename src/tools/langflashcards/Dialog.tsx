@@ -1,21 +1,25 @@
 // Settings dialog for the vocabulary flash cards.
 //
-// Conventions match the maths tool dialogs (see flashcards/Dialog.tsx): props
-// are ToolDialogProps; EDIT vs CREATE is decided by `initial`. The languages are
-// fixed to the learner's current pair at creation and shown read-only here; the
-// learner picks the TOPIC (or uses their own words), the direction, the deck
-// size and whether pictures show (easy mode). The tool restarts its session on
-// save (resetOnEdit), so changing settings never leaves a half-played deck.
+// EDIT vs CREATE is decided by `initial`. Languages are fixed to the learner's
+// current pair (shown read-only); the learner picks the THEME + LEVEL (shared
+// CategoryLevelPicker), the direction, the deck size and whether pictures show
+// (easy mode). A deck built from "My words" carries its own words, so the theme
+// picker and count are hidden for it. The tool restarts its session on save
+// (resetOnEdit), so changing settings never leaves a half-played deck.
 
 import { useState } from "react";
 import type { ToolDialogProps } from "@/tools/registry";
 import { clamp } from "@/board/geometry";
 import { languageByCode } from "@/lang/data";
-import { usableTopics } from "@/lang/pairs";
+import { CategoryLevelPicker } from "@/lang/CategoryLevelPicker";
+import { useContentPicker } from "@/lang/contentPicker";
 import {
   MAX_COUNT,
   MIN_COUNT,
+  categoryOf,
+  levelOf,
   type Direction,
+  type LangFlashObj,
 } from "@/tools/langflashcards/deck";
 import {
   defaultLangFlashParams,
@@ -30,13 +34,15 @@ export function LangFlashDialog({
   const editing = initial != null;
   const base = initial ?? defaultLangFlashParams();
   const pair = { known: base.known, learning: base.learning };
-  const topics = usableTopics(pair);
-  // A deck built from the My words table carries its own words — the topic
-  // picker and count don't apply, so we show a note instead.
   const custom = base.custom;
   const isCustom = Array.isArray(custom) && custom.length > 0;
 
-  const [topic, setTopic] = useState<string>(base.topic);
+  const picker = useContentPicker(
+    "vocab",
+    pair,
+    categoryOf(base as unknown as LangFlashObj),
+    levelOf(base as unknown as LangFlashObj),
+  );
   const [direction, setDirection] = useState<Direction>(base.direction);
   const [count, setCount] = useState<string>(String(base.count));
   const [easy, setEasy] = useState<boolean>(base.easy);
@@ -48,7 +54,8 @@ export function LangFlashDialog({
     onSubmit({
       known: pair.known,
       learning: pair.learning,
-      topic,
+      category: picker.category,
+      level: picker.level,
       direction,
       count: clamp(parseInt(count, 10) || base.count, MIN_COUNT, MAX_COUNT),
       easy,
@@ -72,21 +79,7 @@ export function LangFlashDialog({
           </div>
         </div>
       ) : (
-        <div className="field">
-          <label>Topic</label>
-          <div className="flash-opts">
-            {topics.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={"flash-opt" + (topic === t.id ? " active" : "")}
-                onClick={() => setTopic(t.id)}
-              >
-                {t.emoji} {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <CategoryLevelPicker picker={picker} />
       )}
 
       <div className="field">

@@ -100,7 +100,8 @@ export function LangTable({ obj }: WidgetProps<LangTableParams>) {
     placeObject("langflashcards", {
       known: obj.known,
       learning: obj.learning,
-      topic: "custom",
+      category: "custom",
+      level: "mixed",
       count: filled.length,
       direction: "known-first",
       easy: false,

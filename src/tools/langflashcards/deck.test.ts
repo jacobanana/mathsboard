@@ -29,7 +29,8 @@ const obj = (over: Partial<LangFlashObj> = {}): LangFlashObj => ({
   id: "lf-1",
   known: "en",
   learning: "fr",
-  topic: "colours",
+  category: "colours",
+  level: "mixed",
   count: 8,
   direction: "known-first",
   ...over,
@@ -63,8 +64,15 @@ describe("deriveDeck", () => {
     expect(deriveDeck(obj({ count: 1 })).length).toBeGreaterThan(0);
   });
 
-  it("is empty for an unknown topic", () => {
-    expect(deriveDeck(obj({ topic: "nope" }))).toEqual([]);
+  it("is empty for an unknown category", () => {
+    expect(deriveDeck(obj({ category: "nope" }))).toEqual([]);
+  });
+
+  it("filters the deck by level", () => {
+    const basic = deriveDeck(obj({ category: "colours", level: "basic", count: 20 }));
+    const mixed = deriveDeck(obj({ category: "colours", level: "mixed", count: 20 }));
+    expect(basic.length).toBeGreaterThan(0);
+    expect(basic.length).toBeLessThan(mixed.length);
   });
 });
 

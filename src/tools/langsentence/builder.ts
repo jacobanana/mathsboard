@@ -11,15 +11,19 @@
 // persisted.
 
 import { rngFromSeed, shuffle } from "@/lang/rng";
-import { sentencesForSet, type LangPair } from "@/lang/pairs";
-import { sentenceSetById } from "@/lang/data";
+import { sentencesFor, type LangPair, type LevelFilter } from "@/lang/pairs";
+import { categoryById } from "@/lang/data";
 
 /** The shape the component reads: params plus live widget-state (so:*, sc:*). */
 export interface SentenceObj {
   id: string;
   known: string;
   learning: string;
-  set: string;
+  /** The theme (category id). Legacy objects may carry `set` instead. */
+  category?: string;
+  set?: string;
+  /** Difficulty filter; absent = "mixed" (all levels). */
+  level?: LevelFilter;
   rounds: number;
   // --- live widget state (via updateWidgetState, undo-invisible) ---
   round?: number;
@@ -52,12 +56,17 @@ const pairOf = (obj: SentenceObj): LangPair => ({
   learning: obj.learning,
 });
 
+/** The theme id (new `category`, falling back to a legacy `set`). */
+export const categoryOf = (obj: SentenceObj): string => obj.category ?? obj.set ?? "";
+/** The level filter (absent = every level). */
+export const levelOf = (obj: SentenceObj): LevelFilter => obj.level ?? "mixed";
+
 /** Derive the whole session (its rounds) deterministically from state. */
 export function deriveDeck(obj: SentenceObj): SentenceRound[] {
   const round = obj.round ?? 0;
-  const sentences = sentencesForSet(obj.set, pairOf(obj));
+  const sentences = sentencesFor(categoryOf(obj), levelOf(obj), pairOf(obj));
   const rng = rngFromSeed(
-    `${obj.id}:${round}:${obj.set}:${obj.known}:${obj.learning}`,
+    `${obj.id}:${round}:${categoryOf(obj)}:${levelOf(obj)}:${obj.known}:${obj.learning}`,
   );
   const want = Math.min(clampRounds(obj.rounds), sentences.length);
   const chosen = shuffle(rng, sentences).slice(0, want);
@@ -77,8 +86,8 @@ export function deriveDeck(obj: SentenceObj): SentenceRound[] {
 export const deckLength = (obj: SentenceObj): number => deriveDeck(obj).length;
 
 export function deckTitle(obj: SentenceObj): string {
-  const set = sentenceSetById(obj.set);
-  return set ? set.label : "Sentences";
+  const cat = categoryById(categoryOf(obj));
+  return cat ? cat.label : "Sentences";
 }
 
 // --- correctness ------------------------------------------------------------

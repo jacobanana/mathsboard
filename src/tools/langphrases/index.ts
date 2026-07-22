@@ -4,7 +4,7 @@
 
 import { defineWidgetTool } from "@/tools/registry";
 import { currentPair } from "@/lang/store";
-import { usableSentenceSets } from "@/lang/pairs";
+import { categoriesForSentences, type LevelFilter } from "@/lang/pairs";
 import { LangPhrases } from "@/tools/langphrases/LangPhrases";
 import { LangPhrasesDialog } from "@/tools/langphrases/Dialog";
 import type { Direction } from "@/tools/langflashcards/deck";
@@ -12,7 +12,11 @@ import type { Direction } from "@/tools/langflashcards/deck";
 export interface LangPhrasesParams {
   known: string;
   learning: string;
-  set: string;
+  /** Theme (category id). Legacy objects may carry `set`. */
+  category?: string;
+  set?: string;
+  /** Difficulty filter: a level, or "mixed". */
+  level?: LevelFilter;
   /** Which language is shown as the prompt (the other is the hidden answer). */
   direction: Direction;
   // Revealed rows live as extra "pr:<i>" fields (via updateWidgetState).
@@ -20,11 +24,12 @@ export interface LangPhrasesParams {
 
 export function defaultLangPhrasesParams(): LangPhrasesParams {
   const pair = currentPair();
-  const sets = usableSentenceSets(pair);
+  const categories = categoriesForSentences(pair, "mixed");
   return {
     known: pair.known,
     learning: pair.learning,
-    set: sets[0]?.id ?? "everyday",
+    category: categories[0]?.id ?? "greetings",
+    level: "mixed",
     direction: "known-first",
   };
 }

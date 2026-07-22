@@ -25,7 +25,8 @@ const obj = (over: Partial<SentenceObj> = {}): SentenceObj => ({
   id: "s-1",
   known: "en",
   learning: "fr",
-  set: "everyday",
+  category: "greetings",
+  level: "mixed",
   rounds: 6,
   ...over,
 });
@@ -58,7 +59,7 @@ describe("deriveDeck", () => {
   });
 
   it("is empty for an unknown set", () => {
-    expect(deriveDeck(obj({ set: "nope" }))).toEqual([]);
+    expect(deriveDeck(obj({ category: "nope" }))).toEqual([]);
   });
 });
 

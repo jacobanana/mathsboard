@@ -1,12 +1,19 @@
-// Settings dialog for Match up. Pick the vocabulary TOPIC and how many pairs;
-// the languages come from the learner's current pair (shown read-only).
+// Settings dialog for Match up. Pick the THEME + LEVEL (shared picker) and how
+// many pairs; the languages come from the learner's current pair (read-only).
 
 import { useState } from "react";
 import type { ToolDialogProps } from "@/tools/registry";
 import { clamp } from "@/board/geometry";
 import { languageByCode } from "@/lang/data";
-import { usableTopics } from "@/lang/pairs";
-import { MAX_COUNT, MIN_COUNT } from "@/tools/langmatch/match";
+import { CategoryLevelPicker } from "@/lang/CategoryLevelPicker";
+import { useContentPicker } from "@/lang/contentPicker";
+import {
+  MAX_COUNT,
+  MIN_COUNT,
+  categoryOf,
+  levelOf,
+  type MatchObj,
+} from "@/tools/langmatch/match";
 import { defaultLangMatchParams, type LangMatchParams } from "@/tools/langmatch";
 
 export function LangMatchDialog({
@@ -17,10 +24,15 @@ export function LangMatchDialog({
   const editing = initial != null;
   const base = initial ?? defaultLangMatchParams();
   const pair = { known: base.known, learning: base.learning };
-  // Match needs at least MIN_COUNT usable pairs to be worth offering.
-  const topics = usableTopics(pair, MIN_COUNT);
 
-  const [topic, setTopic] = useState<string>(base.topic);
+  // Match needs at least MIN_COUNT usable pairs in a theme to be worth offering.
+  const picker = useContentPicker(
+    "vocab",
+    pair,
+    categoryOf(base as unknown as MatchObj),
+    levelOf(base as unknown as MatchObj),
+    MIN_COUNT,
+  );
   const [count, setCount] = useState<string>(String(base.count));
 
   const knownName = languageByCode(pair.known)?.name ?? pair.known;
@@ -30,7 +42,8 @@ export function LangMatchDialog({
     onSubmit({
       known: pair.known,
       learning: pair.learning,
-      topic,
+      category: picker.category,
+      level: picker.level,
       count: clamp(parseInt(count, 10) || base.count, MIN_COUNT, MAX_COUNT),
     });
   }
@@ -43,21 +56,7 @@ export function LangMatchDialog({
         translation.
       </p>
 
-      <div className="field">
-        <label>Topic</label>
-        <div className="flash-opts">
-          {topics.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={"flash-opt" + (topic === t.id ? " active" : "")}
-              onClick={() => setTopic(t.id)}
-            >
-              {t.emoji} {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <CategoryLevelPicker picker={picker} />
 
       <div className="field">
         <label htmlFor="lmCount">How many pairs</label>

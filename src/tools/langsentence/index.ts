@@ -7,7 +7,7 @@
 
 import { defineWidgetTool } from "@/tools/registry";
 import { currentPair } from "@/lang/store";
-import { usableSentenceSets } from "@/lang/pairs";
+import { categoriesForSentences, type LevelFilter } from "@/lang/pairs";
 import { LangSentence } from "@/tools/langsentence/LangSentence";
 import { LangSentenceDialog } from "@/tools/langsentence/Dialog";
 import {
@@ -19,7 +19,10 @@ import {
 export interface LangSentenceParams {
   known: string;
   learning: string;
-  set: string;
+  /** Theme (category id). */
+  category: string;
+  /** Difficulty filter: a level, or "mixed". */
+  level: LevelFilter;
   rounds: number;
   // --- live widget state (via updateWidgetState) ---
   round?: number;
@@ -28,11 +31,12 @@ export interface LangSentenceParams {
 
 export function defaultLangSentenceParams(): LangSentenceParams {
   const pair = currentPair();
-  const sets = usableSentenceSets(pair);
+  const categories = categoriesForSentences(pair, "mixed");
   return {
     known: pair.known,
     learning: pair.learning,
-    set: sets[0]?.id ?? "everyday",
+    category: categories[0]?.id ?? "greetings",
+    level: "basic",
     rounds: DEFAULT_ROUNDS,
   };
 }
