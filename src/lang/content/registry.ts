@@ -93,7 +93,12 @@ function persist(): void {
 // --- state ------------------------------------------------------------------
 
 let imported: ContentPack[] = loadImported();
-let merged: MergedContent = mergedFrom([BASE_PACK, ...imported]);
+// Packs embedded in the currently-open board (see BoardDocument.contentPacks).
+// EPHEMERAL — never persisted to this device's library; they exist so a board
+// built from custom content resolves for anyone who opens or joins it, even
+// without that pack imported. Replaced whenever the open board changes.
+let boardPacks: ContentPack[] = [];
+let merged: MergedContent = mergedFrom([BASE_PACK, ...imported, ...boardPacks]);
 
 type Consumer = (content: MergedContent) => void;
 const consumers: Consumer[] = [];
@@ -115,10 +120,15 @@ export function subscribeContent(listener: () => void): () => void {
 }
 
 function rebuild(): void {
-  merged = mergedFrom([BASE_PACK, ...imported]);
+  // Never let a board pack double-count content the user has since imported.
+  const have = new Set(imported.map((p) => p.id));
+  const effectiveBoard = boardPacks.filter((p) => !have.has(p.id));
+  merged = mergedFrom([BASE_PACK, ...imported, ...effectiveBoard]);
   for (const consume of consumers) consume(merged);
   for (const listener of listeners) listener();
 }
+
+const idsSig = (packs: ContentPack[]): string => packs.map((p) => p.id).join(",");
 
 // --- public API -------------------------------------------------------------
 
@@ -160,6 +170,26 @@ export function importPackJson(text: string): ImportResult {
   persist();
   rebuild();
   return { ok: true, pack, replaced };
+}
+
+/**
+ * Set the packs embedded in the currently-open board. Called whenever the board
+ * changes (load, join, remote sync). Invalid packs are skipped, and a pack the
+ * user already imported is dropped here so its vocab isn't counted twice. A
+ * no-op when the effective set is unchanged, so it is cheap to call on every
+ * board update.
+ */
+export function setBoardPacks(packs: ContentPack[]): void {
+  const have = new Set(imported.map((p) => p.id));
+  const next = packs.filter((p) => p.id !== "base" && !have.has(p.id) && validatePack(p).ok);
+  if (idsSig(next) === idsSig(boardPacks)) return; // unchanged — skip the rebuild
+  boardPacks = next;
+  rebuild();
+}
+
+/** The packs embedded in the currently-open board (for inspection / UI). */
+export function boardPacksNow(): ContentPack[] {
+  return boardPacks;
 }
 
 /** Remove an imported pack by id. Returns true if one was removed. */

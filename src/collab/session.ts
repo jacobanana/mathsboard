@@ -542,6 +542,20 @@ export function setBoardName(name: string): void {
   s.h.doc.transact(() => s.h.meta.set("name", name), SEED_ORIGIN);
 }
 
+/**
+ * Set (or clear) the custom content packs embedded in the board, so they sync to
+ * collaborators and persist with the board (see BoardDocument.contentPacks).
+ * Run under SEED_ORIGIN: it syncs to peers but is neither undoable nor treated
+ * as a user edit — mirroring setBoardName. No-op when the value is unchanged.
+ */
+export function setContentPacks(packs: BoardDocument["contentPacks"]): void {
+  const s = must();
+  s.h.doc.transact(() => {
+    if (packs && packs.length > 0) s.h.meta.set("contentPacks", packs);
+    else if (s.h.meta.has("contentPacks")) s.h.meta.delete("contentPacks");
+  }, SEED_ORIGIN);
+}
+
 // --- board id <-> URL ----------------------------------------------------------
 
 const BOARD_ID_RE = /^[A-Za-z0-9_-]{6,64}$/;

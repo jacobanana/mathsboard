@@ -18,6 +18,7 @@ import { CONTENT_SCHEMA } from "@/lang/content/schema";
 import { LLM_PROMPT } from "@/lang/content/prompt";
 import {
   BASE_PACK,
+  boardPacksNow,
   currentContent,
   importPackJson,
   importedPacks,
@@ -56,6 +57,9 @@ export function ContentStudio(): JSX.Element {
 
   const content = currentContent();
   const packs = importedPacks();
+  // Packs that arrived with the OPEN board (a shared board or one you opened on
+  // another device) but that you haven't added to your own library yet.
+  const fromBoard = boardPacksNow().filter((bp) => !packs.some((p) => p.id === bp.id));
 
   // Reviewing a pack's actual content takes over the whole page (with a Back
   // button) so the listing is easy to read.
@@ -246,6 +250,46 @@ export function ContentStudio(): JSX.Element {
           </li>
         ))}
       </ul>
+
+      {fromBoard.length > 0 && (
+        <>
+          <h2>Content in this board</h2>
+          <p className="hint">
+            This board brought its own content. Save a pack to your library to
+            reuse it in other boards.
+          </p>
+          <ul className="cs-packs">
+            {fromBoard.map((p) => (
+              <li key={p.id}>
+                <span className="cs-pack-name">
+                  {p.name} <span className="cs-badge">from board</span>
+                </span>
+                <span className="cs-pack-actions">
+                  <button
+                    className="btn small"
+                    onClick={() => setReview({ source: p, title: p.name })}
+                  >
+                    View content
+                  </button>
+                  <button
+                    className="btn small"
+                    onClick={() => {
+                      const r = importPackJson(JSON.stringify(p));
+                      setFeedback(
+                        r.ok
+                          ? { kind: "ok", message: `Saved "${p.name}" to your library.` }
+                          : { kind: "error", messages: r.errors },
+                      );
+                    }}
+                  >
+                    Save to my library
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 }
