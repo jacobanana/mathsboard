@@ -1,14 +1,11 @@
 // THE BOARD SUBJECT — which flavour of the app this page is.
 //
-// The whole board (canvas, toolbar, collaboration, persistence) is shared; the
-// only thing that changes between flavours is WHICH tools the Insert gallery
-// offers and a little chrome wording. "maths" is the original whiteboard;
-// "language" is the vocabulary / translation board served at /language/.
-//
-// The subject is decided ONCE, at module load, from the page's path — the
-// production build emits a real page at language/index.html (see vite.config.ts)
-// and the dev server serves it at /language/. Everything downstream imports the
-// resolved constants rather than re-parsing the URL, so there is a single seam.
+// This module does ONLY the detection: it resolves the subject once, at module
+// load, from the page's path — the production build emits a real page at
+// language/index.html (see vite.config.ts) and the dev server serves it at
+// /language/. What each subject looks like and is equipped with (chrome wording,
+// default paper, dock tools) lives in src/boardProfile.ts, keyed by the Subject
+// resolved here — so config is one table, not scattered `if` checks.
 
 export type Subject = "maths" | "language";
 
@@ -25,10 +22,3 @@ function detectSubject(): Subject {
 
 export const SUBJECT: Subject = detectSubject();
 export const IS_LANGUAGE = SUBJECT === "language";
-
-/** App name shown in the welcome screen and the document title. */
-export const APP_NAME = IS_LANGUAGE ? "Language Board" : "Maths Board";
-
-/** The Insert button's tooltip / gallery verb, so the dock reads naturally in
- *  each flavour ("Insert a maths widget" vs "Insert a language activity"). */
-export const INSERT_NOUN = IS_LANGUAGE ? "language activity" : "maths widget";

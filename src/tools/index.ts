@@ -56,7 +56,6 @@ import langSentenceTool from "@/tools/langsentence";
 // board regardless of subject, and the canvas must be able to draw/edit them.
 const CORE_TOOLS = [
   textTool,
-  mathTextTool,
   shapeTool,
   // Pictures — useful on either board (illustrate a vocab card, drop a diagram).
   // Collab builds only: the upload goes through the backend, so the static
@@ -66,6 +65,10 @@ const CORE_TOOLS = [
 
 // The maths widgets — the original board's gallery.
 const MATHS_TOOLS = [
+  // Maths notation is a DOCK tool like text (inGallery:false): created by
+  // clicking the board, edited in place via MathLive. Maths-only — the language
+  // board has nothing to typeset, so it neither registers this nor docks it.
+  mathTextTool,
   // Number & calculating (prototype gallery order: place value comes LAST here).
   numberLineTool,
   timesTableTool,

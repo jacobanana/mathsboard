@@ -26,8 +26,9 @@ import {
   sizeValue,
   styleValue,
 } from "@/board/styling";
-import { TOOL_UI } from "@/ui/toolSpecs";
+import { toolUiFor } from "@/ui/toolSpecs";
 import type { ToolUiSpec } from "@/ui/toolSpecs";
+import { PROFILE } from "@/boardProfile";
 import {
   cancelPlacement,
   finishPlacement,
@@ -216,11 +217,14 @@ const modeEntries = (): ShortcutSpec[] =>
     run: () => pickDrawMode(m.mode),
   }));
 
+// Only the tools THIS board docks get keys — the profile's dockTools list is the
+// single source of truth, so removing the maths tool from the language dock also
+// removes its "6 / M" shortcut, with no separate gating here.
 const toolAndModeEntries = (): ShortcutSpec[] =>
-  TOOL_UI.flatMap((t) => [
-    toolEntry(t),
-    ...(t.tool === "pen" ? modeEntries() : []),
-  ]);
+  PROFILE.dockTools
+    .map((t) => toolUiFor(t))
+    .filter((t): t is ToolUiSpec => t != null)
+    .flatMap((t) => [toolEntry(t), ...(t.tool === "pen" ? modeEntries() : [])]);
 
 // --- the catalog ----------------------------------------------------------
 // ORDER IS BEHAVIOUR: dispatch runs the first matching entry, so keep the
@@ -435,7 +439,7 @@ function buildCatalog(): ShortcutSpec[] {
     id: "insert",
     group: "insert",
     keys: [["I"], ["0"]],
-    label: "Insert a maths widget",
+    label: "Insert a " + PROFILE.insertNoun,
     test: (c) => bare(c) && (c.key === "i" || c.key === "0"),
     run: (c) => c.host.openInsert(),
   },

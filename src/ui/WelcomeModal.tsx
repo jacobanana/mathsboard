@@ -10,7 +10,8 @@
 import { useEffect, useRef } from "react";
 import { useBoardStore } from "@/board/store";
 import { COLLAB_ENABLED } from "@/config";
-import { APP_NAME, IS_LANGUAGE } from "@/subject";
+import { IS_LANGUAGE } from "@/subject";
+import { PROFILE } from "@/boardProfile";
 import { LanguagePicker } from "@/lang/LanguagePicker";
 import { JoinForm } from "@/ui/JoinForm";
 
@@ -54,7 +55,7 @@ export function WelcomeModal({
 
   return (
     <>
-      <h2>{APP_NAME}</h2>
+      <h2>{PROFILE.appName}</h2>
       <p className="hint">
         {IS_LANGUAGE
           ? "Choose your languages, then pick up where you left off."
