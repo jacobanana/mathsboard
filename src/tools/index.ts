@@ -49,6 +49,8 @@ import langPhrasesTool from "@/tools/langphrases";
 import langTableTool from "@/tools/langtable";
 import langMatchTool from "@/tools/langmatch";
 import langSentenceTool from "@/tools/langsentence";
+import langGapsTool from "@/tools/langgaps";
+import langConjugateTool from "@/tools/langconjugate";
 
 // The always-available foundation tools shared by BOTH subjects: free text and
 // the draw-tool primitives (maths notation, shapes). They are inGallery:false —
@@ -120,9 +122,11 @@ const LANG_TOOLS = [
   langFlashCardsTool,
   langPhrasesTool,
   langTableTool,
+  langConjugateTool,
   // Practise — games
   langMatchTool,
   langSentenceTool,
+  langGapsTool,
 ];
 
 // Assemble the registry for THIS subject: the shared core tools plus the maths
