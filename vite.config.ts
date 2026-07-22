@@ -6,6 +6,18 @@ export default defineConfig({
   // Use a relative base so built asset URLs work under the repo subpath.
   base: "./",
   plugins: [react()],
+  build: {
+    // Two pages off ONE app: the maths board at / and the language board at
+    // /language/. Both load src/main.tsx, which assembles the right tool set
+    // from the page path (src/subject.ts). Multi-page so static hosting serves
+    // a real file at /language/ — no SPA-fallback / server rewrite needed.
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        language: fileURLToPath(new URL("./language/index.html", import.meta.url)),
+      },
+    },
+  },
   resolve: {
     alias: {
       // Resolved relative to this config file's URL; avoids needing Node type

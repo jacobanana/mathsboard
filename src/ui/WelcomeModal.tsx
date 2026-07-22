@@ -10,6 +10,8 @@
 import { useEffect, useRef } from "react";
 import { useBoardStore } from "@/board/store";
 import { COLLAB_ENABLED } from "@/config";
+import { APP_NAME, IS_LANGUAGE } from "@/subject";
+import { LanguagePicker } from "@/lang/LanguagePicker";
 import { JoinForm } from "@/ui/JoinForm";
 
 interface WelcomeModalProps {
@@ -45,12 +47,18 @@ export function WelcomeModal({
 
   return (
     <>
-      <h2>Maths Board</h2>
+      <h2>{APP_NAME}</h2>
       <p className="hint">
-        {COLLAB_ENABLED
-          ? "Pick up where you left off, or join a board someone shared with you."
-          : "Pick up where you left off."}
+        {IS_LANGUAGE
+          ? "Choose your languages, then pick up where you left off."
+          : COLLAB_ENABLED
+            ? "Pick up where you left off, or join a board someone shared with you."
+            : "Pick up where you left off."}
       </p>
+
+      {/* Language board: choose what you know / want to learn. New activities
+          are created in the chosen pair (already-placed ones keep theirs). */}
+      {IS_LANGUAGE && <LanguagePicker />}
 
       <button
         ref={continueRef}

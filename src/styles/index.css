@@ -678,3 +678,139 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .cheat-row:hover{background:#F4F6F5;}
 .cheat-eq{flex:1;font-size:14px;}
 .cheat-note{color:var(--muted);font-size:11.5px;font-weight:600;flex:0 0 auto;}
+
+/* ============================================================================
+   LANGUAGE BOARD (served at /language/) — widget styles.
+   The flash cards reuse the maths .iflash flip-card look; the rest define their
+   own cards but share the same paper/border/shadow/grab language.
+   ============================================================================ */
+
+/* --- Vocabulary flash cards: extras over the shared .iflash look --- */
+.lf-emoji{font-size:calc(var(--ifq) * 1.05);line-height:1;margin-bottom:8px;filter:drop-shadow(0 3px 8px rgba(0,0,0,.25));}
+.lf-word{white-space:normal;text-align:center;line-height:1.1;max-width:100%;overflow-wrap:break-word;}
+.lf-rate{display:flex;gap:10px;margin-top:18px;}
+.lf-btn{padding:9px 16px;border-radius:12px;border:0;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.2);text-shadow:none;}
+.lf-btn.knew{background:#16A34A;color:#fff;}
+.lf-btn.practise{background:rgba(255,255,255,.96);color:#B45309;}
+.lf-btn:hover{filter:brightness(.96);}
+.lf-btn:active{transform:scale(.97);}
+.lf-srow-c{color:#0D9488;}
+.lf-empty{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;color:var(--muted);font-weight:700;text-align:center;}
+
+/* --- Sentence builder (.isent): put scrambled words in order --- */
+.isent{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+.isent:active{cursor:grabbing;}
+.isent.happy{animation:ifBounce .6s ease;}
+.isent.shake{animation:ifShake .5s ease;}
+.sb-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #F0EAD6;background:#FBF7EC;}
+.sb-title{flex:1;font-weight:800;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sb-progress{flex:0 0 auto;font-weight:800;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.sb-new{flex:0 0 auto;padding:5px 10px;border-radius:9px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:12px;cursor:pointer;}
+.sb-new:hover{filter:brightness(.97);}
+.sb-scene{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;box-sizing:border-box;animation:ifDeal .28s ease both;}
+.sb-prompt{flex:0 0 auto;text-align:center;color:#fff;font-weight:800;font-size:15px;padding:9px 12px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.15);text-shadow:0 1px 4px rgba(0,0,0,.18);}
+.sb-answer{flex:0 0 auto;min-height:44px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px;border-radius:12px;background:#F6F8FB;border:2px dashed #D7DCE4;}
+.sb-answer-hint{color:var(--muted);font-weight:600;font-size:13px;padding:2px 4px;}
+.sb-chip{font-family:inherit;font-weight:800;font-size:15px;padding:6px 11px;border-radius:10px;border:0;background:#6D5EF6;color:#fff;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.16);}
+.sb-chip.ok{background:#16A34A;}
+.sb-chip.no{background:#DC2626;}
+.sb-bank{flex:1;min-height:0;display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;padding:2px;overflow-y:auto;}
+.sb-tile{font-family:inherit;font-weight:800;font-size:16px;padding:9px 13px;border-radius:12px;border:3px solid #E2E5EA;background:#fff;color:#1F2937;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.08);transition:transform .12s ease,background .2s ease;}
+.sb-tile:hover:not(:disabled){background:#F2F5FA;}
+.sb-tile:active:not(:disabled){transform:scale(.96);}
+.sb-tile.used{opacity:.3;visibility:hidden;}
+.sb-foot{flex:0 0 auto;display:flex;align-items:center;gap:8px;min-height:36px;}
+.sb-hint{flex:1;color:var(--muted);font-weight:600;font-size:13px;}
+.sb-result{flex:1;font-weight:800;font-size:15px;}
+.sb-result.ok{color:#16A34A;}
+.sb-result.no{color:#DC2626;}
+.sb-clear,.sb-retry{padding:6px 12px;border-radius:10px;border:0;background:var(--hover);color:var(--bar);font-weight:800;font-size:13px;cursor:pointer;}
+.sb-next{padding:7px 16px;border-radius:11px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:14px;cursor:pointer;}
+.sb-next:hover,.sb-clear:hover,.sb-retry:hover{filter:brightness(.97);}
+.sb-summary{flex:1;display:flex;flex-direction:column;min-height:0;gap:10px;padding:12px;box-sizing:border-box;}
+.sb-score{flex:0 0 auto;text-align:center;color:#fff;background:linear-gradient(150deg,#6D5EF6 0%,#8B7BF9 100%);border-radius:14px;padding:10px;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+.sb-score-big{font-weight:900;font-size:34px;line-height:1;font-variant-numeric:tabular-nums;}
+.sb-score-of{font-size:20px;opacity:.85;}
+.sb-score-sub{margin-top:4px;font-weight:700;font-size:14px;}
+.sb-scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:5px;padding-right:2px;touch-action:pan-y;cursor:default;}
+.sb-srow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;font-size:14px;background:#F4F6F5;}
+.sb-srow.ok{background:#EAF7EE;}
+.sb-srow.no{background:#FBECEC;}
+.sb-srow-mk{flex:0 0 auto;font-weight:900;}
+.sb-srow.ok .sb-srow-mk{color:#16A34A;}
+.sb-srow.no .sb-srow-mk{color:#DC2626;}
+.sb-srow-a{flex:1;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sb-summary-actions{flex:0 0 auto;display:flex;gap:8px;}
+.sb-again,.sb-newdeck{flex:1;padding:9px 6px;border-radius:11px;border:0;font-weight:800;font-size:14px;cursor:pointer;}
+.sb-again{background:var(--hover);color:var(--bar);}
+.sb-newdeck{background:var(--accent);color:#3a2a05;}
+.sb-again:hover,.sb-newdeck:hover{filter:brightness(.97);}
+
+/* --- Match up (.ilmatch): draw a line from a word to its translation --- */
+.ilmatch{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+.ilmatch:active{cursor:grabbing;}
+.ilmatch.done{animation:ifBounce .6s ease;}
+.lm-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #F0EAD6;background:#FBF7EC;}
+.lm-title{flex:1;font-weight:800;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lm-progress{flex:0 0 auto;font-weight:800;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.lm-new{flex:0 0 auto;padding:5px 10px;border-radius:9px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:12px;cursor:pointer;}
+.lm-new:hover{filter:brightness(.97);}
+.lm-board{position:relative;flex:1;min-height:0;display:flex;justify-content:space-between;gap:24px;padding:14px;box-sizing:border-box;}
+.lm-lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
+.lm-col{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:space-around;gap:8px;min-width:0;flex:1;}
+.lm-node{position:relative;display:flex;align-items:center;gap:8px;font-family:inherit;font-weight:800;font-size:15px;padding:9px 12px;border-radius:12px;border:2px solid #E2E5EA;background:#fff;color:#1F2937;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.08);touch-action:none;min-width:0;}
+.lm-node-r{justify-content:flex-end;text-align:right;}
+.lm-node:hover:not(.matched){border-color:#8B7BF9;}
+.lm-node.matched{border-color:#16A34A;background:#EAF7EE;color:#166534;cursor:default;}
+.lm-node.wrong{animation:ifShake .4s ease;border-color:#DC2626;background:#FBECEC;}
+.lm-emoji{flex:0 0 auto;font-size:19px;}
+.lm-word{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.lm-dot{flex:0 0 auto;width:11px;height:11px;border-radius:50%;background:#CBD2DC;box-shadow:inset 0 0 0 2px #fff;}
+.lm-node.matched .lm-dot{background:#16A34A;}
+.lm-dot-r{margin-left:auto;}
+
+/* --- Sentences phrasebook (.iphrases): tap to reveal translations --- */
+.iphrases{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+.iphrases:active{cursor:grabbing;}
+.ph-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #F0EAD6;background:#FBF7EC;}
+.ph-title{flex:1;font-weight:800;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ph-btn{flex:0 0 auto;padding:5px 10px;border-radius:9px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:12px;cursor:pointer;}
+.ph-btn:hover{filter:brightness(.97);}
+.ph-list{overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:10px;touch-action:pan-y;cursor:default;}
+.ph-row{display:flex;flex-direction:column;gap:2px;text-align:left;font-family:inherit;padding:9px 12px;border-radius:12px;border:2px solid #EAECF1;background:#F8FAFC;cursor:pointer;}
+.ph-row:hover{background:#F1F4F8;}
+.ph-row.open{border-color:#8B7BF9;background:#F3F1FE;}
+.ph-prompt{font-weight:800;font-size:15px;color:var(--ink);}
+.ph-answer{font-weight:700;font-size:14px;color:#6D5EF6;letter-spacing:.02em;}
+
+/* --- My words (.itable): an editable vocabulary table --- */
+.itable{position:absolute;transform-origin:0 0;pointer-events:auto;width:340px;background:#fff;border:1px solid #E4D9B8;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;cursor:grab;user-select:none;touch-action:none;padding:10px 12px 12px;}
+.itable:active{cursor:grabbing;}
+.it-head{display:flex;align-items:center;margin-bottom:8px;}
+.it-title{font-weight:900;font-size:14px;color:var(--ink);}
+.it-cols{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.it-col-h{flex:1;min-width:0;text-align:left;font-family:inherit;font-weight:800;font-size:12px;letter-spacing:.3px;text-transform:uppercase;color:var(--muted);background:none;border:0;padding:2px 4px;cursor:pointer;border-radius:8px;}
+.it-col-h:hover{background:var(--hover);}
+.it-col-h.hidden{color:#B45309;}
+.it-col-sp{flex:0 0 auto;width:26px;}
+.it-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.it-cell{flex:1;min-width:0;font-family:inherit;font-size:14px;font-weight:600;color:var(--ink);padding:7px 9px;border:1.5px solid #E4E7EC;border-radius:9px;background:#fff;}
+.it-cell:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent);}
+.it-cell.masked{color:transparent;background:#EEF1F4;text-shadow:none;caret-color:var(--ink);}
+.it-cell.masked:focus{color:var(--ink);background:#fff;}
+.it-del{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:0;background:#F1F1F1;color:#8A8A8A;font-size:17px;font-weight:800;line-height:1;cursor:pointer;}
+.it-del:hover{background:#FBECEC;color:#DC2626;}
+.it-foot{margin-top:4px;}
+.it-add{width:100%;padding:8px;border-radius:10px;border:2px dashed #D7DCE4;background:#F8FAFC;color:var(--bar);font-weight:800;font-size:14px;cursor:pointer;}
+.it-add:hover{background:#EEF2F7;border-color:var(--accent);}
+
+/* --- Welcome screen: the "I speak / I want to learn" chooser --- */
+.lang-picker{display:flex;align-items:flex-end;justify-content:center;gap:12px;flex-wrap:wrap;margin:6px 0 16px;padding:14px;border-radius:14px;background:var(--hover);}
+.lang-pick{display:flex;flex-direction:column;gap:5px;font-weight:800;font-size:12px;letter-spacing:.3px;text-transform:uppercase;color:var(--muted);}
+.lang-pick select{font-family:inherit;font-size:15px;font-weight:700;color:var(--ink);padding:8px 10px;border-radius:10px;border:2px solid #E4E7EC;background:#fff;cursor:pointer;}
+.lang-pick select:focus{outline:none;border-color:var(--accent);}
+.lang-arrow{font-size:20px;font-weight:900;color:var(--muted);padding-bottom:8px;}
+
+@media (prefers-reduced-motion:reduce){
+  .isent.happy,.isent.shake,.sb-scene,.ilmatch.done,.lm-node.wrong{animation-duration:.01ms;animation-iteration-count:1;}
+}
