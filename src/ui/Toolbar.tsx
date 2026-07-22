@@ -31,6 +31,7 @@
 import { isSavedBoard, useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
 import { COLLAB_ENABLED } from "@/config";
+import { INSERT_NOUN } from "@/subject";
 import { OptionsStrip } from "@/ui/OptionsStrip";
 import { OverflowMenu } from "@/ui/OverflowMenu";
 import { keyHint } from "@/ui/shortcuts";
@@ -215,7 +216,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
           <button
             className="btn small insert"
             id="insertBtn"
-            title={`Insert a maths widget (${keyHint("insert")})`}
+            title={`Insert a ${INSERT_NOUN} (${keyHint("insert")})`}
             aria-label="Insert"
             onClick={props.onInsert}
           >

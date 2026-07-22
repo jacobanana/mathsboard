@@ -59,6 +59,22 @@ calculating tools support the **fill-in-then-reveal** answer toggle.
 | **Word problems** | Problem cards |
 | **Notation & media** | Proper maths notation (fractions, powers, √) via an in-place equation editor · Text · Pictures |
 
+## Language Board
+
+The same infinite canvas, retuned for **learning languages** — open it at
+**`/language`**. On the way in you choose the language you already speak and the
+one you want to learn (**English ↔ French** to start, built to add more), and the
+Insert gallery swaps the maths widgets for language activities aimed at beginners
+(around 10 years old):
+
+| Group | Activities |
+|---|---|
+| **Learn — words & sentences** | Vocabulary **flash cards** (flip to check, self-rate) · a **phrasebook** of basic sentences (tap to reveal the translation) · **My words** — an editable table to capture your own words & sentences with their translations |
+| **Practise — games** | **Match up** — draw a line from each word to its translation · **Sentence builder** — put the scrambled words in the right order |
+
+Everything else — the pen, shapes, pictures, real-time collaboration, save &
+share — works exactly as it does on the maths board.
+
 ## Who it's for
 
 - **One-to-one online tutoring** — the reason it exists. Demonstrate a method on

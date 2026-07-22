@@ -23,7 +23,13 @@ export type ToolCategory =
   | "geometry"
   | "time"
   | "word"
-  | "media";
+  | "media"
+  // Language board (served at /language/): vocabulary/study widgets and the
+  // translation games. Empty in the maths build (no lang tools registered),
+  // and the maths categories are empty in the language build — the gallery
+  // skips empty categories, so one CATEGORY_ORDER serves both subjects.
+  | "lang-vocab"
+  | "lang-practice";
 
 /** Display order of category sections in the Insert gallery. */
 export const CATEGORY_ORDER: ToolCategory[] = [
@@ -34,6 +40,8 @@ export const CATEGORY_ORDER: ToolCategory[] = [
   "time",
   "word",
   "media",
+  "lang-vocab",
+  "lang-practice",
 ];
 
 /** Section headings, matching the prototype gallery exactly. */
@@ -45,6 +53,8 @@ export const CATEGORY_LABELS: Record<ToolCategory, string> = {
   time: "Time",
   word: "Word problems",
   media: "Pictures",
+  "lang-vocab": "Learn — words & sentences",
+  "lang-practice": "Practise — games",
 };
 
 // --- draw + dialog contracts ----------------------------------------------

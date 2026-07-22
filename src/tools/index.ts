@@ -9,6 +9,7 @@
 
 import { registerTool } from "@/tools/registry";
 import { COLLAB_ENABLED } from "@/config";
+import { IS_LANGUAGE } from "@/subject";
 
 // Most tools default-export their Tool; three reference tools only name-export.
 import { textTool } from "@/tools/text";
@@ -42,17 +43,29 @@ import worksheetTool from "@/tools/worksheet";
 import flashCardsTool from "@/tools/flashcards";
 import imageTool from "@/tools/image";
 
-// Gallery order (also the registration order listByCategory preserves).
-const ALL_TOOLS = [
+// Language board tools (registered only on the /language/ build — see below).
+import langFlashCardsTool from "@/tools/langflashcards";
+import langPhrasesTool from "@/tools/langphrases";
+import langTableTool from "@/tools/langtable";
+import langMatchTool from "@/tools/langmatch";
+import langSentenceTool from "@/tools/langsentence";
+
+// The always-available foundation tools shared by BOTH subjects: free text and
+// the draw-tool primitives (maths notation, shapes). They are inGallery:false —
+// created by clicking/dragging, not from the gallery — so they belong on every
+// board regardless of subject, and the canvas must be able to draw/edit them.
+const CORE_TOOLS = [
   textTool,
-  // Maths notation is a DOCK tool like text (inGallery:false): created by
-  // clicking the board, edited in place via MathLive. Registered here so the
-  // canvas can draw/size saved objects.
   mathTextTool,
-  // Shapes (lines, arrows, geometry) are created by dragging with the draw
-  // tool's shape modes (inGallery:false). Registered so the canvas can
-  // draw/size/edit saved shape objects.
   shapeTool,
+  // Pictures — useful on either board (illustrate a vocab card, drop a diagram).
+  // Collab builds only: the upload goes through the backend, so the static
+  // single-user build omits it rather than offer an insert that can't complete.
+  ...(COLLAB_ENABLED ? [imageTool] : []),
+];
+
+// The maths widgets — the original board's gallery.
+const MATHS_TOOLS = [
   // Number & calculating (prototype gallery order: place value comes LAST here).
   numberLineTool,
   timesTableTool,
@@ -95,11 +108,25 @@ const ALL_TOOLS = [
   timerTool,
   // Word problems
   noteTool,
-  // Pictures — the upload goes through the backend (/api/upload), so this tool
-  // only exists in the collaborative build. The static single-user build omits
-  // it rather than offer an insert that can't complete.
-  ...(COLLAB_ENABLED ? [imageTool] : []),
 ];
+
+// The language widgets — the /language/ board's gallery. Gallery order groups
+// the study tools (Learn) before the games (Practise).
+const LANG_TOOLS = [
+  // Learn — words & sentences
+  langFlashCardsTool,
+  langPhrasesTool,
+  langTableTool,
+  // Practise — games
+  langMatchTool,
+  langSentenceTool,
+];
+
+// Assemble the registry for THIS subject: the shared core tools plus the maths
+// OR the language widgets. A given build only ever draws one subject's tools, so
+// the Insert gallery (which reads the registry) shows exactly the right set and
+// the two subjects never collide on a tool type.
+const ALL_TOOLS = [...CORE_TOOLS, ...(IS_LANGUAGE ? LANG_TOOLS : MATHS_TOOLS)];
 
 for (const tool of ALL_TOOLS) registerTool(tool);
 
