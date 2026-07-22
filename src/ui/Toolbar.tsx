@@ -59,6 +59,8 @@ export interface ToolbarCallbacks {
   onHelp: () => void;
   /** Open the About & credits sheet (open source, privacy, licence). */
   onAbout: () => void;
+  /** Open the content-creation help/import page (language board only). */
+  onContent: () => void;
 }
 
 // The dock's tools for THIS board flavour, resolved once from the profile's
@@ -168,6 +170,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
             onSaveImage={props.onSaveImage}
             onHelp={props.onHelp}
             onAbout={props.onAbout}
+            onContent={props.onContent}
           />
         </div>
       </div>

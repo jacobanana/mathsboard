@@ -166,6 +166,7 @@ export default function App(): JSX.Element {
         onAddImage={openImage}
         onHelp={() => setModal({ kind: "help" })}
         onAbout={() => setModal({ kind: "about" })}
+        onContent={() => setModal({ kind: "content" })}
       />
 
       {/* #stage is the positioned board viewport. It holds the two stacked

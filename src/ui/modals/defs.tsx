@@ -12,6 +12,7 @@ import { getTool } from "@/tools/registry";
 import { setStoredName } from "@/collab/profile";
 import { IS_LANGUAGE } from "@/subject";
 import { LangNewBoard } from "@/lang/LangNewBoard";
+import { ContentStudio } from "@/lang/ContentStudio";
 import { WelcomeModal } from "@/ui/WelcomeModal";
 import { InsertGallery } from "@/ui/InsertGallery";
 import { ShortcutsHelp } from "@/ui/ShortcutsHelp";
@@ -108,6 +109,11 @@ const aboutModal = defineModal("about", {
   render: () => <About />,
 });
 
+// Language board only: create/import custom content packs (help + importer).
+const contentModal = defineModal("content", {
+  render: () => <ContentStudio />,
+});
+
 // A tool's settings Dialog, resolved from the tool registry (CREATE or EDIT).
 const dialogModal = defineModal("dialog", {
   render(state, api) {
@@ -199,6 +205,7 @@ export const MODALS: ModalDef[] = [
   shareModal,
   joinNameModal,
   aboutModal,
+  contentModal,
 ];
 
 export function getModalDef(kind: ModalState["kind"]): ModalDef | undefined {

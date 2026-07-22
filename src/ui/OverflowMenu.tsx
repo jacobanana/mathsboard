@@ -11,6 +11,7 @@
 import { useRef, useState } from "react";
 import { useCollabStore } from "@/collab/collabStore";
 import { COLLAB_ENABLED } from "@/config";
+import { IS_LANGUAGE } from "@/subject";
 import { Popover } from "@/ui/Popover";
 import { keyHint } from "@/ui/shortcuts";
 import {
@@ -21,6 +22,7 @@ import {
   SaveIcon,
   KeyboardIcon,
   AboutIcon,
+  ContentIcon,
 } from "@/ui/icons";
 
 export interface OverflowMenuProps {
@@ -32,6 +34,8 @@ export interface OverflowMenuProps {
   onHelp: () => void;
   /** Open the About & credits sheet (open source, privacy, licence). */
   onAbout: () => void;
+  /** Open the content-creation help/import page (language board only). */
+  onContent: () => void;
 }
 
 export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
@@ -110,6 +114,18 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
             </span>
             <span className="label">Save image</span>
           </button>
+          {IS_LANGUAGE && (
+            <button
+              id="contentBtn"
+              title="Create content — add languages, words & sentences from a JSON pack"
+              onClick={pick(props.onContent)}
+            >
+              <span className="ico">
+                <ContentIcon />
+              </span>
+              <span className="label">Create content</span>
+            </button>
+          )}
           <button
             id="shortcutsBtn"
             title={`Keyboard shortcuts (${keyHint("help")})`}
