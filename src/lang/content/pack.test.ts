@@ -7,11 +7,14 @@ import { CONTENT_SCHEMA, validatePack, type ContentPack } from "@/lang/content/s
 import {
   BASE_PACK,
   activePackIds,
+  canDisableBase,
   currentContent,
   importPackJson,
   importedPacks,
+  isBaseActive,
   isPackActive,
   removeImportedPack,
+  setBaseActive,
   setPackActive,
 } from "@/lang/content/registry";
 import { LANGUAGES, VOCAB, SENTENCES, languageByCode } from "@/lang/data";
@@ -52,6 +55,7 @@ function spanishPack(id = "test-es"): ContentPack {
 afterEach(() => {
   // Undo anything a test imported so the shared registry state stays clean.
   for (const p of [...importedPacks()]) removeImportedPack(p.id);
+  setBaseActive(true); // restore the default in case a test switched base off
 });
 
 describe("validatePack", () => {
@@ -234,6 +238,45 @@ describe("active-pack selection", () => {
   it("ignores toggling an unknown pack id", () => {
     setPackActive("does-not-exist", true);
     expect(isPackActive("does-not-exist")).toBe(false);
+  });
+});
+
+describe("base-pack selection", () => {
+  it("keeps base on and un-disableable with nothing else loaded", () => {
+    expect(isBaseActive()).toBe(true);
+    expect(canDisableBase()).toBe(false);
+    // A refusal to switch off with no other content is a no-op, not a crash.
+    setBaseActive(false);
+    expect(isBaseActive()).toBe(true);
+    expect(currentContent().languages.some((l) => l.code === "fr")).toBe(true);
+  });
+
+  it("can be switched off once another pack is active", () => {
+    importPackJson(JSON.stringify(spanishPack("es")));
+    expect(canDisableBase()).toBe(true);
+    setBaseActive(false);
+    expect(isBaseActive()).toBe(false);
+    // Only the imported pack's content remains; base's French is gone.
+    expect(currentContent().vocab.some((v) => v.terms.es === "rojo")).toBe(true);
+    expect(currentContent().languages.some((l) => l.code === "fr")).toBe(false);
+  });
+
+  it("comes back on automatically when the last other pack is switched off", () => {
+    importPackJson(JSON.stringify(spanishPack("es")));
+    setBaseActive(false);
+    expect(isBaseActive()).toBe(false);
+    setPackActive("es", false); // no other content left — base must return
+    expect(isBaseActive()).toBe(true);
+    expect(canDisableBase()).toBe(false);
+    expect(currentContent().languages.some((l) => l.code === "fr")).toBe(true);
+  });
+
+  it("comes back on automatically when the last other pack is removed", () => {
+    importPackJson(JSON.stringify(spanishPack("es")));
+    setBaseActive(false);
+    removeImportedPack("es");
+    expect(isBaseActive()).toBe(true);
+    expect(currentContent().languages.some((l) => l.code === "fr")).toBe(true);
   });
 });
 
