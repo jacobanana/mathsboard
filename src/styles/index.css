@@ -927,7 +927,38 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .lang-pick select:focus{outline:none;border-color:var(--accent);}
 .lang-arrow{font-size:20px;font-weight:900;color:var(--muted);padding-bottom:8px;}
 
+/* --- New board: pick a pack + direction --- */
+.pack-picker{display:flex;flex-direction:column;gap:12px;margin:6px 0 16px;}
+/* Language-set chooser (only shown when packs cover more than one set). */
+.pack-group-tabs{display:flex;flex-wrap:wrap;gap:8px;}
+.pack-group-tab{font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;border:2px solid #E4E7EC;background:#fff;cursor:pointer;}
+.pack-group-tab:hover{border-color:var(--accent);}
+.pack-group-tab.active{border-color:var(--accent);background:var(--accent);color:#fff;}
+.pack-group-flags{font-size:15px;}
+/* Direction: I speak → learning, with a one-click swap between. */
+.lang-dir{display:flex;align-items:stretch;justify-content:center;gap:10px;padding:14px;border-radius:14px;background:var(--hover);}
+.lang-dir-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;background:#fff;border:2px solid #E4E7EC;}
+.lang-dir-role{font-weight:800;font-size:11px;letter-spacing:.3px;text-transform:uppercase;color:var(--muted);}
+.lang-dir-lang{font-size:16px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;}
+.lang-dir-flag{font-size:20px;}
+.lang-dir-side select{font-family:inherit;font-size:15px;font-weight:700;color:var(--ink);padding:6px 4px;border:none;background:transparent;cursor:pointer;}
+.lang-dir-side select:focus{outline:none;}
+.lang-dir-swap{align-self:center;flex-shrink:0;width:40px;height:40px;border-radius:999px;border:2px solid #E4E7EC;background:#fff;color:var(--accent);font-size:20px;font-weight:900;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s ease;}
+.lang-dir-swap:hover{border-color:var(--accent);transform:rotate(180deg);}
+.lang-dir-swap:focus-visible{outline:none;border-color:var(--accent);}
+/* The packs feeding the board (combine several sharing the same languages). */
+.pack-list{list-style:none;margin:0;padding:0;border-radius:12px;border:1px solid #EEF1F0;}
+.pack-list li{display:flex;align-items:center;padding:11px 14px;border-bottom:1px solid #EEF1F0;}
+.pack-list li:last-child{border-bottom:none;}
+.pack-list li.pack-off .pack-name{color:var(--muted);}
+.pack-list label.pack-name{cursor:pointer;font-weight:600;font-size:14px;display:flex;align-items:center;gap:9px;flex:1;}
+.pack-list label.pack-name input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;margin:0;flex-shrink:0;}
+.pack-list label.pack-name input[type=checkbox]:disabled{cursor:default;}
+.pack-badge{font-size:11px;font-weight:700;color:var(--muted);background:#EEF1F0;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px;}
+.pack-combine-hint{margin:0;}
+
 @media (prefers-reduced-motion:reduce){
+  .lang-dir-swap:hover{transform:none;}
   .isent.happy,.isent.shake,.sb-scene,.ilmatch.done,.lm-node.wrong{animation-duration:.01ms;animation-iteration-count:1;}
 }
 
