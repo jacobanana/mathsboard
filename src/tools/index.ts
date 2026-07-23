@@ -45,6 +45,7 @@ import imageTool from "@/tools/image";
 
 // Language board tools (registered only on the /language/ build — see below).
 import langFlashCardsTool from "@/tools/langflashcards";
+import langVocabTool from "@/tools/langvocab";
 import langPhrasesTool from "@/tools/langphrases";
 import langTableTool from "@/tools/langtable";
 import langMatchTool from "@/tools/langmatch";
@@ -120,6 +121,8 @@ const MATHS_TOOLS = [
 const LANG_TOOLS = [
   // Learn — words & sentences
   langFlashCardsTool,
+  // A vocabulary notepad — leaf through themes and tap a word to hear it.
+  langVocabTool,
   langPhrasesTool,
   langTableTool,
   langConjugateTool,

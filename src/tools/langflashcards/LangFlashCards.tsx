@@ -13,9 +13,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
-import { SpeakButton } from "@/lang/SpeakButton";
+import { SpokenWord } from "@/lang/SpokenWord";
 import {
-  clampCount,
   deckTitle,
   deriveDeck,
   flipPatch,
@@ -44,6 +43,32 @@ const FRONTS: [string, string][] = [
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
+/** A crisp "flip the card over" glyph (two curved arrows around a card). */
+function FlipIcon(): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden focusable="false">
+      <path
+        d="M4 8a8 8 0 0 1 14-3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M18.5 2.5V6H15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M20 16a8 8 0 0 1-14 3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M5.5 21.5V18H9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
@@ -53,9 +78,9 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
   const deck = useMemo(
     () => deriveDeck(mo),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [obj.id, obj.known, obj.learning, obj.categories, obj.category, obj.level, obj.direction, obj.count, obj.round],
+    [obj.id, obj.known, obj.learning, obj.categories, obj.category, obj.level, obj.direction, obj.round],
   );
-  const count = deck.length || clampCount(obj.count);
+  const count = deck.length;
 
   const idx = Math.min(obj.idx ?? 0, count);
   const finished = idx >= count || deck.length === 0;
@@ -93,6 +118,14 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
     if (!m || m.flipped) return;
     updateWidgetState(obj.id, flipPatch());
     track("tool_action", { tool: "langflashcards", action: "flip" });
+  }
+
+  /** Turn the card back to its prompt side (peek at the first side again). */
+  function flipBack() {
+    const m = fresh();
+    if (!m || !m.flipped) return;
+    updateWidgetState(obj.id, { flipped: false });
+    track("tool_action", { tool: "langflashcards", action: "flip-back" });
   }
 
   function rate(knew: boolean) {
@@ -182,27 +215,37 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
         <div className="if-scene" style={{ height: sceneH + "px" }}>
           <div className="if-dealwrap" key={`${obj.round ?? 0}:${idx}`}>
             <div className={"if-flip" + (flipped ? " flipped" : "")}>
-              {/* FRONT — the prompt word */}
+              {/* FRONT — the prompt word (tap it to hear it) */}
               <div className="if-face if-front" style={{ background: frontBg }}>
                 {obj.easy && card?.emoji && <div className="lf-emoji">{card.emoji}</div>}
-                <div className="if-q lf-word">{card?.front}</div>
+                <SpokenWord
+                  text={card?.front ?? ""}
+                  code={frontCode}
+                  className="if-q lf-word"
+                />
                 {card?.frontPhonetic && <div className="lf-phon">{card.frontPhonetic}</div>}
-                {card?.front && (
-                  <SpeakButton text={card.front} code={frontCode} className="lf-speak" />
-                )}
                 <button className="if-check" onClick={flip}>
                   Show answer
                 </button>
               </div>
 
-              {/* BACK — the translation + self-rating */}
+              {/* BACK — the translation (tap to hear) + self-rating */}
               <div className="if-face if-back">
+                <button
+                  className="lf-flipback"
+                  title="See the first side again"
+                  aria-label="See the first side again"
+                  onClick={flipBack}
+                >
+                  <FlipIcon />
+                </button>
                 {obj.easy && card?.emoji && <div className="lf-emoji">{card.emoji}</div>}
-                <div className="if-truth lf-word">{card?.back}</div>
+                <SpokenWord
+                  text={card?.back ?? ""}
+                  code={backCode}
+                  className="if-truth lf-word"
+                />
                 {card?.backPhonetic && <div className="lf-phon">{card.backPhonetic}</div>}
-                {card?.back && (
-                  <SpeakButton text={card.back} code={backCode} className="lf-speak" />
-                )}
                 <div className="lf-rate">
                   <button className="lf-btn practise" onClick={() => rate(false)}>
                     🔁 Practise

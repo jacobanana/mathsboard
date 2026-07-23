@@ -4,10 +4,6 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_COUNT,
-  MAX_COUNT,
-  MIN_COUNT,
-  clampCount,
   deckTitle,
   deriveDeck,
   flipPatch,
@@ -24,6 +20,7 @@ import {
   verdict,
   type LangFlashObj,
 } from "@/tools/langflashcards/deck";
+import { vocabFor } from "@/lang/pairs";
 
 const obj = (over: Partial<LangFlashObj> = {}): LangFlashObj => ({
   id: "lf-1",
@@ -31,7 +28,6 @@ const obj = (over: Partial<LangFlashObj> = {}): LangFlashObj => ({
   learning: "fr",
   category: "colours",
   level: "mixed",
-  count: 8,
   direction: "known-first",
   ...over,
 });
@@ -59,9 +55,14 @@ describe("deriveDeck", () => {
     expect(a.map((c) => c.back)).toEqual(b.map((c) => c.front));
   });
 
-  it("count is bounded by MIN/MAX and the topic size", () => {
-    expect(deriveDeck(obj({ count: 99 })).length).toBeLessThanOrEqual(MAX_COUNT);
-    expect(deriveDeck(obj({ count: 1 })).length).toBeGreaterThan(0);
+  it("holds EVERY available pair for the selected content", () => {
+    const available = vocabFor("colours", "mixed", { known: "en", learning: "fr" });
+    expect(available.length).toBeGreaterThan(0);
+    // No count cap any more: the deck is exactly as long as the source.
+    expect(deriveDeck(obj()).length).toBe(available.length);
+    // A legacy `count` field on an old board is ignored.
+    expect(deriveDeck(obj({ count: 1 })).length).toBe(available.length);
+    expect(deriveDeck(obj({ count: 99 })).length).toBe(available.length);
   });
 
   it("is empty for an unknown category", () => {
@@ -154,12 +155,6 @@ describe("session patches", () => {
 });
 
 describe("misc", () => {
-  it("clampCount bounds and defaults", () => {
-    expect(clampCount(undefined)).toBe(DEFAULT_COUNT);
-    expect(clampCount(1)).toBe(MIN_COUNT);
-    expect(clampCount(99)).toBe(MAX_COUNT);
-  });
-
   it("verdict scales with the score", () => {
     expect(verdict(10, 10).text).toBe("Brilliant!");
     expect(verdict(0, 0).text).toBe("Keep practising");

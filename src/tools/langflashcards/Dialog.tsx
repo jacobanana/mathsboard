@@ -9,15 +9,12 @@
 
 import { useState } from "react";
 import type { ToolDialogProps } from "@/tools/registry";
-import { clamp } from "@/board/geometry";
 import { languageByCode } from "@/lang/data";
 import { DirectionSwap, pairSides } from "@/lang/DirectionSwap";
 import { CategoryLevelPicker } from "@/lang/CategoryLevelPicker";
 import { useContentPicker } from "@/lang/contentPicker";
 import { categoriesFromObj } from "@/lang/pairs";
 import {
-  MAX_COUNT,
-  MIN_COUNT,
   levelOf,
   type Direction,
   type LangFlashObj,
@@ -45,7 +42,6 @@ export function LangFlashDialog({
     levelOf(base as unknown as LangFlashObj),
   );
   const [direction, setDirection] = useState<Direction>(base.direction);
-  const [count, setCount] = useState<string>(String(base.count));
   const [easy, setEasy] = useState<boolean>(base.easy);
 
   const knownName = languageByCode(pair.known)?.name ?? pair.known;
@@ -61,7 +57,6 @@ export function LangFlashDialog({
       category: picker.selected[0],
       level: picker.level,
       direction,
-      count: clamp(parseInt(count, 10) || base.count, MIN_COUNT, MAX_COUNT),
       easy,
       ...(isCustom ? { custom } : {}),
     });
@@ -97,20 +92,6 @@ export function LangFlashDialog({
           swapTitle="Swap which side shows first"
         />
       </div>
-
-      {!isCustom && (
-        <div className="field">
-          <label htmlFor="lfCount">How many cards</label>
-          <input
-            id="lfCount"
-            type="number"
-            min={MIN_COUNT}
-            max={MAX_COUNT}
-            value={count}
-            onChange={(e) => setCount(e.target.value)}
-          />
-        </div>
-      )}
 
       <div className="field">
         <label className="flash-toggle">
