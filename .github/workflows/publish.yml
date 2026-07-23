@@ -56,6 +56,8 @@ jobs:
             # web mirrors the COPY set in deploy/Dockerfile.web - keep in sync.
             web:
               - 'src/**'
+              - 'public/**'
+              - 'language/**'
               - 'index.html'
               - 'package.json'
               - 'package-lock.json'

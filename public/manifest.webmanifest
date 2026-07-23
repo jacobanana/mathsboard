@@ -1,0 +1,28 @@
+{
+  "name": "Maths Board",
+  "short_name": "Maths Board",
+  "description": "An infinite-canvas maths whiteboard for teaching and learning maths together.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F4F6F5",
+  "theme_color": "#4F46E5",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["education"],
+  "icons": [
+    {
+      "src": "icons/maths-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/maths-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

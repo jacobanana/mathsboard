@@ -15,6 +15,10 @@ COPY language ./language
 # `?raw` (src/ui/About.tsx), so it must be in the build context. Copied before
 # src so edits to src/ don't bust this layer.
 COPY ABOUT.md ./
+# Static PWA assets (manifests, home-screen icons, service worker) that Vite
+# copies verbatim into dist. Without this the installable-app metadata is
+# missing from the VPS build.
+COPY public ./public
 COPY src ./src
 # Passed by publish.yml (see .github/actions/app-version); Vite bakes any VITE_*
 # env var into the bundle. Placed just before the build so the npm ci layer

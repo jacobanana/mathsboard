@@ -8,6 +8,7 @@ import { logVersions, FRONTEND_VERSION } from "@/version";
 import { initAnalytics } from "@/analytics";
 import { COLLAB_ENABLED } from "@/config";
 import { PROFILE } from "@/boardProfile";
+import { registerServiceWorker } from "@/pwa";
 
 // Name the tab for whichever board this page is (the language build shares this
 // entry, so the title is set here rather than only in the static HTML).
@@ -22,6 +23,9 @@ initAnalytics({
   collab: COLLAB_ENABLED,
   version: FRONTEND_VERSION,
 });
+
+// Make the boards installable / offline-capable (production builds only).
+registerServiceWorker();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

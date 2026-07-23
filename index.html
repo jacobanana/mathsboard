@@ -2,8 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Maths Board</title>
+<!-- Installable PWA (Maths board). The Language board is a separate app with
+     its own manifest under /language/ — see language/index.html. Paths are
+     relative so they work both at the site root and under the GitHub Pages
+     repo subpath (vite base is "./"). -->
+<meta name="description" content="An infinite-canvas maths whiteboard for teaching and learning maths together.">
+<meta name="theme-color" content="#4F46E5">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/maths.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/maths-192.png">
+<!-- iOS: no manifest install prompt, so these drive Add-to-Home-Screen. -->
+<link rel="apple-touch-icon" href="icons/maths-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Maths Board">
 </head>
 <body>
 <div id="root"></div>

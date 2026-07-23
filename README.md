@@ -43,6 +43,9 @@ learner acting on their own screen, in real time.
   **per-person** — you'll never undo your learner's work.
 - **🔌 Works anywhere, no sign-up.** Fully usable solo and offline in the
   browser — boards save to your device. No account required, ever.
+- **📲 Install it like an app.** Maths Board and the Language Board are
+  **separate installable apps** (PWAs) — add either to your Android or iOS home
+  screen and it opens full-screen and works offline.
 
 ## The maths toolbox
 
