@@ -61,6 +61,8 @@ export interface ToolbarCallbacks {
   onAbout: () => void;
   /** Open the content-creation help/import page (language board only). */
   onContent: () => void;
+  /** Open the text-to-speech voices settings (language board only). */
+  onVoices: () => void;
 }
 
 // The dock's tools for THIS board flavour, resolved once from the profile's
@@ -171,6 +173,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
             onHelp={props.onHelp}
             onAbout={props.onAbout}
             onContent={props.onContent}
+            onVoices={props.onVoices}
           />
         </div>
       </div>

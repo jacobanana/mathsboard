@@ -1034,3 +1034,55 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 @media (prefers-reduced-motion:reduce){
   .igaps.happy,.igaps.shake,.gp-scene,.icj.done{animation-duration:.01ms;animation-iteration-count:1;}
 }
+
+/* =====================================================================
+   TAP-TO-SPEAK — the 🔊 buttons (SpeakButton) and the Voices settings page.
+   The button is deliberately small and subtle so it sits beside a word or
+   sentence without stealing focus; on the colourful card faces it switches to
+   a translucent-white variant so it reads on the gradient.
+   ===================================================================== */
+.lang-speak{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:26px;height:26px;padding:0;border:0;border-radius:50%;background:rgba(31,41,55,.08);color:inherit;cursor:pointer;line-height:1;vertical-align:middle;transition:background .12s,transform .12s cubic-bezier(.34,1.56,.64,1);}
+.lang-speak:hover{background:rgba(31,41,55,.16);}
+.lang-speak:active{transform:scale(.88);}
+.lang-speak:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.lang-speak-ico{pointer-events:none;font-size:13px;}
+/* On the coloured flip-card faces / sentence banners, go translucent white. */
+.lf-speak,.sb-prompt-speak,.gp-prompt-speak{background:rgba(255,255,255,.24);color:#fff;}
+.lf-speak:hover,.sb-prompt-speak:hover,.gp-prompt-speak:hover{background:rgba(255,255,255,.4);}
+.lf-speak{margin:8px 0 2px;}
+.sb-prompt-speak,.gp-prompt-speak{margin-left:8px;}
+/* Phrasebook: keep each prompt/answer on its own line with its 🔊 inline. */
+.ph-line{display:flex;align-items:center;gap:8px;}
+/* Vocab table: 🔊 tucked into the top-right corner of each cell. */
+.it-cellwrap{position:relative;flex:1;min-width:0;display:flex;}
+.it-cellwrap .it-cell{flex:1;}
+.it-speak{position:absolute;top:3px;right:3px;width:22px;height:22px;background:rgba(31,41,55,.06);}
+.it-speak .lang-speak-ico{font-size:11px;}
+/* Conjugation: nudge the inline 🔊 off the word. */
+.cj-title .lang-speak,.cj-learncell .lang-speak{margin-left:6px;width:22px;height:22px;}
+.cj-title .lang-speak .lang-speak-ico,.cj-learncell .lang-speak .lang-speak-ico{font-size:11px;}
+
+/* --- Welcome screen: a quiet link to the Voices page under the picker --- */
+.welcome-voices-link{align-self:flex-start;margin:2px 0 4px;padding:4px 6px;border:0;background:none;color:var(--muted);font-weight:600;font-size:13px;cursor:pointer;border-radius:8px;}
+.welcome-voices-link:hover{color:var(--ink);background:var(--hover);}
+
+/* --- The Voices settings page (rendered in the shared .about sheet) --- */
+.card:has(.voice-settings){width:min(560px,94vw);}
+.vs-master{display:flex;align-items:center;gap:9px;margin:12px 0 4px;font-weight:600;cursor:pointer;}
+.vs-master input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;}
+.vs-rate{display:flex;align-items:center;gap:10px;margin:10px 0 16px;}
+.vs-rate label{flex:0 0 auto;font-weight:600;font-size:13.5px;color:var(--ink);}
+.vs-rate input[type=range]{flex:1;min-width:0;accent-color:var(--accent);cursor:pointer;}
+.vs-rate-val{flex:0 0 auto;width:44px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted);}
+.vs-list{display:flex;flex-direction:column;gap:10px;}
+.vs-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;}
+.vs-lang{display:flex;align-items:center;gap:8px;min-width:120px;}
+.vs-flag{font-size:20px;line-height:1;}
+.vs-name{font-weight:700;font-size:14px;color:var(--ink);}
+.vs-select{min-width:0;font-family:inherit;font-size:13.5px;font-weight:600;border:2px solid #E0E4E2;border-radius:10px;padding:8px 10px;color:var(--ink);background:#fff;}
+.vs-select:focus{outline:none;border-color:var(--accent);}
+.vs-select:disabled{background:#F2F4F3;color:var(--muted);}
+.vs-test{flex:0 0 auto;padding:8px 12px;border-radius:10px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;}
+.vs-test:hover{filter:brightness(.97);}
+.vs-missing{grid-column:2/-1;font-size:12px;color:var(--muted);line-height:1.4;}
+.vs-note{margin:14px 0 0;font-size:12.5px;color:var(--muted);line-height:1.5;}

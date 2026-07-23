@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
+import { SpeakButton } from "@/lang/SpeakButton";
 import {
   applyTap,
   builtWords,
@@ -174,6 +175,7 @@ export function LangSentence({ obj }: WidgetProps<LangSentenceParams>) {
         <div className="sb-scene" key={`${obj.round ?? 0}:${idx}`}>
           <div className="sb-prompt" style={{ background: bannerBg }}>
             {round.prompt}
+            <SpeakButton text={round.prompt} code={obj.known} className="sb-prompt-speak" />
           </div>
 
           {/* The sentence being built — chips in order, coloured once checked. */}
@@ -220,6 +222,7 @@ export function LangSentence({ obj }: WidgetProps<LangSentenceParams>) {
                 <span className={"sb-result " + (correct ? "ok" : "no")}>
                   {correct ? "Correct! 🎉" : "Not quite"}
                 </span>
+                <SpeakButton text={round.answer.join(" ")} code={obj.learning} title="Hear the answer" />
                 {!correct && (
                   <button className="sb-retry" onClick={clearRound}>
                     Try again

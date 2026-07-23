@@ -9,6 +9,7 @@
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
+import { SpeakButton } from "@/lang/SpeakButton";
 import {
   categoriesFromObj,
   categoriesLabel,
@@ -103,6 +104,8 @@ export function LangPhrases({ obj }: WidgetProps<LangPhrasesParams>) {
         {items.map((it, i) => {
           const prompt = promptIsKnown ? it.known : it.learning;
           const answer = promptIsKnown ? it.learning : it.known;
+          const promptCode = promptIsKnown ? obj.known : obj.learning;
+          const answerCode = promptIsKnown ? obj.learning : obj.known;
           const open = revealed(i);
           return (
             <button
@@ -110,8 +113,14 @@ export function LangPhrases({ obj }: WidgetProps<LangPhrasesParams>) {
               className={"ph-row" + (open ? " open" : "")}
               onClick={() => toggleRow(i)}
             >
-              <span className="ph-prompt">{prompt}</span>
-              <span className="ph-answer">{open ? answer : "· · ·"}</span>
+              <span className="ph-line">
+                <span className="ph-prompt">{prompt}</span>
+                <SpeakButton as="span" text={prompt} code={promptCode} />
+              </span>
+              <span className="ph-line">
+                <span className="ph-answer">{open ? answer : "· · ·"}</span>
+                {open && <SpeakButton as="span" text={answer} code={answerCode} />}
+              </span>
             </button>
           );
         })}

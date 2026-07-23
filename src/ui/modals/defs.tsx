@@ -13,6 +13,7 @@ import { setStoredName } from "@/collab/profile";
 import { IS_LANGUAGE } from "@/subject";
 import { LangNewBoard } from "@/lang/LangNewBoard";
 import { ContentStudio } from "@/lang/ContentStudio";
+import { VoiceSettings } from "@/lang/VoiceSettings";
 import { WelcomeModal } from "@/ui/WelcomeModal";
 import { InsertGallery } from "@/ui/InsertGallery";
 import { ShortcutsHelp } from "@/ui/ShortcutsHelp";
@@ -56,6 +57,7 @@ const welcomeModal = defineModal("welcome", {
       onOpenBoards={() => api.open({ kind: "boards" })}
       // Language board: "New board" first asks which languages (langNew).
       onNewBoard={IS_LANGUAGE ? () => api.open({ kind: "langNew" }) : undefined}
+      onVoices={IS_LANGUAGE ? () => api.open({ kind: "voices" }) : undefined}
     />
   ),
 });
@@ -112,6 +114,11 @@ const aboutModal = defineModal("about", {
 // Language board only: create/import custom content packs (help + importer).
 const contentModal = defineModal("content", {
   render: () => <ContentStudio />,
+});
+
+// Language board only: choose which voice reads each language aloud.
+const voicesModal = defineModal("voices", {
+  render: () => <VoiceSettings />,
 });
 
 // A tool's settings Dialog, resolved from the tool registry (CREATE or EDIT).
@@ -206,6 +213,7 @@ export const MODALS: ModalDef[] = [
   joinNameModal,
   aboutModal,
   contentModal,
+  voicesModal,
 ];
 
 export function getModalDef(kind: ModalState["kind"]): ModalDef | undefined {

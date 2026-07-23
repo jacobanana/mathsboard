@@ -276,6 +276,16 @@ export function ContentIcon(): JSX.Element {
   );
 }
 
+export function SpeakerIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+      <path d="M16 8.5a4 4 0 0 1 0 7" />
+      <path d="M18.5 6a7 7 0 0 1 0 12" />
+    </svg>
+  );
+}
+
 export function EyeIcon(): JSX.Element {
   return (
     <svg {...svgProps}>

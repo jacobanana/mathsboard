@@ -28,7 +28,9 @@ export type ModalState =
   // Language board only: choose the languages when starting a new board.
   | { kind: "langNew" }
   // Language board only: create/import custom content packs.
-  | { kind: "content" };
+  | { kind: "content" }
+  // Language board only: choose text-to-speech voices per language.
+  | { kind: "voices" };
 
 /** What a modal body can do to the router. */
 export interface ModalApi {
