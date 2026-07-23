@@ -106,6 +106,8 @@ export function LangPhrases({ obj }: WidgetProps<LangPhrasesParams>) {
           const answer = promptIsKnown ? it.learning : it.known;
           const promptCode = promptIsKnown ? obj.known : obj.learning;
           const answerCode = promptIsKnown ? obj.learning : obj.known;
+          const promptPhon = promptIsKnown ? it.knownPhonetic : it.learningPhonetic;
+          const answerPhon = promptIsKnown ? it.learningPhonetic : it.knownPhonetic;
           const open = revealed(i);
           return (
             <button
@@ -117,10 +119,12 @@ export function LangPhrases({ obj }: WidgetProps<LangPhrasesParams>) {
                 <span className="ph-prompt">{prompt}</span>
                 <SpeakButton as="span" text={prompt} code={promptCode} />
               </span>
+              {promptPhon && <span className="ph-phon">{promptPhon}</span>}
               <span className="ph-line">
                 <span className="ph-answer">{open ? answer : "· · ·"}</span>
                 {open && <SpeakButton as="span" text={answer} code={answerCode} />}
               </span>
+              {open && answerPhon && <span className="ph-phon">{answerPhon}</span>}
             </button>
           );
         })}

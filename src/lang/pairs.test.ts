@@ -2,8 +2,9 @@
 // pairs resolve only when BOTH languages have a word, the level filter works,
 // and the defaults are usable.
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { CATEGORIES, LANGUAGES, LEVELS, SENTENCES, VOCAB } from "@/lang/data";
+import { importPackJson, removeImportedPack, setBaseActive } from "@/lang/content/registry";
 import {
   categoriesForSentences,
   categoriesForVocab,
@@ -167,6 +168,68 @@ describe("categoriesFromObj / categoriesLabel", () => {
     expect(categoriesLabel(["colours", "animals"])).toBe("Colours & Animals");
     expect(categoriesLabel(["colours", "animals", "food"])).toBe("Colours +2");
     expect(categoriesLabel([], "Vocabulary")).toBe("Vocabulary");
+  });
+});
+
+describe("phonetics threading", () => {
+  // A Japanese pack that carries readings only on the taught side — exactly the
+  // shape that fixes text-to-speech (the reading lives beside the term, not in
+  // it). Imported live so the resolver runs against the real catalogue.
+  const jaPack = {
+    formatVersion: 1,
+    id: "test-ja-phon",
+    name: "Japanese phonetics test",
+    languages: [
+      { code: "en", name: "English", nativeName: "English", flag: "🇬🇧" },
+      { code: "ja", name: "Japanese", nativeName: "日本語", flag: "🇯🇵" },
+    ],
+    categories: [{ id: "greetings", label: "Greetings", emoji: "👋" }],
+    pronouns: {},
+    vocab: [
+      {
+        category: "greetings",
+        level: "basic",
+        terms: { en: "hello", ja: "こんにちは" },
+        phonetics: { ja: "konnichiwa" },
+      },
+    ],
+    sentences: [
+      {
+        category: "greetings",
+        level: "basic",
+        terms: { en: "Good morning!", ja: "おはよう！" },
+        phonetics: { ja: "ohayō" },
+      },
+    ],
+    verbs: [],
+  };
+
+  afterEach(() => {
+    removeImportedPack("test-ja-phon");
+    setBaseActive(true);
+  });
+
+  it("carries the reading onto the resolved learning side, and leaves it undefined where absent", () => {
+    expect(importPackJson(JSON.stringify(jaPack)).ok).toBe(true);
+    const pair = { known: "en", learning: "ja" };
+
+    const hello = vocabFor("greetings", "mixed", pair).find((v) => v.learning === "こんにちは");
+    expect(hello?.learningPhonetic).toBe("konnichiwa");
+    expect(hello?.knownPhonetic).toBeUndefined(); // English needs no reading
+
+    const morning = sentencesFor("greetings", "mixed", pair).find(
+      (s) => s.learning === "おはよう！",
+    );
+    expect(morning?.learningPhonetic).toBe("ohayō");
+  });
+
+  it("orients the reading with the pair (reading follows Japanese when it is the known side)", () => {
+    expect(importPackJson(JSON.stringify(jaPack)).ok).toBe(true);
+    const rev = vocabFor("greetings", "mixed", { known: "ja", learning: "en" }).find(
+      (v) => v.known === "こんにちは",
+    );
+    expect(rev?.knownPhonetic).toBe("konnichiwa");
+    expect(rev?.learningPhonetic).toBeUndefined();
   });
 });
 

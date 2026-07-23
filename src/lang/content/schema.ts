@@ -51,6 +51,12 @@ export interface PackVocab {
   level: Level;
   emoji?: string;
   terms: Record<string, string>;
+  /** Optional pronunciation aid per language code — a romanization / phonetic
+   *  reading shown beside the word but NEVER spoken, so text-to-speech reads the
+   *  word itself once rather than the word AND its transcription. Meant for
+   *  languages whose script the learner can't sound out (e.g. { "ja":
+   *  "konnichiwa" } beside こんにちは). Only add entries where they help. */
+  phonetics?: Record<string, string>;
 }
 
 /** One sentence, tagged with the same { category, level } as vocab. */
@@ -58,6 +64,8 @@ export interface PackSentence {
   category: string;
   level: Level;
   terms: Record<string, string>;
+  /** Optional pronunciation aid per language code — see {@link PackVocab.phonetics}. */
+  phonetics?: Record<string, string>;
 }
 
 /** A verb's six stored forms (in pronoun order) for each stored tense. */
@@ -202,6 +210,12 @@ export const CONTENT_SCHEMA = {
             additionalProperties: { type: "string" },
             minProperties: 1,
           },
+          phonetics: {
+            type: "object",
+            description:
+              "Optional pronunciation aid per language code (e.g. a romanization). Shown beside the word but NEVER read aloud by text-to-speech. Use for languages whose script the learner can't sound out — put the reading HERE, not inside `terms`, so speech reads the word once, not the word and its transcription.",
+            additionalProperties: { type: "string" },
+          },
         },
       },
     },
@@ -219,6 +233,12 @@ export const CONTENT_SCHEMA = {
             type: "object",
             additionalProperties: { type: "string" },
             minProperties: 1,
+          },
+          phonetics: {
+            type: "object",
+            description:
+              "Optional pronunciation aid per language code, shown beside the sentence but never spoken. Same rule as vocab: keep readings out of `terms`.",
+            additionalProperties: { type: "string" },
           },
         },
       },
@@ -286,6 +306,20 @@ function termsErrors(terms: unknown, where: string, errors: string[]): void {
   }
 }
 
+/** The optional `phonetics` map: when present it must be { languageCode: reading }
+ *  with non-empty string readings. Absent is always fine (it is optional). */
+function phoneticsErrors(phonetics: unknown, where: string, errors: string[]): void {
+  if (phonetics === undefined) return;
+  if (!isObj(phonetics)) {
+    errors.push(`${where}: "phonetics" must be an object of { languageCode: reading }.`);
+    return;
+  }
+  for (const k of Object.keys(phonetics)) {
+    if (!isStr(phonetics[k]) || (phonetics[k] as string).trim() === "")
+      errors.push(`${where}: phonetics for "${k}" must be a non-empty string.`);
+  }
+}
+
 /**
  * Validate an arbitrary parsed value as a ContentPack. Deliberately forgiving
  * on the optional pieces (a vocab-only pack is fine) but strict on the shapes
@@ -349,6 +383,7 @@ export function validatePack(value: unknown): ValidationResult {
         knownCat(it.category, `vocab[${i}]`);
         if (!isLevel(it.level)) errors.push(`vocab[${i}]: level must be basic, medium or advanced.`);
         termsErrors(it.terms, `vocab[${i}]`, errors);
+        phoneticsErrors(it.phonetics, `vocab[${i}]`, errors);
       });
   }
 
@@ -361,6 +396,7 @@ export function validatePack(value: unknown): ValidationResult {
         knownCat(it.category, `sentences[${i}]`);
         if (!isLevel(it.level)) errors.push(`sentences[${i}]: level must be basic, medium or advanced.`);
         termsErrors(it.terms, `sentences[${i}]`, errors);
+        phoneticsErrors(it.phonetics, `sentences[${i}]`, errors);
       });
   }
 

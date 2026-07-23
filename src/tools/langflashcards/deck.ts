@@ -63,11 +63,14 @@ export interface LangFlashObj {
   [field: string]: unknown; // fk:<i> -> 1 when the learner rated it "knew it"
 }
 
-/** A dealt card: the prompt (front) and the answer (back), plus its emoji. */
+/** A dealt card: the prompt (front) and the answer (back), plus its emoji and
+ *  optional per-face pronunciation readings (shown, never spoken). */
 export interface LangCard {
   front: string;
   back: string;
   emoji?: string;
+  frontPhonetic?: string;
+  backPhonetic?: string;
 }
 
 // --- deck size bounds -------------------------------------------------------
@@ -92,8 +95,20 @@ export const levelOf = (obj: LangFlashObj): LevelFilter => obj.level ?? "mixed";
 /** Orient a resolved vocab pair onto a card per the chosen direction. */
 function toCard(v: VocabPair, dir: Direction): LangCard {
   return dir === "known-first"
-    ? { front: v.known, back: v.learning, emoji: v.emoji }
-    : { front: v.learning, back: v.known, emoji: v.emoji };
+    ? {
+        front: v.known,
+        back: v.learning,
+        emoji: v.emoji,
+        frontPhonetic: v.knownPhonetic,
+        backPhonetic: v.learningPhonetic,
+      }
+    : {
+        front: v.learning,
+        back: v.known,
+        emoji: v.emoji,
+        frontPhonetic: v.learningPhonetic,
+        backPhonetic: v.knownPhonetic,
+      };
 }
 
 /** True when this widget runs on the learner's own words rather than a topic. */

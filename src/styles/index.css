@@ -242,6 +242,8 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .cr-term:first-child{color:var(--muted);font-weight:500;}
 .cr-sep{color:#C7D2CF;margin-right:6px;font-weight:400;}
 .cr-missing{color:#C7D2CF;}
+/* Pronunciation reading beside a term in the content browser. */
+.cr-phon{margin-left:5px;font-style:italic;font-weight:400;color:var(--muted);}
 .cr-lvl{flex-shrink:0;font-size:10.5px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;padding:2px 8px;border-radius:20px;}
 .cr-lvl-basic{background:#E3F0E7;color:#2E6B45;}
 .cr-lvl-medium{background:#FBE6B5;color:#8A6A17;}
@@ -791,6 +793,8 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 /* --- Vocabulary flash cards: extras over the shared .iflash look --- */
 .lf-emoji{font-size:calc(var(--ifq) * 1.05);line-height:1;margin-bottom:8px;filter:drop-shadow(0 3px 8px rgba(0,0,0,.25));}
 .lf-word{white-space:normal;text-align:center;line-height:1.1;max-width:100%;overflow-wrap:break-word;}
+/* Pronunciation reading under a card word — shown, never spoken. */
+.lf-phon{margin-top:6px;font-style:italic;font-weight:600;line-height:1.15;text-align:center;max-width:100%;overflow-wrap:break-word;opacity:.8;font-size:calc(var(--ifq) * 0.44);}
 .lf-rate{display:flex;gap:10px;margin-top:18px;}
 .lf-btn{padding:9px 16px;border-radius:12px;border:0;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.2);text-shadow:none;}
 .lf-btn.knew{background:#16A34A;color:#fff;}
@@ -891,6 +895,8 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .ph-row.open{border-color:#8B7BF9;background:#F3F1FE;}
 .ph-prompt{font-weight:800;font-size:15px;color:var(--ink);}
 .ph-answer{font-weight:700;font-size:14px;color:#6D5EF6;letter-spacing:.02em;}
+/* Pronunciation reading under a phrase line — shown, never spoken. */
+.ph-phon{font-style:italic;font-size:12.5px;color:var(--muted);line-height:1.2;}
 
 /* --- My words (.itable): an editable vocabulary table --- */
 /* Wide enough to hold short sentences; cells are auto-growing textareas that

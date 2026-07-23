@@ -25,6 +25,7 @@ interface ReviewItem {
   level: Level;
   emoji?: string;
   terms: Record<string, string>;
+  phonetics?: Record<string, string>;
 }
 interface ReviewVerb {
   id: string;
@@ -83,12 +84,14 @@ export function ContentReview({
 
   const q = query.trim().toLowerCase();
   const matchLevel = (l: Level) => level === "all" || l === level;
-  const matchTerms = (terms: Record<string, string>) =>
-    q === "" || Object.values(terms).some((t) => t.toLowerCase().includes(q));
+  const matchTerms = (it: ReviewItem) =>
+    q === "" ||
+    Object.values(it.terms).some((t) => t.toLowerCase().includes(q)) ||
+    Object.values(it.phonetics ?? {}).some((t) => t.toLowerCase().includes(q));
 
   // Group vocab / sentences by theme (only themes that have matching items).
   const grouped = (items: ReviewItem[]) => {
-    const keep = items.filter((it) => matchLevel(it.level) && matchTerms(it.terms));
+    const keep = items.filter((it) => matchLevel(it.level) && matchTerms(it));
     const byCat = new Map<string, ReviewItem[]>();
     for (const it of keep) {
       const arr = byCat.get(it.category) ?? [];
@@ -182,7 +185,12 @@ export function ContentReview({
                         <span className="cr-term" key={l.code}>
                           {j > 0 && <span className="cr-sep">—</span>}
                           {it.terms[l.code] ? (
-                            it.terms[l.code]
+                            <>
+                              {it.terms[l.code]}
+                              {it.phonetics?.[l.code] && (
+                                <span className="cr-phon">{it.phonetics[l.code]}</span>
+                              )}
+                            </>
                           ) : (
                             <span className="cr-missing" title={`No ${l.name} term`}>
                               ·
