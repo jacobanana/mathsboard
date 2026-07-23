@@ -27,8 +27,11 @@ export type ModalState =
   | { kind: "about" }
   // Language board only: choose the languages when starting a new board.
   | { kind: "langNew" }
-  // Language board only: create/import custom content packs.
+  // Language board only: create your own content pack (help + prompt builder).
   | { kind: "content" }
+  // Language board only: the Contents page — every loaded pack, with load /
+  // download / delete.
+  | { kind: "library" }
   // Language board only: choose text-to-speech voices per language.
   | { kind: "voices" };
 

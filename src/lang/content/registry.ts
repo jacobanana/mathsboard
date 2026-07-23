@@ -274,6 +274,10 @@ export function importPackJson(text: string): ImportResult {
   const replaced = at >= 0;
   if (replaced) imported[at] = pack;
   else imported.push(pack);
+  // The library copy supersedes the open board's carried copy (same invariant
+  // as setBoardPacks) — saving a board's pack also clears it from "in this
+  // board but not in your library".
+  boardPacks = boardPacks.filter((p) => p.id !== pack.id);
   // Loading a pack makes it the sole active one — a lesson usually wants a
   // single pack's content, not everything merged. The user can re-enable other
   // SAME-LANGUAGE packs with their checkboxes to combine several again.
@@ -307,6 +311,44 @@ export function setBoardPacks(packs: ContentPack[]): void {
 /** The packs embedded in the currently-open board (for inspection / UI). */
 export function boardPacksNow(): ContentPack[] {
   return boardPacks;
+}
+
+/**
+ * Load the OPEN BOARD's embedded packs as the ACTIVE teaching content — the
+ * "a board arrives with its content" path (open a saved board, join a shared
+ * one, follow a share link). setBoardPacks only registers the packs into the
+ * catalogue; this additionally activates them the way choosing them at board
+ * creation would, so the board teaches from its own content with no trip to
+ * the contents page:
+ *   • the user's own imported copy of a board pack is switched ON (a pack you
+ *     imported but left inactive must still teach when its board opens — the
+ *     board's copy is dropped in favour of yours, exactly like setBoardPacks);
+ *   • base and any import of a DIFFERENT language set are switched off, so the
+ *     board's languages are never silently mixed with unrelated content;
+ *   • with no embedded packs and `restoreBase`, base comes back on and foreign
+ *     imports are switched off — a board built purely on built-in content must
+ *     not open against a leftover foreign catalogue.
+ */
+export function adoptBoardContent(packs: ContentPack[], restoreBase = false): void {
+  const valid = packs.filter((p) => p.id !== "base" && validatePack(p).ok);
+  const have = new Set(imported.map((p) => p.id));
+  boardPacks = valid.filter((p) => !have.has(p.id));
+  if (valid.length > 0) {
+    const sig = sigOf(valid[0]);
+    for (const p of imported) {
+      if (valid.some((v) => v.id === p.id)) activeIds.add(p.id);
+      else if (activeIds.has(p.id) && sigOf(p) !== sig) activeIds.delete(p.id);
+    }
+    if (sig !== BASE_SIG) baseEnabled = false;
+  } else if (restoreBase) {
+    baseEnabled = true;
+    for (const p of imported) {
+      if (activeIds.has(p.id) && sigOf(p) !== BASE_SIG) activeIds.delete(p.id);
+    }
+  }
+  persistActive();
+  persistBase();
+  rebuild();
 }
 
 /** Remove an imported pack by id. Returns true if one was removed. */
