@@ -307,10 +307,10 @@ export function ContentStudio(): JSX.Element {
 
       {packs.length > 0 && (
         <p className="hint cs-active-hint">
-          Tick the packs you want active. The catalogue is built from whichever
-          packs are ticked — so you can focus on one pack or combine several.
-          Once another pack is active you can even untick the built-in content
-          to teach only your own.
+          Tick the packs you want active. Only packs that teach the{" "}
+          <strong>same languages</strong> can be combined — ticking a pack in a
+          different language set switches to it. Once another pack is active you
+          can even untick the built-in content to teach only your own.
         </p>
       )}
 
@@ -332,6 +332,9 @@ export function ContentStudio(): JSX.Element {
               onChange={(e) => setBaseActive(e.target.checked)}
             />
             {BASE_PACK.name}{" "}
+            <span className="cs-pack-langs" title="Languages this pack teaches">
+              {BASE_PACK.languages.map((l) => l.flag).join(" ")}
+            </span>{" "}
             {canDisableBase() ? null : <span className="cs-badge">always on</span>}
           </label>
           <span className="cs-pack-actions">
@@ -351,7 +354,11 @@ export function ContentStudio(): JSX.Element {
                 checked={isPackActive(p.id)}
                 onChange={(e) => setPackActive(p.id, e.target.checked)}
               />
-              {p.name} <code>{p.id}</code>
+              {p.name}{" "}
+              <span className="cs-pack-langs" title="Languages this pack teaches">
+                {p.languages.map((l) => l.flag).join(" ")}
+              </span>{" "}
+              <code>{p.id}</code>
             </label>
             <span className="cs-pack-actions">
               <button

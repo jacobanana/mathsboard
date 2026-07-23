@@ -15,6 +15,7 @@ import {
   packGroups,
   type PackGroup,
 } from "@/lang/packDirectory";
+import { DirectionSwap } from "@/lang/DirectionSwap";
 import type { LangPair } from "@/lang/pairs";
 import { useLangStore } from "@/lang/store";
 
@@ -156,75 +157,50 @@ export function PackDirectionPicker({ dir }: Props): JSX.Element {
         </div>
       )}
 
-      {/* Direction: which side you speak, which you're learning. One click swaps. */}
-      <div className="lang-dir">
-        {twoWay ? (
-          <>
-            <div className="lang-dir-side">
-              <span className="lang-dir-role">I speak</span>
-              <span className="lang-dir-lang">
-                <span className="lang-dir-flag" aria-hidden>
-                  {known.flag}
-                </span>
-                {known.name}
-              </span>
-            </div>
-            <button
-              type="button"
-              className="lang-dir-swap"
-              onClick={dir.swap}
-              title="Swap direction"
-              aria-label="Swap direction"
-            >
-              ⇄
-            </button>
-            <div className="lang-dir-side">
-              <span className="lang-dir-role">Learning</span>
-              <span className="lang-dir-lang">
-                <span className="lang-dir-flag" aria-hidden>
-                  {learning.flag}
-                </span>
-                {learning.name}
-              </span>
-            </div>
-          </>
-        ) : (
-          <>
-            <label className="lang-dir-side">
-              <span className="lang-dir-role">I speak</span>
-              <select value={pair.known} onChange={(e) => dir.setKnown(e.target.value)}>
-                {group.languages.map((l) => (
-                  <option key={l.code} value={l.code}>
-                    {l.flag} {l.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              className="lang-dir-swap"
-              onClick={dir.swap}
-              title="Swap direction"
-              aria-label="Swap direction"
-            >
-              ⇄
-            </button>
-            <label className="lang-dir-side">
-              <span className="lang-dir-role">Learning</span>
-              <select
-                value={pair.learning}
-                onChange={(e) => dir.setLearning(e.target.value)}
-              >
-                {group.languages.map((l) => (
-                  <option key={l.code} value={l.code} disabled={l.code === pair.known}>
-                    {l.flag} {l.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </>
-        )}
-      </div>
+      {/* Direction: which side you speak, which you're learning. One click swaps.
+          Two languages (the common case) use the shared swap control; a group
+          with more than two falls back to selects so any pairing is reachable. */}
+      {twoWay ? (
+        <DirectionSwap
+          leftRole="I speak"
+          rightRole="Learning"
+          left={known}
+          right={learning}
+          onSwap={dir.swap}
+        />
+      ) : (
+        <div className="lang-dir">
+          <label className="lang-dir-side">
+            <span className="lang-dir-role">I speak</span>
+            <select value={pair.known} onChange={(e) => dir.setKnown(e.target.value)}>
+              {group.languages.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.flag} {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="lang-dir-swap"
+            onClick={dir.swap}
+            title="Swap direction"
+            aria-label="Swap direction"
+          >
+            ⇄
+          </button>
+          <label className="lang-dir-side">
+            <span className="lang-dir-role">Learning</span>
+            <select value={pair.learning} onChange={(e) => dir.setLearning(e.target.value)}>
+              {group.languages.map((l) => (
+                <option key={l.code} value={l.code} disabled={l.code === pair.known}>
+                  {l.flag} {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
 
       {/* The packs feeding this board. Several can be combined when they share the
           same languages; at least one stays ticked. */}

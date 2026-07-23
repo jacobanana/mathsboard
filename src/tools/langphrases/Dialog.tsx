@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import type { ToolDialogProps } from "@/tools/registry";
-import { languageByCode } from "@/lang/data";
+import { DirectionSwap, pairSides } from "@/lang/DirectionSwap";
 import { CategoryLevelPicker } from "@/lang/CategoryLevelPicker";
 import { useContentPicker } from "@/lang/contentPicker";
 import { categoriesFromObj } from "@/lang/pairs";
@@ -30,9 +30,8 @@ export function LangPhrasesDialog({
     base.level,
   );
   const [direction, setDirection] = useState<Direction>(base.direction);
-
-  const knownName = languageByCode(pair.known)?.name ?? pair.known;
-  const learningName = languageByCode(pair.learning)?.name ?? pair.learning;
+  const sides = pairSides(pair);
+  const knownFirst = direction === "known-first";
 
   function submit() {
     onSubmit({
@@ -55,15 +54,15 @@ export function LangPhrasesDialog({
       <CategoryLevelPicker picker={picker} />
 
       <div className="field">
-        <label htmlFor="phDir">Show</label>
-        <select
-          id="phDir"
-          value={direction}
-          onChange={(e) => setDirection(e.target.value as Direction)}
-        >
-          <option value="known-first">{knownName} → {learningName}</option>
-          <option value="learning-first">{learningName} → {knownName}</option>
-        </select>
+        <label>Show</label>
+        <DirectionSwap
+          leftRole="Prompt"
+          rightRole="Reveal"
+          left={knownFirst ? sides.known : sides.learning}
+          right={knownFirst ? sides.learning : sides.known}
+          onSwap={() => setDirection(knownFirst ? "learning-first" : "known-first")}
+          swapTitle="Swap which language is the prompt"
+        />
       </div>
 
       <div className="card-actions">
