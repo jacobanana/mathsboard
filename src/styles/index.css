@@ -849,7 +849,7 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 .iv-dot.on{background:#0D9488;transform:scale(1.25);}
 
 @media (prefers-reduced-motion:reduce){
-  .iv-list{animation-duration:.01ms;}
+  .iv-list,.ph-list{animation-duration:.01ms;}
 }
 
 /* --- Sentence builder (.isent): put scrambled words in order --- */
@@ -931,21 +931,33 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 .lm-dot-r{margin-left:auto;}
 .lm-dot-l{margin-right:auto;}
 
-/* --- Sentences phrasebook (.iphrases): tap to reveal translations --- */
-.iphrases{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+/* --- Sentences phrasebook (.iphrases): leaf through themes, tap a line to hear
+   it. Mirrors the Word list (.ivocab) chrome, in the sentence family's purple. */
+.iphrases{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#FFFDF7;border:1px solid #E4D9B8;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
 .iphrases:active{cursor:grabbing;}
-.ph-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #F0EAD6;background:#FBF7EC;}
-.ph-title{flex:1;font-weight:800;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ph-btn{flex:0 0 auto;padding:5px 10px;border-radius:9px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:12px;cursor:pointer;}
-.ph-btn:hover{filter:brightness(.97);}
-.ph-list{overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:10px;touch-action:pan-y;cursor:default;}
-.ph-row{display:flex;flex-direction:column;gap:2px;text-align:left;font-family:inherit;padding:9px 12px;border-radius:12px;border:2px solid #EAECF1;background:#F8FAFC;cursor:pointer;}
-.ph-row:hover{background:#F1F4F8;}
-.ph-row.open{border-color:#8B7BF9;background:#F3F1FE;}
-.ph-prompt{font-weight:800;font-size:15px;color:var(--ink);}
-.ph-answer{font-weight:700;font-size:14px;color:#6D5EF6;letter-spacing:.02em;}
+.ph-head{flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:0 14px;color:#fff;background:linear-gradient(135deg,#6D5EF6 0%,#8B7BF9 100%);box-shadow:0 2px 8px rgba(0,0,0,.12);}
+.ph-emoji{flex:0 0 auto;font-size:20px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));}
+.ph-title{flex:1;font-weight:800;font-size:15px;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.18);}
+.ph-page-of{flex:0 0 auto;font-weight:800;font-size:12px;opacity:.9;font-variant-numeric:tabular-nums;background:rgba(255,255,255,.2);border-radius:20px;padding:3px 9px;}
+.ph-list{list-style:none;margin:0;padding:6px 4px;overflow-y:auto;touch-action:pan-y;cursor:default;animation:ivTurn .26s ease both;}
+.ph-row{display:flex;align-items:flex-start;gap:11px;padding:8px 12px;border-radius:10px;}
+.ph-row:hover{background:rgba(109,94,246,.06);}
+.ph-row-lines{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;}
+/* Beat button.spoken-word{color:inherit} so a speakable line keeps its colour. */
+.iphrases .ph-prompt{color:var(--ink);font-weight:800;font-size:16px;line-height:1.25;justify-content:flex-start;text-align:left;}
+.ph-prompt .spoken-word-ico{font-size:.6em;}
+.iphrases .ph-answer{color:#6D5EF6;font-weight:700;font-size:14px;line-height:1.25;letter-spacing:.01em;justify-content:flex-start;text-align:left;}
 /* Pronunciation reading under a phrase line — shown, never spoken. */
-.ph-phon{font-style:italic;font-size:12.5px;color:var(--muted);line-height:1.2;}
+.ph-phon{font-style:italic;font-weight:500;font-size:12.5px;color:#6D5EF6;opacity:.8;line-height:1.2;}
+.ph-nav{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 12px;border-top:1px solid #EDEAFB;background:#FAF9FE;}
+.ph-turn{flex:0 0 auto;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:50%;background:#6D5EF6;color:#fff;font-size:22px;font-weight:800;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.16);transition:filter .12s,transform .12s;}
+.ph-turn:hover:not(:disabled){filter:brightness(1.06);}
+.ph-turn:active:not(:disabled){transform:scale(.92);}
+.ph-turn:disabled{background:#D2CEE8;cursor:default;box-shadow:none;}
+.ph-dots{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:7px;}
+.ph-dot{width:9px;height:9px;padding:0;border:0;border-radius:50%;background:#D2CEE8;cursor:pointer;transition:background .12s,transform .12s;}
+.ph-dot:hover{background:#A79FE0;}
+.ph-dot.on{background:#6D5EF6;transform:scale(1.25);}
 
 /* --- My words (.itable): an editable vocabulary table --- */
 /* Wide enough to hold short sentences; cells are auto-growing textareas that
@@ -1172,8 +1184,6 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 .lf-speak:hover,.sb-prompt-speak:hover,.gp-prompt-speak:hover{background:rgba(255,255,255,.4);}
 .lf-speak{margin:8px 0 2px;}
 .sb-prompt-speak,.gp-prompt-speak{margin-left:8px;}
-/* Phrasebook: keep each prompt/answer on its own line with its 🔊 inline. */
-.ph-line{display:flex;align-items:center;gap:8px;}
 /* Vocab table: 🔊 tucked into the top-right corner of each cell. */
 .it-cellwrap{position:relative;flex:1;min-width:0;display:flex;}
 .it-cellwrap .it-cell{flex:1;}

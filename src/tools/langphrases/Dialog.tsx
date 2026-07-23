@@ -48,7 +48,7 @@ export function LangPhrasesDialog({
     <>
       <h2>Sentences</h2>
       <p className="hint">
-        A little phrasebook. Tap a sentence to reveal its translation.
+        A little phrasebook — leaf through themes and tap a sentence to hear it.
       </p>
 
       <CategoryLevelPicker picker={picker} />
@@ -56,12 +56,12 @@ export function LangPhrasesDialog({
       <div className="field">
         <label>Show</label>
         <DirectionSwap
-          leftRole="Prompt"
-          rightRole="Reveal"
+          leftRole="Lead"
+          rightRole="Translation"
           left={knownFirst ? sides.known : sides.learning}
           right={knownFirst ? sides.learning : sides.known}
           onSwap={() => setDirection(knownFirst ? "learning-first" : "known-first")}
-          swapTitle="Swap which language is the prompt"
+          swapTitle="Swap which language leads each row"
         />
       </div>
 

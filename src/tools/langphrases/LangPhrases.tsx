@@ -1,57 +1,86 @@
-// WIDGET COMPONENT — the .iphrases overlay: a little phrasebook of sentences to
-// learn. Each row shows a sentence in the prompt language; tap it to reveal the
-// translation (tap again to hide). Which rows are revealed is live widget-state
-// (`pr:<i>` flags via updateWidgetState — synced, persisted, undo-invisible), so
-// a study partner sees the same reveals. A header toggle flips the prompt
-// language and a "Show all / Hide all" button reveals or hides every row. The
-// card body is the drag handle. Pure content comes from lang/pairs.
+// WIDGET COMPONENT — the .iphrases notepad: a book of sentences to browse and
+// hear. Modelled on the Word list (.ivocab): one PAGE per theme, a header that
+// names the open theme and shows the page number, a body that lists every
+// sentence the theme offers (the prompt sentence, its translation and any
+// pronunciation), and a footer that turns the pages. Tapping a sentence speaks
+// it (the whole line is the target — see SpokenWord), so listening is one tap.
+// Which page is open is live widget-state (`page` via updateWidgetState —
+// synced, persisted, undo-invisible), so a study partner turns to the same
+// page. The header is the drag handle; content comes from lang/pairs.
 
+import { useMemo } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
-import { SpeakButton } from "@/lang/SpeakButton";
+import { SpokenWord } from "@/lang/SpokenWord";
+import { categoryById } from "@/lang/data";
 import {
   categoriesFromObj,
-  categoriesLabel,
-  sentencesForCategories,
+  sentencesFor,
   type LevelFilter,
+  type SentencePairText,
 } from "@/lang/pairs";
 import type { LangPhrasesParams } from "@/tools/langphrases";
 
-const HEAD_H = 40;
+/** Header + footer strip heights (px); the list flexes to fill the rest. */
+const HEAD_H = 44;
+const NAV_H = 46;
 
-const revealField = (i: number): string => "pr:" + i;
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/** One theme's page: its label/emoji and the resolved sentence pairs. */
+interface Page {
+  id: string;
+  label: string;
+  emoji: string;
+  items: SentencePairText[];
+}
 
 export function LangPhrases({ obj }: WidgetProps<LangPhrasesParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
 
-  const rec = obj as unknown as Record<string, unknown>;
-  // New objects carry `categories`/`level`; older ones a single `category`, and
-  // the earliest carried `set`.
-  const categories = categoriesFromObj(obj);
   const level: LevelFilter = obj.level ?? "mixed";
-  const items = sentencesForCategories(categories, level, { known: obj.known, learning: obj.learning });
-  const title = categoriesLabel(categories, "Sentences");
+  const pair = { known: obj.known, learning: obj.learning };
+
+  // One page per chosen theme; themes with no usable sentences are dropped so a
+  // learner never turns to a blank page.
+  const pages = useMemo<Page[]>(() => {
+    return categoriesFromObj(obj)
+      .map((id) => ({
+        id,
+        label: categoryById(id)?.label ?? id,
+        emoji: categoryById(id)?.emoji ?? "💬",
+        items: sentencesFor(id, level, pair),
+      }))
+      .filter((p) => p.items.length > 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [obj.categories, obj.category, obj.level, obj.known, obj.learning]);
+
+  const pageCount = pages.length;
+  const pageIdx = clamp(obj.page ?? 0, 0, Math.max(0, pageCount - 1));
+  const page = pages[pageIdx];
+
+  // Which language leads each row (the other is its translation, shown beneath).
   const promptIsKnown = obj.direction !== "learning-first";
+  const promptCode = promptIsKnown ? obj.known : obj.learning;
+  const answerCode = promptIsKnown ? obj.learning : obj.known;
 
-  const revealed = (i: number): boolean =>
-    rec[revealField(i)] === 1 || rec[revealField(i)] === true;
-  const allShown = items.length > 0 && items.every((_, i) => revealed(i));
-
-  function toggleRow(i: number) {
-    updateWidgetState(obj.id, { [revealField(i)]: revealed(i) ? undefined : 1 });
+  function turn(delta: number) {
+    const next = clamp(pageIdx + delta, 0, pageCount - 1);
+    if (next === pageIdx) return;
+    updateWidgetState(obj.id, { page: next });
+    track("tool_action", { tool: "langphrases", action: delta > 0 ? "next" : "prev" });
   }
 
-  function toggleAll() {
-    const show = !allShown;
-    const patch: Record<string, unknown> = {};
-    items.forEach((_, i) => (patch[revealField(i)] = show ? 1 : undefined));
-    updateWidgetState(obj.id, patch);
-    track("tool_action", { tool: "langphrases", action: show ? "show-all" : "hide-all" });
+  function goTo(i: number) {
+    if (i === pageIdx) return;
+    updateWidgetState(obj.id, { page: i });
+    track("tool_action", { tool: "langphrases", action: "jump" });
   }
 
+  // --- card drag (a press that isn't on a control/list moves the object) -----
   function onCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest("button, .ph-list")) return;
     e.stopPropagation();
@@ -83,7 +112,7 @@ export function LangPhrases({ obj }: WidgetProps<LangPhrasesParams>) {
     cardEl.addEventListener("pointerup", up);
   }
 
-  const sceneH = obj.h - HEAD_H;
+  const listH = obj.h - HEAD_H - NAV_H;
 
   return (
     <div
@@ -93,42 +122,85 @@ export function LangPhrases({ obj }: WidgetProps<LangPhrasesParams>) {
       onPointerDown={onCardPointerDown}
     >
       <div className="ph-head" style={{ height: HEAD_H + "px" }}>
-        <span className="ph-title">{title}</span>
-        <button className="ph-btn" title="Show or hide every translation" onClick={toggleAll}>
-          {allShown ? "Hide all" : "Show all"}
-        </button>
+        <span className="ph-emoji" aria-hidden>
+          {page?.emoji ?? "💬"}
+        </span>
+        <span className="ph-title">{page?.label ?? "Sentences"}</span>
+        {pageCount > 0 && (
+          <span className="ph-page-of">
+            {pageIdx + 1} / {pageCount}
+          </span>
+        )}
       </div>
 
-      <div className="ph-list" style={{ height: sceneH + "px" }} onWheel={(e) => e.stopPropagation()}>
-        {items.length === 0 && <div className="lf-empty">No sentences yet for this set.</div>}
-        {items.map((it, i) => {
-          const prompt = promptIsKnown ? it.known : it.learning;
-          const answer = promptIsKnown ? it.learning : it.known;
-          const promptCode = promptIsKnown ? obj.known : obj.learning;
-          const answerCode = promptIsKnown ? obj.learning : obj.known;
-          const promptPhon = promptIsKnown ? it.knownPhonetic : it.learningPhonetic;
-          const answerPhon = promptIsKnown ? it.learningPhonetic : it.knownPhonetic;
-          const open = revealed(i);
-          return (
+      {pageCount === 0 || !page ? (
+        <div className="lf-empty">No sentences yet for these themes.</div>
+      ) : (
+        <>
+          <ul
+            className="ph-list"
+            key={pageIdx}
+            style={{ height: listH + "px" }}
+            onWheel={(e) => e.stopPropagation()}
+          >
+            {page.items.map((it, i) => {
+              const prompt = promptIsKnown ? it.known : it.learning;
+              const answer = promptIsKnown ? it.learning : it.known;
+              const promptPhon = promptIsKnown ? it.knownPhonetic : it.learningPhonetic;
+              const answerPhon = promptIsKnown ? it.learningPhonetic : it.knownPhonetic;
+              return (
+                <li className="ph-row" key={i}>
+                  <span className="ph-row-lines">
+                    <SpokenWord text={prompt} code={promptCode} className="ph-prompt" />
+                    {promptPhon && <span className="ph-phon">{promptPhon}</span>}
+                    <SpokenWord
+                      text={answer}
+                      code={answerCode}
+                      className="ph-answer"
+                      icon={false}
+                    />
+                    {answerPhon && <span className="ph-phon">{answerPhon}</span>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="ph-nav" style={{ height: NAV_H + "px" }}>
             <button
-              key={i}
-              className={"ph-row" + (open ? " open" : "")}
-              onClick={() => toggleRow(i)}
+              className="ph-turn"
+              onClick={() => turn(-1)}
+              disabled={pageIdx === 0}
+              title="Previous theme"
+              aria-label="Previous theme"
             >
-              <span className="ph-line">
-                <span className="ph-prompt">{prompt}</span>
-                <SpeakButton as="span" text={prompt} code={promptCode} />
-              </span>
-              {promptPhon && <span className="ph-phon">{promptPhon}</span>}
-              <span className="ph-line">
-                <span className="ph-answer">{open ? answer : "· · ·"}</span>
-                {open && <SpeakButton as="span" text={answer} code={answerCode} />}
-              </span>
-              {open && answerPhon && <span className="ph-phon">{answerPhon}</span>}
+              ‹
             </button>
-          );
-        })}
-      </div>
+            <div className="ph-dots" role="tablist" aria-label="Themes">
+              {pages.map((p, i) => (
+                <button
+                  key={p.id}
+                  className={"ph-dot" + (i === pageIdx ? " on" : "")}
+                  onClick={() => goTo(i)}
+                  title={p.label}
+                  aria-label={p.label}
+                  aria-selected={i === pageIdx}
+                  role="tab"
+                />
+              ))}
+            </div>
+            <button
+              className="ph-turn"
+              onClick={() => turn(1)}
+              disabled={pageIdx >= pageCount - 1}
+              title="Next theme"
+              aria-label="Next theme"
+            >
+              ›
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
