@@ -13,9 +13,13 @@
 // are per-device and only ADD to what the board can teach, so importing never
 // disturbs a saved or shared board.
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { CONTENT_SCHEMA } from "@/lang/content/schema";
-import { LLM_PROMPT } from "@/lang/content/prompt";
+import {
+  buildLlmPrompt,
+  DEFAULT_OPTIONS,
+  type PromptOptions,
+} from "@/lang/content/prompt";
 import {
   BASE_PACK,
   boardPacksNow,
@@ -62,6 +66,15 @@ export function ContentStudio(): JSX.Element {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [copied, setCopied] = useState(false);
   const [review, setReview] = useState<{ source: ReviewSource; title: string } | null>(null);
+  // The prompt builder is tucked away in an accordion so it doesn't dominate the
+  // page — it only appears when the user asks for it.
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [options, setOptions] = useState<PromptOptions>(DEFAULT_OPTIONS);
+  // The prompt is generated live from the schema + the form, so it always
+  // reflects both the current format and the choices below.
+  const prompt = useMemo(() => buildLlmPrompt(options), [options]);
+  const setOption = (key: keyof PromptOptions, value: string): void =>
+    setOptions((o) => ({ ...o, [key]: value }));
 
   const content = currentContent();
   const packs = importedPacks();
@@ -114,7 +127,7 @@ export function ContentStudio(): JSX.Element {
   }
 
   function copyPrompt(): void {
-    void navigator.clipboard?.writeText(LLM_PROMPT).then(
+    void navigator.clipboard?.writeText(prompt).then(
       () => {
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1800);
@@ -162,18 +175,87 @@ export function ContentStudio(): JSX.Element {
 
       <h2>2. Generate content with an LLM</h2>
       <p>
-        Copy this prompt into ChatGPT, Claude or any capable model, fill in the
-        language you want, and it will produce a ready-to-import pack.
+        Build a prompt to paste into ChatGPT, Claude or any capable model — it
+        will produce a ready-to-import pack. The prompt is generated from the
+        current format, so it always matches what the app accepts.
       </p>
-      <div className="cs-buttons">
-        <button className="btn primary" onClick={copyPrompt}>
-          {copied ? "✓ Copied" : "Copy prompt"}
-        </button>
-        <button className="btn" onClick={() => download("language-content-prompt.txt", LLM_PROMPT, "text/plain")}>
-          ⬇ Download prompt
-        </button>
-      </div>
-      <pre className="cs-prompt">{LLM_PROMPT}</pre>
+      <button
+        className="btn cs-accordion"
+        aria-expanded={builderOpen}
+        onClick={() => setBuilderOpen((v) => !v)}
+      >
+        <span className="cs-accordion-caret">{builderOpen ? "▾" : "▸"}</span>
+        Prompt builder
+      </button>
+
+      {builderOpen && (
+        <div className="cs-builder">
+          <p className="hint">
+            Fill in what you want to teach. Anything left blank just stays open
+            for the model to decide.
+          </p>
+          <div className="cs-form">
+            <label className="cs-field">
+              <span>Known language</span>
+              <input
+                type="text"
+                value={options.knownLanguage}
+                placeholder="English"
+                onChange={(e) => setOption("knownLanguage", e.target.value)}
+              />
+            </label>
+            <label className="cs-field">
+              <span>Language to learn</span>
+              <input
+                type="text"
+                value={options.targetLanguage}
+                placeholder="e.g. Spanish"
+                onChange={(e) => setOption("targetLanguage", e.target.value)}
+              />
+            </label>
+            <label className="cs-field">
+              <span>Target age</span>
+              <input
+                type="text"
+                value={options.ageTarget}
+                placeholder="e.g. 8–11"
+                onChange={(e) => setOption("ageTarget", e.target.value)}
+              />
+            </label>
+            <label className="cs-field">
+              <span>Theme</span>
+              <input
+                type="text"
+                value={options.theme}
+                placeholder="e.g. space, football (optional)"
+                onChange={(e) => setOption("theme", e.target.value)}
+              />
+            </label>
+            <label className="cs-field cs-field-wide">
+              <span>Special instructions</span>
+              <textarea
+                value={options.specialInstructions}
+                placeholder="Anything else to steer the content (optional)"
+                rows={2}
+                onChange={(e) => setOption("specialInstructions", e.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="cs-buttons">
+            <button className="btn primary" onClick={copyPrompt}>
+              {copied ? "✓ Copied" : "Copy prompt"}
+            </button>
+            <button
+              className="btn"
+              onClick={() => download("language-content-prompt.txt", prompt, "text/plain")}
+            >
+              ⬇ Download prompt
+            </button>
+          </div>
+          <pre className="cs-prompt">{prompt}</pre>
+        </div>
+      )}
 
       <h2>3. Import your pack</h2>
       <p>Select the JSON file (or several). It's checked before anything is added.</p>
