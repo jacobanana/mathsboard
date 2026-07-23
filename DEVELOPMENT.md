@@ -112,6 +112,16 @@ in `src/subject.ts`, and there are two URL layouts:
 a shared board that belongs to the other flavour bounces to the other **domain**
 (production) or the other **path** (single-origin), carrying its `?board=<code>`.
 
+> **Decision — one image, subject resolved at runtime.** Both boards ship from a
+> single build/image and the flavour is detected from the URL at load, rather
+> than baking the subject in per-image at build time. This keeps the deploy to
+> one image and one Pages build, at the cost of a small host/path detection
+> function and the Caddy `..`-clamp that serves the `/language/` page at a domain
+> root. Worth revisiting at **3+ subjects**: at that point prefer a build-time
+> `VITE_SUBJECT` per image (making `SUBJECT` a constant and deleting the
+> detection/hand-off duality) over an ever-growing detection function and a
+> fatter shared bundle. At two boards it isn't worth the extra images.
+
 ### Persistence seam
 
 Storage hides behind the `BoardRepository` interface
