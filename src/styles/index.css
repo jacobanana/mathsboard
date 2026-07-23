@@ -188,6 +188,12 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .cs-packs li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #EEF1F0;}
 .cs-packs li:last-child{border-bottom:none;}
 .cs-pack-name{font-weight:600;font-size:14px;display:flex;align-items:center;gap:7px;}
+.cs-active-hint{margin:0 0 10px;}
+.cs-packs label.cs-pack-name{cursor:pointer;}
+.cs-packs label.cs-pack-name input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;margin:0;flex-shrink:0;}
+.cs-packs label.cs-pack-name input[type=checkbox]:disabled{cursor:default;}
+.cs-packs li.cs-pack-off .cs-pack-name{color:var(--muted);}
+.cs-packs li.cs-pack-off .cs-pack-name code{opacity:.7;}
 .cs-badge{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);background:#EEF1F0;padding:2px 7px;border-radius:6px;}
 .cs-pack-actions{display:flex;gap:6px;flex-shrink:0;}
 .cs-packs .btn.small{background:#EEF1F0;color:var(--ink);padding:6px 12px;min-height:0;}

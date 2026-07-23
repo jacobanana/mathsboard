@@ -22,7 +22,9 @@ import {
   currentContent,
   importPackJson,
   importedPacks,
+  isPackActive,
   removeImportedPack,
+  setPackActive,
   subscribeContent,
 } from "@/lang/content/registry";
 import { ContentReview, type ReviewSource } from "@/lang/ContentReview";
@@ -46,9 +48,15 @@ type Feedback =
   | null;
 
 export function ContentStudio(): JSX.Element {
-  // Re-render whenever content is imported / removed so the list + counts stay
-  // live (registry drives the external store).
-  useSyncExternalStore(subscribeContent, () => importedPacks().length);
+  // Re-render whenever content is imported / removed / toggled so the list,
+  // counts and checkboxes stay live (registry drives the external store). The
+  // signature folds in each pack's active state, not just the count, so ticking
+  // a checkbox re-renders too.
+  useSyncExternalStore(subscribeContent, () =>
+    importedPacks()
+      .map((p) => `${p.id}:${isPackActive(p.id) ? 1 : 0}`)
+      .join(","),
+  );
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -210,12 +218,21 @@ export function ContentStudio(): JSX.Element {
         Browse every word, sentence &amp; verb →
       </button>
 
+      {packs.length > 0 && (
+        <p className="hint cs-active-hint">
+          Tick the packs you want active. The catalogue is built from the
+          built-in content plus whichever packs are ticked — so you can focus on
+          one pack or combine several.
+        </p>
+      )}
+
       <ul className="cs-packs">
-        {/* The built-in content is reviewable too. */}
+        {/* The built-in content is always active and reviewable. */}
         <li>
-          <span className="cs-pack-name">
-            {BASE_PACK.name} <span className="cs-badge">built-in</span>
-          </span>
+          <label className="cs-pack-name">
+            <input type="checkbox" checked disabled title="Built-in content is always active" />
+            {BASE_PACK.name} <span className="cs-badge">always on</span>
+          </label>
           <span className="cs-pack-actions">
             <button
               className="btn small"
@@ -226,10 +243,15 @@ export function ContentStudio(): JSX.Element {
           </span>
         </li>
         {packs.map((p) => (
-          <li key={p.id}>
-            <span className="cs-pack-name">
+          <li key={p.id} className={isPackActive(p.id) ? undefined : "cs-pack-off"}>
+            <label className="cs-pack-name">
+              <input
+                type="checkbox"
+                checked={isPackActive(p.id)}
+                onChange={(e) => setPackActive(p.id, e.target.checked)}
+              />
               {p.name} <code>{p.id}</code>
-            </span>
+            </label>
             <span className="cs-pack-actions">
               <button
                 className="btn small"
