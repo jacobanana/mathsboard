@@ -803,6 +803,54 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .lf-btn:active{transform:scale(.97);}
 .lf-srow-c{color:#0D9488;}
 .lf-empty{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;color:var(--muted);font-weight:700;text-align:center;}
+/* "See the first side again" — a round flip button in the back face's corner. */
+.lf-flipback{position:absolute;top:10px;right:10px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.22);color:#fff;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.18);transition:background .12s,transform .12s;}
+.lf-flipback:hover{background:rgba(255,255,255,.38);}
+.lf-flipback:active{transform:scale(.9);}
+.lf-flipback svg{display:block;}
+
+/* --- Tap-the-word to hear it (.spoken-word): the whole word is the target --- */
+.spoken-word{display:inline-flex;align-items:baseline;justify-content:center;gap:.3em;max-width:100%;flex-wrap:wrap;}
+button.spoken-word{font-family:inherit;color:inherit;background:transparent;border:0;padding:0;margin:0;cursor:pointer;text-shadow:inherit;-webkit-tap-highlight-color:transparent;}
+.spoken-word-txt{overflow-wrap:break-word;min-width:0;}
+.spoken-word-ico{font-size:.5em;opacity:.7;flex:0 0 auto;transform:translateY(-.08em);transition:opacity .12s;}
+button.spoken-word.speakable:hover .spoken-word-ico{opacity:1;}
+button.spoken-word.speakable:active{transform:scale(.97);}
+button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outline-offset:3px;border-radius:10px;}
+
+/* --- Vocabulary notepad (.ivocab): leaf through themes, tap a word to hear it --- */
+.ivocab{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#FFFDF7;border:1px solid #E4D9B8;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+.ivocab:active{cursor:grabbing;}
+/* Header band — a coloured "notebook cover" strip, also the drag handle. */
+.iv-head{flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:0 14px;color:#fff;background:linear-gradient(135deg,#0D9488 0%,#14B8A6 100%);box-shadow:0 2px 8px rgba(0,0,0,.12);}
+.iv-emoji{flex:0 0 auto;font-size:20px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));}
+.iv-title{flex:1;font-weight:800;font-size:15px;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.18);}
+.iv-page-of{flex:0 0 auto;font-weight:800;font-size:12px;opacity:.9;font-variant-numeric:tabular-nums;background:rgba(255,255,255,.2);border-radius:20px;padding:3px 9px;}
+/* The page: lined rows of words. Scrolls when a theme has more than fits. */
+.iv-list{list-style:none;margin:0;padding:6px 4px;overflow-y:auto;touch-action:pan-y;cursor:default;animation:ivTurn .26s ease both;background-image:linear-gradient(#F0EAD6 1px,transparent 1px);background-size:100% 52px;background-position:0 8px;}
+@keyframes ivTurn{from{opacity:0;transform:translateX(10px);}to{opacity:1;transform:translateX(0);}}
+.iv-row{display:flex;align-items:center;gap:11px;padding:7px 12px;border-radius:10px;}
+.iv-row:hover{background:rgba(13,148,136,.06);}
+.iv-row-emoji{flex:0 0 auto;font-size:24px;line-height:1;width:30px;text-align:center;}
+.iv-row-words{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;}
+.iv-head-word{color:var(--ink);font-weight:800;font-size:18px;line-height:1.2;justify-content:flex-start;text-align:left;}
+.iv-head-word .spoken-word-ico{font-size:.6em;}
+.iv-gloss{color:var(--muted);font-weight:600;font-size:14px;line-height:1.2;justify-content:flex-start;text-align:left;}
+.iv-phon{font-style:italic;font-weight:500;font-size:12.5px;line-height:1.2;color:#0D9488;opacity:.85;}
+/* Footer — turn the pages, or jump straight to a theme with a dot. */
+.iv-nav{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 12px;border-top:1px solid #F0EAD6;background:#FBF7EC;}
+.iv-turn{flex:0 0 auto;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:50%;background:#0D9488;color:#fff;font-size:22px;font-weight:800;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.16);transition:filter .12s,transform .12s;}
+.iv-turn:hover:not(:disabled){filter:brightness(1.06);}
+.iv-turn:active:not(:disabled){transform:scale(.92);}
+.iv-turn:disabled{background:#CBD5CF;cursor:default;box-shadow:none;}
+.iv-dots{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:7px;}
+.iv-dot{width:9px;height:9px;padding:0;border:0;border-radius:50%;background:#CBD5CF;cursor:pointer;transition:background .12s,transform .12s;}
+.iv-dot:hover{background:#9FB3AD;}
+.iv-dot.on{background:#0D9488;transform:scale(1.25);}
+
+@media (prefers-reduced-motion:reduce){
+  .iv-list{animation-duration:.01ms;}
+}
 
 /* --- Sentence builder (.isent): put scrambled words in order --- */
 .isent{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}

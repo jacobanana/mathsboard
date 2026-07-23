@@ -46,7 +46,9 @@ export interface LangFlashObj {
   topic?: string;
   /** Difficulty filter; absent = "mixed" (all levels). */
   level?: LevelFilter;
-  count: number;
+  /** Legacy: an old deck-size cap. Ignored now — a deck holds every word the
+   *  chosen content offers. Kept optional so older boards still load. */
+  count?: number;
   direction: Direction;
   /** Show the picture cue on each card ("easy" mode); false = words only. */
   easy?: boolean;
@@ -56,7 +58,7 @@ export interface LangFlashObj {
   // --- live widget state (via updateWidgetState, undo-invisible) ---
   /** Monotonic "new deck" counter; the deck is re-derived from it. */
   round?: number;
-  /** Current card index [0..count]; === count means "finished" (summary). */
+  /** Current card index [0..deck length]; === length means "finished" (summary). */
   idx?: number;
   /** Is the current card turned to its answer side? */
   flipped?: boolean;
@@ -72,14 +74,6 @@ export interface LangCard {
   frontPhonetic?: string;
   backPhonetic?: string;
 }
-
-// --- deck size bounds -------------------------------------------------------
-export const MIN_COUNT = 4;
-export const MAX_COUNT = 20;
-export const DEFAULT_COUNT = 10;
-
-export const clampCount = (n: number | undefined): number =>
-  Math.max(MIN_COUNT, Math.min(MAX_COUNT, Math.round(n ?? DEFAULT_COUNT)));
 
 const pairOf = (obj: LangFlashObj): LangPair => ({
   known: obj.known,
@@ -125,9 +119,10 @@ function sourcePairs(obj: LangFlashObj): VocabPair[] {
   return vocabForCategories(categoriesOf(obj), levelOf(obj), pairOf(obj));
 }
 
-/** Derive a widget's deck deterministically from its state. Shuffles the source
- *  pairs by seed and takes up to `count` of them (a source may hold fewer than
- *  the requested count — the deck is then simply as long as the source). */
+/** Derive a widget's deck deterministically from its state. Shuffles ALL the
+ *  source pairs by seed — the deck holds every word the chosen content offers
+ *  (the learner's own words, or every pair in the selected themes at the level),
+ *  in a stable, collaboration-safe order. */
 export function deriveDeck(obj: LangFlashObj): LangCard[] {
   const round = obj.round ?? 0;
   const pairs = sourcePairs(obj);
@@ -138,14 +133,7 @@ export function deriveDeck(obj: LangFlashObj): LangCard[] {
     ? `custom:${pairs.length}`
     : `${categoriesOf(obj).join(",")}:${levelOf(obj)}`;
   const rng = rngFromSeed(`${obj.id}:${round}:${key}:${obj.known}:${obj.learning}`);
-  // Custom decks use every word the learner typed (bounded by MAX); preset
-  // topics honour the chosen count.
-  const want = isCustom(obj)
-    ? Math.min(pairs.length, MAX_COUNT)
-    : Math.min(clampCount(obj.count), pairs.length);
-  return shuffle(rng, pairs)
-    .slice(0, want)
-    .map((v) => toCard(v, obj.direction));
+  return shuffle(rng, pairs).map((v) => toCard(v, obj.direction));
 }
 
 /** The effective card count for a widget (bounded by the source size). */

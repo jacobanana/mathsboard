@@ -13,7 +13,6 @@ import { categoriesForVocab, type LevelFilter } from "@/lang/pairs";
 import { LangFlashCards } from "@/tools/langflashcards/LangFlashCards";
 import { LangFlashDialog } from "@/tools/langflashcards/Dialog";
 import {
-  DEFAULT_COUNT,
   resetSessionPatch,
   type CustomPair,
   type Direction,
@@ -31,8 +30,6 @@ export interface LangFlashParams {
   category?: string;
   /** Difficulty filter: a level, or "mixed" for all levels. */
   level: LevelFilter;
-  /** How many cards (bounded by the theme's size). */
-  count: number;
   /** Which face shows first. */
   direction: Direction;
   /** Easy mode shows the picture cue on each card; off (default) = words only. */
@@ -59,7 +56,6 @@ export function defaultLangFlashParams(): LangFlashParams {
     categories: [first],
     category: first,
     level: "basic",
-    count: DEFAULT_COUNT,
     direction: "known-first",
     easy: false,
   };
