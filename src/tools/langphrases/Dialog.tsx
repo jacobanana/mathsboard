@@ -48,7 +48,8 @@ export function LangPhrasesDialog({
     <>
       <h2>Sentences</h2>
       <p className="hint">
-        A little phrasebook — leaf through themes and tap a sentence to hear it.
+        A little phrasebook — leaf through themes, tap a sentence to hear it, or
+        hide the answers to test yourself.
       </p>
 
       <CategoryLevelPicker picker={picker} />

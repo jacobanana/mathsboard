@@ -818,38 +818,55 @@ button.spoken-word.speakable:hover .spoken-word-ico{opacity:1;}
 button.spoken-word.speakable:active{transform:scale(.97);}
 button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outline-offset:3px;border-radius:10px;}
 
-/* --- Vocabulary notepad (.ivocab): leaf through themes, tap a word to hear it --- */
-.ivocab{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#FFFDF7;border:1px solid #E4D9B8;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
-.ivocab:active{cursor:grabbing;}
+/* --- Study notepad (.snote): the shared body of the Word list (langvocab) and
+   the Sentences phrasebook (langphrases) — leaf through themes, tap a line to
+   hear it, hide the answers to test yourself. The two differ only in accent
+   (set by .is-vocab / .is-phrases below) and the content they feed in. --- */
+.snote{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#FFFDF7;border:1px solid #E4D9B8;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+.snote:active{cursor:grabbing;}
+/* Accent palettes — one variable set per widget, so every rule below is shared. */
+.snote.is-vocab{--sn-acc:#0D9488;--sn-acc2:#14B8A6;--sn-tint:rgba(13,148,136,.06);--sn-rule:#F0EAD6;--sn-nav-bg:#FBF7EC;--sn-disabled:#CBD5CF;--sn-dot-hover:#9FB3AD;--sn-answer:var(--muted);}
+.snote.is-phrases{--sn-acc:#6D5EF6;--sn-acc2:#8B7BF9;--sn-tint:rgba(109,94,246,.06);--sn-rule:#EDEAFB;--sn-nav-bg:#FAF9FE;--sn-disabled:#D2CEE8;--sn-dot-hover:#A79FE0;--sn-answer:#6D5EF6;}
 /* Header band — a coloured "notebook cover" strip, also the drag handle. */
-.iv-head{flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:0 14px;color:#fff;background:linear-gradient(135deg,#0D9488 0%,#14B8A6 100%);box-shadow:0 2px 8px rgba(0,0,0,.12);}
-.iv-emoji{flex:0 0 auto;font-size:20px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));}
-.iv-title{flex:1;font-weight:800;font-size:15px;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.18);}
-.iv-page-of{flex:0 0 auto;font-weight:800;font-size:12px;opacity:.9;font-variant-numeric:tabular-nums;background:rgba(255,255,255,.2);border-radius:20px;padding:3px 9px;}
-/* The page: lined rows of words. Scrolls when a theme has more than fits. */
-.iv-list{list-style:none;margin:0;padding:6px 4px;overflow-y:auto;touch-action:pan-y;cursor:default;animation:ivTurn .26s ease both;background-image:linear-gradient(#F0EAD6 1px,transparent 1px);background-size:100% 52px;background-position:0 8px;}
+.snote-head{flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:0 14px;color:#fff;background:linear-gradient(135deg,var(--sn-acc) 0%,var(--sn-acc2) 100%);box-shadow:0 2px 8px rgba(0,0,0,.12);}
+.snote-emoji{flex:0 0 auto;font-size:20px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));}
+.snote-title{flex:1;font-weight:800;font-size:15px;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.18);}
+.snote-hide{flex:0 0 auto;padding:4px 11px;border-radius:20px;border:0;background:rgba(255,255,255,.22);color:#fff;font-weight:800;font-size:12px;cursor:pointer;transition:background .12s;}
+.snote-hide:hover{background:rgba(255,255,255,.36);}
+.snote-hide.on{background:#fff;color:var(--sn-acc);}
+.snote-page-of{flex:0 0 auto;font-weight:800;font-size:12px;opacity:.9;font-variant-numeric:tabular-nums;background:rgba(255,255,255,.2);border-radius:20px;padding:3px 9px;}
+/* The page: rows of words/sentences. Scrolls when a theme has more than fits;
+   the Word list rules its shorter rows like notebook paper. */
+.snote-list{list-style:none;margin:0;padding:6px 4px;overflow-y:auto;touch-action:pan-y;cursor:default;animation:ivTurn .26s ease both;}
+.snote.is-vocab .snote-list{background-image:linear-gradient(var(--sn-rule) 1px,transparent 1px);background-size:100% 52px;background-position:0 8px;}
 @keyframes ivTurn{from{opacity:0;transform:translateX(10px);}to{opacity:1;transform:translateX(0);}}
-.iv-row{display:flex;align-items:center;gap:11px;padding:7px 12px;border-radius:10px;}
-.iv-row:hover{background:rgba(13,148,136,.06);}
-.iv-row-emoji{flex:0 0 auto;font-size:24px;line-height:1;width:30px;text-align:center;}
-.iv-row-words{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;}
-.iv-head-word{color:var(--ink);font-weight:800;font-size:18px;line-height:1.2;justify-content:flex-start;text-align:left;}
-.iv-head-word .spoken-word-ico{font-size:.6em;}
-.iv-gloss{color:var(--muted);font-weight:600;font-size:14px;line-height:1.2;justify-content:flex-start;text-align:left;}
-.iv-phon{font-style:italic;font-weight:500;font-size:12.5px;line-height:1.2;color:#0D9488;opacity:.85;}
+.snote-row{display:flex;align-items:flex-start;gap:11px;padding:8px 12px;border-radius:10px;}
+.snote-row:hover{background:var(--sn-tint);}
+.snote-row-emoji{flex:0 0 auto;font-size:24px;line-height:1;width:30px;text-align:center;}
+.snote-row-lines{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;}
+/* The .snote qualifier beats button.spoken-word{color:inherit}, so a speakable
+   line keeps its colour. */
+.snote .snote-lead{color:var(--ink);font-weight:800;font-size:17px;line-height:1.25;justify-content:flex-start;text-align:left;}
+.snote-lead .spoken-word-ico{font-size:.6em;}
+.snote .snote-answer{color:var(--sn-answer);font-weight:700;font-size:14px;line-height:1.25;letter-spacing:.01em;justify-content:flex-start;text-align:left;}
+/* Hidden answer — a placeholder the learner taps to reveal (a per-row test). */
+.snote-reveal{align-self:flex-start;margin-top:1px;padding:1px 14px;border-radius:8px;border:0;background:var(--sn-tint);color:var(--sn-acc);font-family:inherit;font-weight:800;font-size:15px;letter-spacing:.15em;line-height:1.4;cursor:pointer;transition:filter .12s;}
+.snote-reveal:hover{filter:brightness(.97);}
+/* Pronunciation reading under a line — shown, never spoken. */
+.snote-phon{font-style:italic;font-weight:500;font-size:12.5px;line-height:1.2;color:var(--sn-acc);opacity:.82;}
 /* Footer — turn the pages, or jump straight to a theme with a dot. */
-.iv-nav{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 12px;border-top:1px solid #F0EAD6;background:#FBF7EC;}
-.iv-turn{flex:0 0 auto;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:50%;background:#0D9488;color:#fff;font-size:22px;font-weight:800;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.16);transition:filter .12s,transform .12s;}
-.iv-turn:hover:not(:disabled){filter:brightness(1.06);}
-.iv-turn:active:not(:disabled){transform:scale(.92);}
-.iv-turn:disabled{background:#CBD5CF;cursor:default;box-shadow:none;}
-.iv-dots{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:7px;}
-.iv-dot{width:9px;height:9px;padding:0;border:0;border-radius:50%;background:#CBD5CF;cursor:pointer;transition:background .12s,transform .12s;}
-.iv-dot:hover{background:#9FB3AD;}
-.iv-dot.on{background:#0D9488;transform:scale(1.25);}
+.snote-nav{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 12px;border-top:1px solid var(--sn-rule);background:var(--sn-nav-bg);}
+.snote-turn{flex:0 0 auto;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:50%;background:var(--sn-acc);color:#fff;font-size:22px;font-weight:800;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.16);transition:filter .12s,transform .12s;}
+.snote-turn:hover:not(:disabled){filter:brightness(1.06);}
+.snote-turn:active:not(:disabled){transform:scale(.92);}
+.snote-turn:disabled{background:var(--sn-disabled);cursor:default;box-shadow:none;}
+.snote-dots{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:7px;}
+.snote-dot{width:9px;height:9px;padding:0;border:0;border-radius:50%;background:var(--sn-disabled);cursor:pointer;transition:background .12s,transform .12s;}
+.snote-dot:hover{background:var(--sn-dot-hover);}
+.snote-dot.on{background:var(--sn-acc);transform:scale(1.25);}
 
 @media (prefers-reduced-motion:reduce){
-  .iv-list,.ph-list{animation-duration:.01ms;}
+  .snote-list{animation-duration:.01ms;}
 }
 
 /* --- Sentence builder (.isent): put scrambled words in order --- */
@@ -930,34 +947,6 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
    the right box's dot on its left edge — so a line clearly joins dot to dot. */
 .lm-dot-r{margin-left:auto;}
 .lm-dot-l{margin-right:auto;}
-
-/* --- Sentences phrasebook (.iphrases): leaf through themes, tap a line to hear
-   it. Mirrors the Word list (.ivocab) chrome, in the sentence family's purple. */
-.iphrases{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#FFFDF7;border:1px solid #E4D9B8;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
-.iphrases:active{cursor:grabbing;}
-.ph-head{flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:0 14px;color:#fff;background:linear-gradient(135deg,#6D5EF6 0%,#8B7BF9 100%);box-shadow:0 2px 8px rgba(0,0,0,.12);}
-.ph-emoji{flex:0 0 auto;font-size:20px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));}
-.ph-title{flex:1;font-weight:800;font-size:15px;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.18);}
-.ph-page-of{flex:0 0 auto;font-weight:800;font-size:12px;opacity:.9;font-variant-numeric:tabular-nums;background:rgba(255,255,255,.2);border-radius:20px;padding:3px 9px;}
-.ph-list{list-style:none;margin:0;padding:6px 4px;overflow-y:auto;touch-action:pan-y;cursor:default;animation:ivTurn .26s ease both;}
-.ph-row{display:flex;align-items:flex-start;gap:11px;padding:8px 12px;border-radius:10px;}
-.ph-row:hover{background:rgba(109,94,246,.06);}
-.ph-row-lines{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;}
-/* Beat button.spoken-word{color:inherit} so a speakable line keeps its colour. */
-.iphrases .ph-prompt{color:var(--ink);font-weight:800;font-size:16px;line-height:1.25;justify-content:flex-start;text-align:left;}
-.ph-prompt .spoken-word-ico{font-size:.6em;}
-.iphrases .ph-answer{color:#6D5EF6;font-weight:700;font-size:14px;line-height:1.25;letter-spacing:.01em;justify-content:flex-start;text-align:left;}
-/* Pronunciation reading under a phrase line — shown, never spoken. */
-.ph-phon{font-style:italic;font-weight:500;font-size:12.5px;color:#6D5EF6;opacity:.8;line-height:1.2;}
-.ph-nav{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 12px;border-top:1px solid #EDEAFB;background:#FAF9FE;}
-.ph-turn{flex:0 0 auto;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:50%;background:#6D5EF6;color:#fff;font-size:22px;font-weight:800;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.16);transition:filter .12s,transform .12s;}
-.ph-turn:hover:not(:disabled){filter:brightness(1.06);}
-.ph-turn:active:not(:disabled){transform:scale(.92);}
-.ph-turn:disabled{background:#D2CEE8;cursor:default;box-shadow:none;}
-.ph-dots{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:7px;}
-.ph-dot{width:9px;height:9px;padding:0;border:0;border-radius:50%;background:#D2CEE8;cursor:pointer;transition:background .12s,transform .12s;}
-.ph-dot:hover{background:#A79FE0;}
-.ph-dot.on{background:#6D5EF6;transform:scale(1.25);}
 
 /* --- My words (.itable): an editable vocabulary table --- */
 /* Wide enough to hold short sentences; cells are auto-growing textareas that

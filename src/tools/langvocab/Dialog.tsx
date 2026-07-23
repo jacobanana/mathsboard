@@ -51,8 +51,8 @@ export function LangVocabDialog({
     <>
       <h2>Word list</h2>
       <p className="hint">
-        A little notepad of words. Turn the pages through each theme and tap a
-        word to hear it.
+        A little notepad of words. Turn the pages through each theme, tap a word
+        to hear it, or hide the answers to test yourself.
       </p>
 
       <CategoryLevelPicker picker={picker} />

@@ -1,7 +1,8 @@
 // WIDGET TOOL — the phrasebook: basic sentences to browse and hear, one page
-// per theme (leaf through with the footer nav, tap a sentence to listen).
-// Languages are baked in at creation (from the learner's current pair). A study
-// aid, so there is no scoring.
+// per theme (leaf through with the footer nav, tap a sentence to listen, or
+// hide the answers to test yourself). Shares its body with the Word list — see
+// src/lang/StudyNotepad. Languages are baked in at creation (from the learner's
+// current pair). A study aid, so there is no scoring.
 
 import { defineWidgetTool } from "@/tools/registry";
 import { currentPair } from "@/lang/store";
