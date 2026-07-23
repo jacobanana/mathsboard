@@ -35,7 +35,7 @@ import {
 } from "@/tools/langsentence/builder";
 import type { LangSentenceParams } from "@/tools/langsentence";
 
-const HEAD_H = 40;
+const HEAD_H = 44;
 
 const BANNERS: [string, string][] = [
   ["#6D5EF6", "#8B7BF9"],
@@ -158,6 +158,9 @@ export function LangSentence({ obj }: WidgetProps<LangSentenceParams>) {
       onPointerDown={onCardPointerDown}
     >
       <div className="sb-head" style={{ height: HEAD_H + "px" }}>
+        <span className="sb-emoji" aria-hidden>
+          🧩
+        </span>
         <span className="sb-title">{deckTitle(mo)}</span>
         <span className="sb-progress">{finished ? "Results" : `${idx + 1} / ${rounds}`}</span>
         <button className="sb-new" title="New game" onClick={newGame}>

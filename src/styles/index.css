@@ -853,15 +853,16 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 }
 
 /* --- Sentence builder (.isent): put scrambled words in order --- */
-.isent{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+.isent{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#FFFDF7;border:1px solid #E4D9B8;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
 .isent:active{cursor:grabbing;}
 .isent.happy{animation:ifBounce .6s ease;}
 .isent.shake{animation:ifShake .5s ease;}
-.sb-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #F0EAD6;background:#FBF7EC;}
-.sb-title{flex:1;font-weight:800;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.sb-progress{flex:0 0 auto;font-weight:800;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
-.sb-new{flex:0 0 auto;padding:5px 10px;border-radius:9px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:12px;cursor:pointer;}
-.sb-new:hover{filter:brightness(.97);}
+.sb-head{flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:0 14px;color:#fff;background:linear-gradient(135deg,#6D5EF6 0%,#8B7BF9 100%);box-shadow:0 2px 8px rgba(0,0,0,.12);}
+.sb-emoji{flex:0 0 auto;font-size:20px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));}
+.sb-title{flex:1;font-weight:800;font-size:15px;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.18);}
+.sb-progress{flex:0 0 auto;font-weight:800;font-size:12px;opacity:.9;font-variant-numeric:tabular-nums;background:rgba(255,255,255,.2);border-radius:20px;padding:3px 9px;}
+.sb-new{flex:0 0 auto;padding:4px 11px;border-radius:20px;border:0;background:rgba(255,255,255,.22);color:#fff;font-weight:800;font-size:12px;cursor:pointer;transition:background .12s;}
+.sb-new:hover{background:rgba(255,255,255,.36);}
 .sb-scene{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;box-sizing:border-box;animation:ifDeal .28s ease both;}
 .sb-prompt{flex:0 0 auto;text-align:center;color:#fff;font-weight:800;font-size:15px;padding:9px 12px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.15);text-shadow:0 1px 4px rgba(0,0,0,.18);}
 .sb-answer{flex:0 0 auto;min-height:44px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px;border-radius:12px;background:#F6F8FB;border:2px dashed #D7DCE4;}
