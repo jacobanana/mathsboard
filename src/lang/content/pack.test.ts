@@ -109,6 +109,25 @@ describe("validatePack", () => {
     pack.pronouns.es = ["yo"];
     expect(validatePack(pack).ok).toBe(false);
   });
+
+  it("accepts optional phonetics on vocab and sentences", () => {
+    const pack = spanishPack();
+    pack.vocab[0].phonetics = { es: "rojo" };
+    pack.sentences[0].phonetics = { es: "es rojo" };
+    expect(validatePack(pack).ok).toBe(true);
+  });
+
+  it("rejects malformed phonetics (empty reading or wrong shape)", () => {
+    const bad = spanishPack();
+    bad.vocab[0].phonetics = { es: "" };
+    const r1 = validatePack(bad);
+    expect(r1.ok).toBe(false);
+    if (!r1.ok) expect(r1.errors.join(" ")).toContain("phonetics");
+
+    const bad2 = spanishPack();
+    (bad2.vocab[0] as { phonetics: unknown }).phonetics = "rojo";
+    expect(validatePack(bad2).ok).toBe(false);
+  });
 });
 
 describe("importPackJson / registry", () => {

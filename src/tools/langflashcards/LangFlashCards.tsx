@@ -186,6 +186,7 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
               <div className="if-face if-front" style={{ background: frontBg }}>
                 {obj.easy && card?.emoji && <div className="lf-emoji">{card.emoji}</div>}
                 <div className="if-q lf-word">{card?.front}</div>
+                {card?.frontPhonetic && <div className="lf-phon">{card.frontPhonetic}</div>}
                 {card?.front && (
                   <SpeakButton text={card.front} code={frontCode} className="lf-speak" />
                 )}
@@ -198,6 +199,7 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
               <div className="if-face if-back">
                 {obj.easy && card?.emoji && <div className="lf-emoji">{card.emoji}</div>}
                 <div className="if-truth lf-word">{card?.back}</div>
+                {card?.backPhonetic && <div className="lf-phon">{card.backPhonetic}</div>}
                 {card?.back && (
                   <SpeakButton text={card.back} code={backCode} className="lf-speak" />
                 )}
