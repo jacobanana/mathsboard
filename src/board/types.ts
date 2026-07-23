@@ -9,6 +9,7 @@
 // import is runtime-safe (boardProfile only imports this module for TYPES, which
 // are erased) so there is no evaluation cycle.
 import { PROFILE } from "@/boardProfile";
+import type { Subject } from "@/subject";
 import type { ContentPack } from "@/lang/content/schema";
 
 /** Every placed object shares this geometric base. */
@@ -82,6 +83,16 @@ export interface BoardDocument {
   createdAt: number;
   updatedAt: number;
   /**
+   * WHICH APP FLAVOUR OWNS THIS BOARD ("maths" | "language"). Stamped once at
+   * creation from the active profile and carried everywhere the document goes —
+   * the working draft, the saved library entry, and the shared doc's meta — so
+   * each app lists and re-opens only its own boards. Absent on documents saved
+   * before this field existed: those predate the language board and are treated
+   * as maths (see `subjectOf`), so old boards keep loading and never leak into
+   * the language list.
+   */
+  subject?: Subject;
+  /**
    * CUSTOM CONTENT THAT TRAVELS WITH THE BOARD (language board). Language
    * widgets store only references (theme ids, level, language codes) and resolve
    * the actual words live from the per-device content catalogue. So a board
@@ -136,6 +147,16 @@ export interface DraftEnvelope {
 /** Stable id generator for every object, stroke, and document. */
 export const id = (): string => crypto.randomUUID();
 
+/**
+ * The subject a board belongs to. Documents saved before the `subject` field
+ * existed carry none; they predate the language board, so they are maths boards.
+ * The single place that resolves that default — persistence and any subject
+ * filtering go through here rather than repeating `?? "maths"`.
+ */
+export function subjectOf(doc: { subject?: Subject }): Subject {
+  return doc.subject ?? "maths";
+}
+
 /** Default name for a board that has never been explicitly saved. */
 export const UNTITLED_NAME = "Untitled board";
 
@@ -152,6 +173,7 @@ export function newBoardDocument(
   return {
     id: id(),
     name,
+    subject: PROFILE.subject,
     background,
     objects: [],
     strokes: [],
