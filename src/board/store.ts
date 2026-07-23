@@ -45,7 +45,7 @@ import { LOCAL_ORIGIN, SEED_ORIGIN } from "@/collab/docModel";
 import { useCollabStore } from "@/collab/collabStore";
 import { getStoredName } from "@/collab/profile";
 import { track, trackBoardActivated } from "@/analytics";
-import { IS_LANGUAGE } from "@/subject";
+import { IS_LANGUAGE, SUBJECT, crossAppRedirect } from "@/subject";
 import { setBoardPacks, importedPacks } from "@/lang/content/registry";
 import { packsUsedBy, dedupePacks } from "@/lang/content/embed";
 
@@ -1019,6 +1019,12 @@ function syncBoardContent(board: BoardDocument, origin: unknown): void {
 // Every committed transaction (local edit, remote edit, undo/redo, seed) lands
 // here with the fresh mirror. Keep the selection valid (drop ids whose shape no
 // longer exists - remote deletes, undo, eraser splits) and autosave the draft.
+
+// Set once we've started navigating to the other app flavour (cross-app
+// hand-off below), so the burst of change events during teardown fires the
+// navigation only once.
+let handingOff = false;
+
 session.registerSessionCallbacks({
   onBoardChange(rawBoard, origin) {
     // Safety net for shapes that reach the store from any source — most
@@ -1027,6 +1033,28 @@ session.registerSessionCallbacks({
     // current document migrateDocument returns the SAME reference, so this is a
     // cheap no-op that preserves the mirror's referential stability.
     const board = migrateDocument(rawBoard);
+
+    // CROSS-APP HAND-OFF. A shared board carries its subject in meta; the first
+    // server sync brings it here. If it belongs to the OTHER flavour — a board
+    // opened via a hand-typed Join code, or a link that lost its /language/
+    // segment — bounce to the correct app (the ?board=<code> query rides along)
+    // rather than render it here with the wrong tools and content. Only shared
+    // boards route: a solo board is always this app's own. Legacy shared boards
+    // carry no subject and are left where they are (see crossAppRedirect).
+    if (!handingOff && useCollabStore.getState().mode === "shared") {
+      const target = crossAppRedirect(board.subject, window.location.href, SUBJECT);
+      if (target) {
+        handingOff = true;
+        // Forget the pointer this (wrong) app just remembered for the board, so
+        // it doesn't linger in this flavour's list — the correct app re-remembers
+        // it under the right subject once it joins.
+        const { boardId } = useCollabStore.getState();
+        if (boardId) void localRepository.removeRemote(boardId);
+        window.location.replace(target);
+        return;
+      }
+    }
+
     syncBoardContent(board, origin);
     const state = useBoardStore.getState();
     const objIds = new Set(board.objects.map((o) => o.id));
