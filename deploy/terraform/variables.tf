@@ -64,7 +64,12 @@ variable "ssh_cidr" {
 # ---- App config (rendered into the VPS .env) -------------------------------
 
 variable "site_address" {
-  description = "Public FQDN, e.g. board.example.com. Drives Caddy's automatic TLS."
+  description = "Public FQDN for the Maths board, e.g. mathsboard.example.com. Drives Caddy's automatic TLS."
+  type        = string
+}
+
+variable "language_site_address" {
+  description = "Public FQDN for the Language board, e.g. languageboard.example.com. Needs its own DNS A record -> the same VPS; Caddy provisions its TLS cert automatically."
   type        = string
 }
 

@@ -5,9 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Language Board</title>
 <!-- Installable PWA (Language board) — a SEPARATE app from the Maths board,
-     with its own manifest and icons scoped to /language/. Icon paths reach up
-     into the shared /icons/ folder; the manifest sits alongside this page. All
-     relative so it works under the GitHub Pages repo subpath too. -->
+     with its own manifest and icons. Icon paths reach up into the shared
+     /icons/ folder; the manifest sits alongside this page. All relative so the
+     one build works everywhere this page is mounted: under /language/ (dev,
+     GitHub Pages) AND at its own domain's root in production, where the "../"
+     paths clamp back to /icons and Caddy serves this manifest at /manifest
+     .webmanifest. See deploy/Caddyfile and src/subject.ts. -->
 <meta name="description" content="An infinite-canvas whiteboard for teaching and learning languages together.">
 <meta name="theme-color" content="#F97316">
 <link rel="manifest" href="manifest.webmanifest">

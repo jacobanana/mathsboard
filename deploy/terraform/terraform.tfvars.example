@@ -6,10 +6,11 @@
 # OpenStack RC file (sets OS_* env vars) before running terraform.
 os_cloud = ""
 
-# Your FQDN. Add its A record (-> the `floating_ip` output) in the Infomaniak
-# Manager. Caddy provisions the TLS cert on the first HTTPS request after DNS
-# resolves.
-site_address = "board.example.com"
+# Board FQDNs — one per board, both pointing at this VPS. Add an A record for
+# EACH (-> the `floating_ip` output) in the Infomaniak Manager. Caddy provisions
+# each TLS cert on the first HTTPS request after its DNS resolves.
+site_address          = "mathsboard.example.com"
+language_site_address = "languageboard.example.com"
 
 # Subdomain for the self-hosted Umami analytics dashboard (analytics is enabled
 # on Terraform deploys). Add its OWN A record -> the same `floating_ip`; Caddy

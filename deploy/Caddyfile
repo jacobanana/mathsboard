@@ -1,38 +1,84 @@
-# The app on one domain, self-hosted analytics on a subdomain - both on this
-# box, both with automatic TLS:
+# Two board domains + self-hosted analytics, all on this one box with automatic
+# TLS. Both boards are ONE static build (the maths page at the build root, the
+# language page under /language/ — see vite.config.ts); each domain serves its
+# own board at its root and shares the same collaboration backend:
 #
-#   <SITE_ADDRESS>/api/*  -> the token/upload service
-#   <SITE_ADDRESS>/ys/*   -> the Y-Sweet sync server (websocket; prefix stripped -
-#                            the container serves at root, and the token endpoint
-#                            rewrites the URLs inside minted tokens to point here)
-#   <SITE_ADDRESS>/*      -> the static frontend build
-#   <ANALYTICS_ADDRESS>   -> self-hosted Umami, at its own root (the prebuilt
-#                            image doesn't honour a runtime subpath/BASE_PATH, so
-#                            it can't live under /umami on the main domain)
+#   <SITE_ADDRESS>            -> the Maths board (build root) + backend
+#   <LANGUAGE_SITE_ADDRESS>   -> the Language board (built under /language/,
+#                               served here at the root) + backend
+#   /api/*                   -> the token/upload service (both domains)
+#   /ys/*                    -> the Y-Sweet sync server (websocket; prefix
+#                               stripped — the container serves at root, and the
+#                               token endpoint rewrites minted-token URLs to the
+#                               requesting host, so a board shared from either
+#                               domain syncs against that same host's /ys)
+#   <ANALYTICS_ADDRESS>      -> self-hosted Umami, at its own root (the prebuilt
+#                               image doesn't honour a runtime subpath/BASE_PATH,
+#                               so it can't live under /umami on a board domain)
 #
 # Addresses come from the environment (see .env.example):
-#   production   SITE_ADDRESS=board.example.com  ANALYTICS_ADDRESS=analytics.example.com
+#   production   SITE_ADDRESS=mathsboard.example.com
+#                LANGUAGE_SITE_ADDRESS=languageboard.example.com
+#                ANALYTICS_ADDRESS=analytics.example.com
 #                (automatic HTTPS via ACME on the first request to each; certs
 #                live in the caddy_data volume - keep it)
-#   local test   SITE_ADDRESS=:8080  (ANALYTICS_ADDRESS falls back to the
-#                http://localhost:8099 default below - plain HTTP, and never
-#                reached since umami isn't in the local compose profile)
+#   local test   SITE_ADDRESS=:8080  (LANGUAGE_SITE_ADDRESS + ANALYTICS_ADDRESS
+#                fall back to the http://localhost defaults below - plain HTTP,
+#                never ACME. The language board is reached at :8080/language/
+#                there, off the single build the maths block already serves.)
 
-{$SITE_ADDRESS} {
-	encode zstd gzip
-
+# Collaboration backend, imported identically into every board domain so a board
+# shared from either app reaches the same sync server + token service.
+(backend) {
 	handle /api/* {
 		reverse_proxy api:8787
 	}
-
 	handle_path /ys/* {
 		reverse_proxy ysweet:8080
 	}
+}
+
+# Maths board — the primary domain, serving the build at its root. Locally this
+# is the single site (SITE_ADDRESS=:8080), which also answers /language/ off the
+# same build, so the path-based dev / e2e / GitHub Pages layout keeps working.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	import backend
 
 	handle {
 		root * /srv
 		try_files {path} /index.html
 		file_server
+	}
+}
+
+# Language board — its OWN domain, serving the SAME build's language page at this
+# domain's root. That page's asset URLs are relative and baked at /language/
+# depth (../assets, ../icons); served from the root the browser clamps ".." at
+# "/", so they resolve to the shared /assets and /icons. Only the manifest must
+# be swapped to the language copy. Defaults to a local-only HTTP address when
+# unset so local testing never attempts ACME for it.
+{$LANGUAGE_SITE_ADDRESS:http://localhost:8098} {
+	encode zstd gzip
+	import backend
+
+	handle {
+		root * /srv
+		# `route` keeps these in written order regardless of Caddy's directive
+		# sort, so the root/manifest rewrites land before the SPA fallback.
+		route {
+			# The page's <link rel=manifest> resolves to /manifest.webmanifest at
+			# the root; serve the LANGUAGE manifest (name, icons, theme) there.
+			rewrite /manifest.webmanifest /language/manifest.webmanifest
+			# The bare root matches the /srv directory (whose index is the MATHS
+			# page), so point it explicitly at the language shell.
+			@root path /
+			rewrite @root /language/index.html
+			# Real files (hashed assets, icons, sw.js) pass through; anything else
+			# (client-side routes) falls back to the language shell.
+			try_files {path} /language/index.html
+			file_server
+		}
 	}
 }
 
