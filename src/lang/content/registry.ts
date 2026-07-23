@@ -7,9 +7,12 @@
 //
 // Each imported pack can be switched ON or OFF: only the ACTIVE packs feed the
 // catalogue, so a teacher can focus a lesson on a single pack or combine a few.
-// The built-in base and the open board's own packs are always active. Loading a
-// new pack selects just that one by default (see importPackJson). The active
-// selection is persisted per-device alongside the packs themselves.
+// The base pack is on by default and the open board's own packs are always
+// active. Base can additionally be switched OFF to teach purely from imported /
+// board packs — but only while some other pack is active, so the catalogue is
+// never left empty. Loading a new pack selects just that one by default (see
+// importPackJson). The active selection is persisted per-device alongside the
+// packs themselves.
 //
 // data.ts and conjugation.ts don't hold arrays of their own any more — they
 // register a consumer here and mirror the merged catalogue in place, so the
@@ -29,10 +32,14 @@ export const BASE_PACK = baseJson as unknown as ContentPack;
 
 const STORAGE_KEY = "langboard.content.v1";
 // Which imported packs are currently ACTIVE — i.e. contribute to the merged
-// catalogue widgets draw from. The base pack and the open board's own packs are
-// always active; only the user's imported library is selectable. Persisted
+// catalogue widgets draw from. The open board's own packs are always active;
+// the base pack and the user's imported library are selectable. Persisted
 // per-device so the choice survives a reload.
 const ACTIVE_KEY = "langboard.content.active.v1";
+// Whether the built-in base pack contributes. On by default; can only be
+// switched off while another pack is active (see setBaseActive). Persisted
+// per-device alongside the imported selection.
+const BASE_KEY = "langboard.content.base.v1";
 
 // --- merge ------------------------------------------------------------------
 
@@ -120,29 +127,65 @@ function persistActive(): void {
   }
 }
 
+/** Whether the base pack is switched on. Absent key ⇒ default on. */
+function loadBaseEnabled(): boolean {
+  try {
+    return localStorage.getItem(BASE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function persistBase(): void {
+  try {
+    localStorage.setItem(BASE_KEY, JSON.stringify(baseEnabled));
+  } catch {
+    /* storage may be unavailable — the choice is still live for this session */
+  }
+}
+
 // --- state ------------------------------------------------------------------
 
 let imported: ContentPack[] = loadImported();
-// The subset of `imported` that is switched on. base + board packs are always
-// on; this only gates the user's imported library.
+// The subset of `imported` that is switched on. board packs are always on;
+// this only gates the user's imported library.
 let activeIds: Set<string> = loadActive(imported);
+// Whether the built-in base pack contributes. Reconciled below so it can never
+// be off while there is nothing else to teach from.
+let baseEnabled: boolean = loadBaseEnabled();
 // Packs embedded in the currently-open board (see BoardDocument.contentPacks).
 // EPHEMERAL — never persisted to this device's library; they exist so a board
 // built from custom content resolves for anyone who opens or joins it, even
 // without that pack imported. Replaced whenever the open board changes.
 let boardPacks: ContentPack[] = [];
 
-/** The packs that currently feed the catalogue: the built-in base, every ACTIVE
- *  imported pack, and the open board's own packs (minus any the user already
- *  imported, so nothing is counted twice). */
-function computeMerged(): MergedContent {
+/** The active non-base packs: every ACTIVE imported pack plus the open board's
+ *  own packs (minus any already provided by an active import, so nothing is
+ *  counted twice). An imported pack switched off still leaves the board's own
+ *  copy in play, so a shared board keeps resolving. */
+function otherActivePacks(): ContentPack[] {
   const activeImported = imported.filter((p) => activeIds.has(p.id));
-  // Only an ACTIVE import supersedes the board's own copy of a pack; if the user
-  // imported that pack but switched it off, the board still needs its own copy
-  // to resolve, so don't drop it here.
   const have = new Set(activeImported.map((p) => p.id));
   const effectiveBoard = boardPacks.filter((p) => !have.has(p.id));
-  return mergedFrom([BASE_PACK, ...activeImported, ...effectiveBoard]);
+  return [...activeImported, ...effectiveBoard];
+}
+
+/** The packs that currently feed the catalogue: the built-in base (unless the
+ *  user switched it off while other content is active) plus every active
+ *  non-base pack. */
+function computeMerged(): MergedContent {
+  const others = otherActivePacks();
+  // Base can only be dropped while something else is active — otherwise the
+  // catalogue would be empty, so base always feeds when nothing else does.
+  const includeBase = baseEnabled || others.length === 0;
+  return mergedFrom(includeBase ? [BASE_PACK, ...others] : others);
+}
+
+// Reconcile the persisted choice at load: base can't stay off with no other
+// active content, so restore it (and the stored flag) if that's the case.
+if (!baseEnabled && otherActivePacks().length === 0) {
+  baseEnabled = true;
+  persistBase();
 }
 
 let merged: MergedContent = computeMerged();
@@ -167,6 +210,13 @@ export function subscribeContent(listener: () => void): () => void {
 }
 
 function rebuild(): void {
+  // Base can only stay OFF while another pack is active; if the last one goes
+  // away, restore base so the catalogue is never empty (and the checkbox
+  // reflects reality on the next render).
+  if (!baseEnabled && otherActivePacks().length === 0) {
+    baseEnabled = true;
+    persistBase();
+  }
   merged = computeMerged();
   for (const consume of consumers) consume(merged);
   for (const listener of listeners) listener();
@@ -253,17 +303,46 @@ export function removeImportedPack(id: string): boolean {
   return true;
 }
 
+// --- base-pack selection -----------------------------------------------------
+// The base pack is on by default, but a teacher can switch it off to teach
+// purely from their own imported / board content. Guard: it can only be off
+// while another pack is active, so the catalogue is never emptied.
+
+/** Whether the built-in base content currently feeds the catalogue. */
+export function isBaseActive(): boolean {
+  return baseEnabled;
+}
+
+/** Whether the base pack can be switched off right now — i.e. another pack is
+ *  active to take over. When false the base checkbox stays forced on. */
+export function canDisableBase(): boolean {
+  return otherActivePacks().length > 0;
+}
+
+/** Turn the base pack on or off. Switching it off is ignored unless another
+ *  pack is active (the catalogue must never be empty). A no-op when already in
+ *  the requested state. */
+export function setBaseActive(active: boolean): void {
+  if (baseEnabled === active) return;
+  if (!active && !canDisableBase()) return;
+  baseEnabled = active;
+  persistBase();
+  rebuild();
+}
+
 // --- active-pack selection ---------------------------------------------------
-// base and the open board's packs always contribute; only the imported library
-// is switchable, so a teacher can focus a lesson on one pack (or combine a few).
+// the open board's packs always contribute; the base pack and the imported
+// library are switchable, so a teacher can focus a lesson on one pack (or
+// combine a few).
 
 /** The ids of the imported packs that are currently active. */
 export function activePackIds(): string[] {
   return imported.filter((p) => activeIds.has(p.id)).map((p) => p.id);
 }
 
-/** Whether an imported pack contributes to the catalogue right now. base packs
- *  and board packs are always active and are not tracked here. */
+/** Whether an imported pack contributes to the catalogue right now. Board packs
+ *  are always active and the base pack has its own toggle (isBaseActive); neither
+ *  is tracked here. */
 export function isPackActive(id: string): boolean {
   return activeIds.has(id);
 }

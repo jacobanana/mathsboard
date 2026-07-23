@@ -23,11 +23,14 @@ import {
 import {
   BASE_PACK,
   boardPacksNow,
+  canDisableBase,
   currentContent,
   importPackJson,
   importedPacks,
+  isBaseActive,
   isPackActive,
   removeImportedPack,
+  setBaseActive,
   setPackActive,
   subscribeContent,
 } from "@/lang/content/registry";
@@ -54,12 +57,14 @@ type Feedback =
 export function ContentStudio(): JSX.Element {
   // Re-render whenever content is imported / removed / toggled so the list,
   // counts and checkboxes stay live (registry drives the external store). The
-  // signature folds in each pack's active state, not just the count, so ticking
-  // a checkbox re-renders too.
+  // signature folds in each pack's active state (plus base's state and whether
+  // it can be switched off), not just the count, so ticking a checkbox
+  // re-renders too.
   useSyncExternalStore(subscribeContent, () =>
-    importedPacks()
-      .map((p) => `${p.id}:${isPackActive(p.id) ? 1 : 0}`)
-      .join(","),
+    [
+      `base:${isBaseActive() ? 1 : 0}:${canDisableBase() ? 1 : 0}`,
+      ...importedPacks().map((p) => `${p.id}:${isPackActive(p.id) ? 1 : 0}`),
+    ].join(","),
   );
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -302,18 +307,32 @@ export function ContentStudio(): JSX.Element {
 
       {packs.length > 0 && (
         <p className="hint cs-active-hint">
-          Tick the packs you want active. The catalogue is built from the
-          built-in content plus whichever packs are ticked — so you can focus on
-          one pack or combine several.
+          Tick the packs you want active. The catalogue is built from whichever
+          packs are ticked — so you can focus on one pack or combine several.
+          Once another pack is active you can even untick the built-in content
+          to teach only your own.
         </p>
       )}
 
       <ul className="cs-packs">
-        {/* The built-in content is always active and reviewable. */}
-        <li>
+        {/* The built-in content is on by default. It can be switched off to
+            teach purely from imported packs, but only while another pack is
+            active — otherwise it stays forced on so the board isn't empty. */}
+        <li className={isBaseActive() ? undefined : "cs-pack-off"}>
           <label className="cs-pack-name">
-            <input type="checkbox" checked disabled title="Built-in content is always active" />
-            {BASE_PACK.name} <span className="cs-badge">always on</span>
+            <input
+              type="checkbox"
+              checked={isBaseActive()}
+              disabled={!canDisableBase()}
+              title={
+                canDisableBase()
+                  ? "Switch the built-in content on or off"
+                  : "Built-in content stays on until another pack is active"
+              }
+              onChange={(e) => setBaseActive(e.target.checked)}
+            />
+            {BASE_PACK.name}{" "}
+            {canDisableBase() ? null : <span className="cs-badge">always on</span>}
           </label>
           <span className="cs-pack-actions">
             <button
