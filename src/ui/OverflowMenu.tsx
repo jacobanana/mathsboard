@@ -23,6 +23,7 @@ import {
   KeyboardIcon,
   AboutIcon,
   ContentIcon,
+  SpeakerIcon,
 } from "@/ui/icons";
 
 export interface OverflowMenuProps {
@@ -36,6 +37,8 @@ export interface OverflowMenuProps {
   onAbout: () => void;
   /** Open the content-creation help/import page (language board only). */
   onContent: () => void;
+  /** Open the text-to-speech voices settings (language board only). */
+  onVoices: () => void;
 }
 
 export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
@@ -114,6 +117,18 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
             </span>
             <span className="label">Save image</span>
           </button>
+          {IS_LANGUAGE && (
+            <button
+              id="voicesBtn"
+              title="Voices — choose which voice reads each language aloud"
+              onClick={pick(props.onVoices)}
+            >
+              <span className="ico">
+                <SpeakerIcon />
+              </span>
+              <span className="label">Voices</span>
+            </button>
+          )}
           {IS_LANGUAGE && (
             <button
               id="contentBtn"

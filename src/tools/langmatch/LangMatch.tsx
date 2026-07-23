@@ -15,6 +15,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
+import { SpeakButton } from "@/lang/SpeakButton";
 import {
   allMatched,
   connectPatch,
@@ -295,6 +296,7 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
                 >
                   {round.emojis[i] && <span className="lm-emoji">{round.emojis[i]}</span>}
                   <span className="lm-word">{w}</span>
+                  <SpeakButton as="span" text={w} code={obj.known} />
                   <span className="lm-dot lm-dot-r" />
                 </button>
               );
@@ -316,6 +318,7 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
                 >
                   <span className="lm-dot lm-dot-l" />
                   <span className="lm-word">{w}</span>
+                  <SpeakButton as="span" text={w} code={obj.learning} />
                 </button>
               );
             })}

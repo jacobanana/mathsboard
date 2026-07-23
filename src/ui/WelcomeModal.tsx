@@ -26,12 +26,15 @@ interface WelcomeModalProps {
    * straight away (the maths board).
    */
   onNewBoard?: () => void;
+  /** Open the voices settings (language board only) to pick reading voices. */
+  onVoices?: () => void;
 }
 
 export function WelcomeModal({
   onClose,
   onOpenBoards,
   onNewBoard,
+  onVoices,
 }: WelcomeModalProps): JSX.Element {
   const board = useBoardStore((s) => s.board);
   const sourceId = useBoardStore((s) => s.sourceId);
@@ -67,6 +70,11 @@ export function WelcomeModal({
       {/* Language board: choose what you know / want to learn. New activities
           are created in the chosen pair (already-placed ones keep theirs). */}
       {IS_LANGUAGE && <LanguagePicker />}
+      {IS_LANGUAGE && onVoices && (
+        <button type="button" className="welcome-voices-link" onClick={onVoices}>
+          🔊 Choose reading voices
+        </button>
+      )}
 
       <button
         ref={continueRef}

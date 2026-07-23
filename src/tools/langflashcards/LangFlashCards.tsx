@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
+import { SpeakButton } from "@/lang/SpeakButton";
 import {
   clampCount,
   deckTitle,
@@ -149,6 +150,10 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
   // --- render ----------------------------------------------------------------
   const front = FRONTS[idx % FRONTS.length];
   const frontBg = `linear-gradient(150deg, ${front[0]} 0%, ${front[1]} 100%)`;
+  // Which language each face is in, so 🔊 speaks it in the right voice.
+  const knownFirst = obj.direction === "known-first";
+  const frontCode = knownFirst ? obj.known : obj.learning;
+  const backCode = knownFirst ? obj.learning : obj.known;
 
   return (
     <div
@@ -181,6 +186,9 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
               <div className="if-face if-front" style={{ background: frontBg }}>
                 {obj.easy && card?.emoji && <div className="lf-emoji">{card.emoji}</div>}
                 <div className="if-q lf-word">{card?.front}</div>
+                {card?.front && (
+                  <SpeakButton text={card.front} code={frontCode} className="lf-speak" />
+                )}
                 <button className="if-check" onClick={flip}>
                   Show answer
                 </button>
@@ -190,6 +198,9 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
               <div className="if-face if-back">
                 {obj.easy && card?.emoji && <div className="lf-emoji">{card.emoji}</div>}
                 <div className="if-truth lf-word">{card?.back}</div>
+                {card?.back && (
+                  <SpeakButton text={card.back} code={backCode} className="lf-speak" />
+                )}
                 <div className="lf-rate">
                   <button className="lf-btn practise" onClick={() => rate(false)}>
                     🔁 Practise

@@ -12,6 +12,7 @@ import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { placeObject } from "@/board/commands";
 import { track } from "@/analytics";
+import { SpeakButton } from "@/lang/SpeakButton";
 import {
   allFilled,
   checkPatch,
@@ -171,6 +172,9 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
       <div className="cj-head" style={{ height: HEAD_H + "px" }}>
         <span className="cj-title">
           {table.infinitiveLearning}
+          {table.infinitiveLearning && (
+            <SpeakButton as="span" text={table.infinitiveLearning} code={obj.learning} />
+          )}
           {table.infinitiveKnown && <span className="cj-sub"> · {table.infinitiveKnown}</span>}
           <span className="cj-sub"> · {table.tenseLabel}</span>
         </span>
@@ -209,6 +213,9 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
                       onClick={() => toggleCover(i)}
                     >
                       {isCovered(mo, i) ? "•••" : r.form}
+                      {!isCovered(mo, i) && r.form && (
+                        <SpeakButton as="span" text={r.form} code={obj.learning} />
+                      )}
                     </button>
                   ) : mode === "type" ? (
                     checked ? (

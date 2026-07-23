@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
+import { SpeakButton } from "@/lang/SpeakButton";
 import {
   affixes,
   checkPatch,
@@ -181,6 +182,7 @@ export function LangGaps({ obj }: WidgetProps<LangGapsParams>) {
         <div className="gp-scene" key={`${obj.round ?? 0}:${idx}`}>
           <div className="gp-prompt" style={{ background: bannerBg }}>
             {round.prompt}
+            <SpeakButton text={round.prompt} code={obj.known} className="gp-prompt-speak" />
           </div>
 
           {/* The learning sentence with the gap filled or blank. */}
@@ -238,6 +240,11 @@ export function LangGaps({ obj }: WidgetProps<LangGapsParams>) {
                 <span className={"gp-result " + (correct ? "ok" : "no")}>
                   {correct ? "Correct! 🎉" : `Answer: ${round.answer}`}
                 </span>
+                <SpeakButton
+                  text={round.tokens.join(" ")}
+                  code={obj.learning}
+                  title="Hear the sentence"
+                />
                 {!correct && (
                   <button className="gp-retry" onClick={clearRound}>
                     Try again

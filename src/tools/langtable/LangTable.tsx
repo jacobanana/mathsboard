@@ -17,6 +17,7 @@ import { useBoardStore } from "@/board/store";
 import { id as newId } from "@/board/types";
 import { placeObject } from "@/board/commands";
 import { languageByCode } from "@/lang/data";
+import { SpeakButton } from "@/lang/SpeakButton";
 import type { LangTableParams } from "@/tools/langtable";
 
 const cellA = (rowId: string): string => "ca:" + rowId;
@@ -166,32 +167,42 @@ export function LangTable({ obj }: WidgetProps<LangTableParams>) {
 
       {rowIds.map((rowId) => (
         <div className="it-row" key={rowId}>
-          <textarea
-            ref={autosize}
-            rows={1}
-            className={"it-cell" + (hideA ? " masked" : "")}
-            placeholder="…"
-            autoComplete="off"
-            value={cellText(rowId, "a")}
-            onChange={(e) => {
-              autosize(e.currentTarget);
-              setCell(rowId, "a", e.target.value);
-            }}
-            onKeyDown={(e) => e.stopPropagation()}
-          />
-          <textarea
-            ref={autosize}
-            rows={1}
-            className={"it-cell" + (hideB ? " masked" : "")}
-            placeholder="…"
-            autoComplete="off"
-            value={cellText(rowId, "b")}
-            onChange={(e) => {
-              autosize(e.currentTarget);
-              setCell(rowId, "b", e.target.value);
-            }}
-            onKeyDown={(e) => e.stopPropagation()}
-          />
+          <div className="it-cellwrap">
+            <textarea
+              ref={autosize}
+              rows={1}
+              className={"it-cell" + (hideA ? " masked" : "")}
+              placeholder="…"
+              autoComplete="off"
+              value={cellText(rowId, "a")}
+              onChange={(e) => {
+                autosize(e.currentTarget);
+                setCell(rowId, "a", e.target.value);
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+            {!hideA && (
+              <SpeakButton text={cellText(rowId, "a")} code={obj.known} className="it-speak" />
+            )}
+          </div>
+          <div className="it-cellwrap">
+            <textarea
+              ref={autosize}
+              rows={1}
+              className={"it-cell" + (hideB ? " masked" : "")}
+              placeholder="…"
+              autoComplete="off"
+              value={cellText(rowId, "b")}
+              onChange={(e) => {
+                autosize(e.currentTarget);
+                setCell(rowId, "b", e.target.value);
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+            {!hideB && (
+              <SpeakButton text={cellText(rowId, "b")} code={obj.learning} className="it-speak" />
+            )}
+          </div>
           <button className="it-del" title="Remove this row" onClick={() => removeRow(rowId)}>
             ×
           </button>
