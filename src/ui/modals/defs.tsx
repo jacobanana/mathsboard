@@ -13,6 +13,7 @@ import { setStoredName } from "@/collab/profile";
 import { IS_LANGUAGE } from "@/subject";
 import { LangNewBoard } from "@/lang/LangNewBoard";
 import { ContentStudio } from "@/lang/ContentStudio";
+import { ContentLibrary } from "@/lang/ContentLibrary";
 import { VoiceSettings } from "@/lang/VoiceSettings";
 import { WelcomeModal } from "@/ui/WelcomeModal";
 import { InsertGallery } from "@/ui/InsertGallery";
@@ -111,9 +112,19 @@ const aboutModal = defineModal("about", {
   render: () => <About />,
 });
 
-// Language board only: create/import custom content packs (help + importer).
+// Language board only: create your own content pack (help + prompt builder).
 const contentModal = defineModal("content", {
-  render: () => <ContentStudio />,
+  render: (_s, api) => (
+    <ContentStudio onOpenLibrary={() => api.open({ kind: "library" })} />
+  ),
+});
+
+// Language board only: the Contents page — every pack this device can teach
+// from (built-in, loaded, and the open board's own), with load/download/delete.
+const libraryModal = defineModal("library", {
+  render: (_s, api) => (
+    <ContentLibrary onCreate={() => api.open({ kind: "content" })} />
+  ),
 });
 
 // Language board only: choose which voice reads each language aloud.
@@ -213,6 +224,7 @@ export const MODALS: ModalDef[] = [
   joinNameModal,
   aboutModal,
   contentModal,
+  libraryModal,
   voicesModal,
 ];
 

@@ -59,8 +59,10 @@ export interface ToolbarCallbacks {
   onHelp: () => void;
   /** Open the About & credits sheet (open source, privacy, licence). */
   onAbout: () => void;
-  /** Open the content-creation help/import page (language board only). */
+  /** Open the content-creation help page (language board only). */
   onContent: () => void;
+  /** Open the Contents page — loaded packs (language board only). */
+  onLibrary: () => void;
   /** Open the text-to-speech voices settings (language board only). */
   onVoices: () => void;
 }
@@ -173,6 +175,7 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
             onHelp={props.onHelp}
             onAbout={props.onAbout}
             onContent={props.onContent}
+            onLibrary={props.onLibrary}
             onVoices={props.onVoices}
           />
         </div>

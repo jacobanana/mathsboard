@@ -46,8 +46,11 @@ import { useCollabStore } from "@/collab/collabStore";
 import { getStoredName } from "@/collab/profile";
 import { track, trackBoardActivated } from "@/analytics";
 import { IS_LANGUAGE, SUBJECT, crossAppRedirect } from "@/subject";
-import { setBoardPacks, importedPacks } from "@/lang/content/registry";
+import { adoptBoardContent, setBoardPacks, importedPacks } from "@/lang/content/registry";
 import { packsUsedBy, dedupePacks } from "@/lang/content/embed";
+import type { ContentPack } from "@/lang/content/schema";
+import { useLangStore } from "@/lang/store";
+import { defaultPair, isValidPair } from "@/lang/pairs";
 
 /**
  * The current selection. Holds object ids AND stroke ids so freehand "arcs" can
@@ -979,8 +982,12 @@ export const useBoardStore = create<BoardState>((set, get) => {
 // --- custom-content <-> board wiring (language board) -----------------------
 // Two directions, both funnelled through onBoardChange so every path (load,
 // open, join, remote sync, local edit) is covered by one place:
-//   • REGISTER — make the packs a board carries available so its widgets
-//     resolve, even for someone who never imported them.
+//   • ADOPT — when a board ARRIVES (open, join, first shared sync), its packs
+//     become the active teaching content and the language pair follows, so the
+//     board is fully usable with no trip to the contents page.
+//   • REGISTER — on subsequent changes, keep the packs a board carries
+//     available so its widgets resolve, even for someone who never imported
+//     them (without re-fighting deliberate mid-session choices).
 //   • EMBED — on the author's own edits, keep the board's embedded set equal to
 //     the imported packs its widgets now use, so Save/Share carry the content.
 const samePackIds = (
@@ -992,10 +999,61 @@ const samePackIds = (
   return b.every((p) => ids.has(p.id));
 };
 
+/**
+ * Point the language-pair store at the direction an arriving board teaches, so
+ * new widgets and the direction control match the board instead of a stale
+ * per-device choice. The board's own widgets say it best; an empty board falls
+ * back to its first pack's languages (keeping the current known side where the
+ * pack offers it). Runs AFTER adoptBoardContent so the pack's languages are in
+ * the catalogue when setPair validates.
+ */
+function adoptBoardPair(board: BoardDocument, packs: ContentPack[]): void {
+  const store = useLangStore.getState();
+  for (const o of board.objects as readonly Record<string, unknown>[]) {
+    if (typeof o.type !== "string" || !o.type.startsWith("lang")) continue;
+    const { known, learning } = o;
+    if (typeof known === "string" && typeof learning === "string" && known !== learning) {
+      store.setPair({ known, learning });
+      return;
+    }
+  }
+  const codes = packs[0]?.languages?.map((l) => l.code) ?? [];
+  if (codes.length < 2) return;
+  const known = codes.includes(store.pair.known) ? store.pair.known : codes[0];
+  const learning = codes.find((c) => c !== known);
+  if (learning) store.setPair({ known, learning });
+}
+
+// The last board + embedded-pack set whose content was ADOPTED (activated as
+// the teaching content), so adoption runs once per arrival — on the next
+// change event it decays to plain registration and never fights a deliberate
+// mid-session choice.
+let adoptedContentKey: string | null = null;
+
 function syncBoardContent(board: BoardDocument, origin: unknown): void {
   if (!IS_LANGUAGE) return;
-  // REGISTER: whatever the board carries (a no-op when unchanged).
-  setBoardPacks(Array.isArray(board.contentPacks) ? board.contentPacks : []);
+  const packs = Array.isArray(board.contentPacks) ? board.contentPacks : [];
+  const key = `${board.id}|${packs.map((p) => p.id).sort().join(",")}`;
+  if (key !== adoptedContentKey) {
+    const sameBoard = adoptedContentKey?.startsWith(`${board.id}|`) ?? false;
+    adoptedContentKey = key;
+    // ADOPT: the board's content becomes the active teaching content (open,
+    // join, first shared sync, or a collaborator adding content live). Base is
+    // only restored when ARRIVING at a pack-less board whose language widgets
+    // prove it teaches base-only content — an author deleting their last custom
+    // widget, or a board of plain drawings, keeps the current selection.
+    const baseOnly =
+      packs.length === 0 &&
+      board.objects.some((o) => typeof o.type === "string" && o.type.startsWith("lang"));
+    adoptBoardContent(packs, !sameBoard && baseOnly);
+    if (packs.length > 0) adoptBoardPair(board, packs);
+    // A pack-less board teaches from base: a foreign pair can't survive there.
+    else if (!isValidPair(useLangStore.getState().pair))
+      useLangStore.getState().setPair(defaultPair());
+  } else {
+    // REGISTER: whatever the board carries (a no-op when unchanged).
+    setBoardPacks(packs);
+  }
   // EMBED: only react to THIS user's edits — remote/seed writes are already
   // authored elsewhere, and reacting to them would have every peer race to
   // rewrite the same value.

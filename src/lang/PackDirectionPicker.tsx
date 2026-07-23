@@ -1,11 +1,13 @@
-// PICK A LANGUAGE PACK + DIRECTION when starting a language board.
+// PICK LANGUAGES, THEN CONTENT, when starting a language board.
 //
-// Replaces the old two-dropdown "I speak / I want to learn" picker. The learner
-// chooses a pack (or several that cover the SAME languages) and flips the
-// direction with one click. All the grouping / defaulting / apply logic lives in
-// packDirectory.ts; this file is the view plus the small amount of pick-state it
-// drives. Nothing is committed until apply() runs (on the modal's Start), so
-// cancelling leaves the learner's current packs and pair untouched.
+// The new-board flow always asks the LANGUAGE first (which languages, which
+// direction), then offers the CONTENT that teaches those languages — so the
+// wizard is two views over one pick-state: PackLanguageStep (language cards +
+// direction) and PackContentStep (the packs covering the chosen languages).
+// All the grouping / defaulting / apply logic lives in packDirectory.ts; this
+// file is the views plus the small amount of pick-state they drive. Nothing is
+// committed until apply() runs (on the modal's Start), so cancelling leaves the
+// learner's current packs and pair untouched.
 
 import { useMemo, useState } from "react";
 import {
@@ -15,6 +17,7 @@ import {
   packGroups,
   type PackGroup,
 } from "@/lang/packDirectory";
+import { BASE_PACK, importedPacks } from "@/lang/content/registry";
 import { DirectionSwap } from "@/lang/DirectionSwap";
 import type { LangPair } from "@/lang/pairs";
 import { useLangStore } from "@/lang/store";
@@ -120,11 +123,13 @@ interface Props {
   dir: PackDirection;
 }
 
-export function PackDirectionPicker({ dir }: Props): JSX.Element {
-  const { groups, group, selected, pair } = dir;
+/** STEP 1 — the language: every language set content exists for, as pickable
+ *  cards, plus the direction (which side you speak, which you're learning). */
+export function PackLanguageStep({ dir }: Props): JSX.Element {
+  const { groups, group, pair } = dir;
 
   if (!group) {
-    return <p className="hint">No language packs are available.</p>;
+    return <p className="hint">No language content is available.</p>;
   }
 
   const twoWay = group.languages.length === 2;
@@ -133,29 +138,32 @@ export function PackDirectionPicker({ dir }: Props): JSX.Element {
 
   return (
     <div className="pack-picker">
-      {/* When several language sets exist, choose which one first. A single set
-          (the common case) needs no chooser — the packs are shown straight away. */}
-      {groups.length > 1 && (
-        <div className="pack-group-tabs" role="tablist" aria-label="Languages">
-          {groups.map((g) => (
+      <div className="lang-choice-grid" role="radiogroup" aria-label="Languages">
+        {groups.map((g) => {
+          const active = g.signature === group.signature;
+          const n = g.packs.length;
+          return (
             <button
               key={g.signature}
               type="button"
-              role="tab"
-              aria-selected={g.signature === group.signature}
-              className={
-                "pack-group-tab" + (g.signature === group.signature ? " active" : "")
-              }
+              role="radio"
+              aria-checked={active}
+              className={"lang-choice" + (active ? " active" : "")}
               onClick={() => dir.chooseGroup(g)}
             >
-              <span className="pack-group-flags" aria-hidden>
+              <span className="lang-choice-flags" aria-hidden>
                 {g.languages.map((l) => l.flag).join(" ")}
               </span>
-              {g.languages.map((l) => l.name).join(" & ")}
+              <span className="lang-choice-name">
+                {g.languages.map((l) => l.name).join(" & ")}
+              </span>
+              <span className="lang-choice-meta">
+                {n === 1 ? "1 content pack" : `${n} content packs`}
+              </span>
             </button>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
 
       {/* Direction: which side you speak, which you're learning. One click swaps.
           Two languages (the common case) use the shared swap control; a group
@@ -201,9 +209,31 @@ export function PackDirectionPicker({ dir }: Props): JSX.Element {
           </label>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* The packs feeding this board. Several can be combined when they share the
-          same languages; at least one stays ticked. */}
+/** What a pack holds, for the content step's row: "240 words · 60 sentences ·
+ *  18 verbs". Resolved from the registry (base or the imported library). */
+function packSummary(id: string, isBase: boolean): string {
+  const p = isBase ? BASE_PACK : importedPacks().find((x) => x.id === id);
+  if (!p) return "";
+  const n = (count: number, word: string): string =>
+    `${count} ${word}${count === 1 ? "" : "s"}`;
+  return `${n(p.vocab.length, "word")} · ${n(p.sentences.length, "sentence")} · ${n(p.verbs.length, "verb")}`;
+}
+
+/** STEP 2 — the content: the packs covering the chosen languages, each showing
+ *  what it holds. Several combine; at least one stays ticked. */
+export function PackContentStep({ dir }: Props): JSX.Element {
+  const { group, selected } = dir;
+
+  if (!group) {
+    return <p className="hint">No language content is available.</p>;
+  }
+
+  return (
+    <div className="pack-picker">
       <ul className="pack-list">
         {group.packs.map((p) => {
           const checked = selected.has(p.id);
@@ -218,8 +248,13 @@ export function PackDirectionPicker({ dir }: Props): JSX.Element {
                   title={onlyPick ? "A board needs at least one pack" : undefined}
                   onChange={() => dir.togglePack(p.id)}
                 />
-                {p.name}
-                {p.isBase && <span className="pack-badge">built-in</span>}
+                <span className="pack-name-main">
+                  <span>
+                    {p.name}
+                    {p.isBase && <span className="pack-badge">built-in</span>}
+                  </span>
+                  <span className="pack-counts">{packSummary(p.id, p.isBase)}</span>
+                </span>
               </label>
             </li>
           );

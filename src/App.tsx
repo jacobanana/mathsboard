@@ -39,6 +39,8 @@ import { COLLAB_ENABLED } from "@/config";
 import { getTool } from "@/tools/registry";
 import { handleShortcut, type ShortcutHost } from "@/ui/shortcuts";
 import { track } from "@/analytics";
+import { IS_LANGUAGE } from "@/subject";
+import { BoardContentNotice } from "@/lang/BoardContentNotice";
 import type { AnyBoardObject } from "@/board/types";
 
 export default function App(): JSX.Element {
@@ -167,6 +169,7 @@ export default function App(): JSX.Element {
         onHelp={() => setModal({ kind: "help" })}
         onAbout={() => setModal({ kind: "about" })}
         onContent={() => setModal({ kind: "content" })}
+        onLibrary={() => setModal({ kind: "library" })}
         onVoices={() => setModal({ kind: "voices" })}
       />
 
@@ -187,6 +190,8 @@ export default function App(): JSX.Element {
         <TimerDoneLayer />
         {COLLAB_ENABLED && <PresenceLayer />}
         <ZoomCluster getStageSize={getStageSize} />
+        {/* Language board: "this board brought its own content" notice. */}
+        {IS_LANGUAGE && <BoardContentNotice />}
         {COLLAB_ENABLED && imageDrop.active && (
           <div className="drop-overlay" aria-hidden>
             <span className="drop-hint">Drop image to add it</span>
