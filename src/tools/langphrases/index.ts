@@ -1,6 +1,8 @@
-// WIDGET TOOL — the phrasebook: basic sentences to learn, tap to reveal the
-// translation. Languages are baked in at creation (from the learner's current
-// pair). A study aid, so there is no scoring.
+// WIDGET TOOL — the phrasebook: basic sentences to browse and hear, one page
+// per theme (leaf through with the footer nav, tap a sentence to listen, or
+// hide the answers to test yourself). Shares its body with the Word list — see
+// src/lang/StudyNotepad. Languages are baked in at creation (from the learner's
+// current pair). A study aid, so there is no scoring.
 
 import { defineWidgetTool } from "@/tools/registry";
 import { currentPair } from "@/lang/store";
@@ -18,9 +20,11 @@ export interface LangPhrasesParams {
   set?: string;
   /** Difficulty filter: a level, or "mixed". */
   level?: LevelFilter;
-  /** Which language is shown as the prompt (the other is the hidden answer). */
+  /** Which language leads each row (the other is its translation, shown below). */
   direction: Direction;
-  // Revealed rows live as extra "pr:<i>" fields (via updateWidgetState).
+  // --- live widget state (via updateWidgetState) ---
+  /** The open theme page. */
+  page?: number;
 }
 
 export function defaultLangPhrasesParams(): LangPhrasesParams {

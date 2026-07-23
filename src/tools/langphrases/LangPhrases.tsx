@@ -1,134 +1,54 @@
-// WIDGET COMPONENT — the .iphrases overlay: a little phrasebook of sentences to
-// learn. Each row shows a sentence in the prompt language; tap it to reveal the
-// translation (tap again to hide). Which rows are revealed is live widget-state
-// (`pr:<i>` flags via updateWidgetState — synced, persisted, undo-invisible), so
-// a study partner sees the same reveals. A header toggle flips the prompt
-// language and a "Show all / Hide all" button reveals or hides every row. The
-// card body is the drag handle. Pure content comes from lang/pairs.
+// WIDGET COMPONENT — the Sentences phrasebook. A thin adapter over the shared
+// StudyNotepad (src/lang/StudyNotepad): it resolves one page per chosen theme
+// (each sentence + its translation + pronunciation, in the learner's direction)
+// and hands them to the shared body, which owns the chrome, paging,
+// hide-answers toggle and drag. Content comes from lang/pairs, resolved live.
 
+import { useMemo } from "react";
 import type { WidgetProps } from "@/tools/registry";
-import { useBoardStore } from "@/board/store";
-import { track } from "@/analytics";
-import { SpeakButton } from "@/lang/SpeakButton";
-import {
-  categoriesFromObj,
-  categoriesLabel,
-  sentencesForCategories,
-  type LevelFilter,
-} from "@/lang/pairs";
+import { StudyNotepad, type StudyPage } from "@/lang/StudyNotepad";
+import { categoryById } from "@/lang/data";
+import { categoriesFromObj, sentencesFor, type LevelFilter } from "@/lang/pairs";
 import type { LangPhrasesParams } from "@/tools/langphrases";
 
-const HEAD_H = 40;
-
-const revealField = (i: number): string => "pr:" + i;
-
 export function LangPhrases({ obj }: WidgetProps<LangPhrasesParams>) {
-  const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
-  const moveObject = useBoardStore((s) => s.moveObject);
-  const pushHistory = useBoardStore((s) => s.pushHistory);
-
-  const rec = obj as unknown as Record<string, unknown>;
-  // New objects carry `categories`/`level`; older ones a single `category`, and
-  // the earliest carried `set`.
-  const categories = categoriesFromObj(obj);
   const level: LevelFilter = obj.level ?? "mixed";
-  const items = sentencesForCategories(categories, level, { known: obj.known, learning: obj.learning });
-  const title = categoriesLabel(categories, "Sentences");
+  const pair = { known: obj.known, learning: obj.learning };
+  // Which language leads each row (the other is its translation, shown beneath).
   const promptIsKnown = obj.direction !== "learning-first";
+  const promptCode = promptIsKnown ? obj.known : obj.learning;
+  const answerCode = promptIsKnown ? obj.learning : obj.known;
 
-  const revealed = (i: number): boolean =>
-    rec[revealField(i)] === 1 || rec[revealField(i)] === true;
-  const allShown = items.length > 0 && items.every((_, i) => revealed(i));
-
-  function toggleRow(i: number) {
-    updateWidgetState(obj.id, { [revealField(i)]: revealed(i) ? undefined : 1 });
-  }
-
-  function toggleAll() {
-    const show = !allShown;
-    const patch: Record<string, unknown> = {};
-    items.forEach((_, i) => (patch[revealField(i)] = show ? 1 : undefined));
-    updateWidgetState(obj.id, patch);
-    track("tool_action", { tool: "langphrases", action: show ? "show-all" : "hide-all" });
-  }
-
-  function onCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if ((e.target as HTMLElement).closest("button, .ph-list")) return;
-    e.stopPropagation();
-    const cardEl = e.currentTarget;
-    const scale = useBoardStore.getState().camera.scale;
-    const sx = e.clientX;
-    const sy = e.clientY;
-    const ox = obj.x;
-    const oy = obj.y;
-    let moved = false;
-    try {
-      cardEl.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    const mv = (ev: PointerEvent) => {
-      if (!moved) {
-        if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 3) return;
-        moved = true;
-        pushHistory();
-      }
-      moveObject(obj.id, ox + (ev.clientX - sx) / scale, oy + (ev.clientY - sy) / scale);
-    };
-    const up = () => {
-      cardEl.removeEventListener("pointermove", mv);
-      cardEl.removeEventListener("pointerup", up);
-    };
-    cardEl.addEventListener("pointermove", mv);
-    cardEl.addEventListener("pointerup", up);
-  }
-
-  const sceneH = obj.h - HEAD_H;
+  // One page per chosen theme; themes with no usable sentences are dropped so a
+  // learner never turns to a blank page.
+  const pages = useMemo<StudyPage[]>(() => {
+    return categoriesFromObj(obj)
+      .map((id) => ({
+        id,
+        label: categoryById(id)?.label ?? id,
+        emoji: categoryById(id)?.emoji ?? "💬",
+        rows: sentencesFor(id, level, pair).map((s) => ({
+          lead: promptIsKnown ? s.known : s.learning,
+          leadCode: promptCode,
+          leadPhonetic: promptIsKnown ? s.knownPhonetic : s.learningPhonetic,
+          answer: promptIsKnown ? s.learning : s.known,
+          answerCode,
+          answerPhonetic: promptIsKnown ? s.learningPhonetic : s.knownPhonetic,
+        })),
+      }))
+      .filter((p) => p.rows.length > 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [obj.categories, obj.category, obj.level, obj.known, obj.learning, obj.direction]);
 
   return (
-    <div
-      className="iphrases"
-      data-id={obj.id}
-      style={{ width: obj.w + "px", height: obj.h + "px" }}
-      onPointerDown={onCardPointerDown}
-    >
-      <div className="ph-head" style={{ height: HEAD_H + "px" }}>
-        <span className="ph-title">{title}</span>
-        <button className="ph-btn" title="Show or hide every translation" onClick={toggleAll}>
-          {allShown ? "Hide all" : "Show all"}
-        </button>
-      </div>
-
-      <div className="ph-list" style={{ height: sceneH + "px" }} onWheel={(e) => e.stopPropagation()}>
-        {items.length === 0 && <div className="lf-empty">No sentences yet for this set.</div>}
-        {items.map((it, i) => {
-          const prompt = promptIsKnown ? it.known : it.learning;
-          const answer = promptIsKnown ? it.learning : it.known;
-          const promptCode = promptIsKnown ? obj.known : obj.learning;
-          const answerCode = promptIsKnown ? obj.learning : obj.known;
-          const promptPhon = promptIsKnown ? it.knownPhonetic : it.learningPhonetic;
-          const answerPhon = promptIsKnown ? it.learningPhonetic : it.knownPhonetic;
-          const open = revealed(i);
-          return (
-            <button
-              key={i}
-              className={"ph-row" + (open ? " open" : "")}
-              onClick={() => toggleRow(i)}
-            >
-              <span className="ph-line">
-                <span className="ph-prompt">{prompt}</span>
-                <SpeakButton as="span" text={prompt} code={promptCode} />
-              </span>
-              {promptPhon && <span className="ph-phon">{promptPhon}</span>}
-              <span className="ph-line">
-                <span className="ph-answer">{open ? answer : "· · ·"}</span>
-                {open && <SpeakButton as="span" text={answer} code={answerCode} />}
-              </span>
-              {open && answerPhon && <span className="ph-phon">{answerPhon}</span>}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <StudyNotepad
+      obj={obj}
+      pages={pages}
+      variant="phrases"
+      headEmojiFallback="💬"
+      titleFallback="Sentences"
+      emptyText="No sentences yet for these themes."
+      tool="langphrases"
+    />
   );
 }
