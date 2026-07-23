@@ -41,6 +41,24 @@ function isBackend(url) {
   return /(^|\/)(api|ys)\//.test(url.pathname);
 }
 
+// Store a response without ever surfacing an unhandled rejection. Cache.put()
+// rejects with "Cache.put() encountered a network error" whenever it can't
+// commit the whole body: a 206 partial (media Range requests), an opaque or
+// redirected response, a stream aborted because the page navigated away
+// mid-fetch, or quota being exceeded. None of those are worth crashing a
+// promise over — we just skip caching that one response. Callers pass a clone
+// and DON'T await this (it never rejects), so a failed write stays silent.
+async function putInCache(cache, req, res) {
+  // Only cache full, cacheable GETs: 200 OK, non-opaque, non-range.
+  if (!res || res.status !== 200 || res.type === "opaque") return;
+  if (req.headers.has("range")) return;
+  try {
+    await cache.put(req, res);
+  } catch {
+    // Aborted stream, partial body, or storage quota — non-fatal, ignore.
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -60,7 +78,7 @@ async function networkFirst(req) {
   const cache = await caches.open(CACHE);
   try {
     const res = await fetch(req);
-    if (res && res.ok) cache.put(req, res.clone());
+    if (res && res.ok) putInCache(cache, req, res.clone());
     return res;
   } catch {
     // Offline: the exact page if we have it, else any cached page shell.
@@ -80,7 +98,7 @@ async function staleWhileRevalidate(req) {
   const cached = await cache.match(req);
   const network = fetch(req)
     .then((res) => {
-      if (res && res.ok) cache.put(req, res.clone());
+      if (res && res.ok) putInCache(cache, req, res.clone());
       return res;
     })
     .catch(() => undefined);
