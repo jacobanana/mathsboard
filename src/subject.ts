@@ -22,3 +22,11 @@ function detectSubject(): Subject {
 
 export const SUBJECT: Subject = detectSubject();
 export const IS_LANGUAGE = SUBJECT === "language";
+
+/**
+ * Every subject the app ships. The one place code that must ENUMERATE subjects
+ * reads (e.g. the persistence layer, which reserves a per-subject draft key for
+ * each). Adding a future board type = add its `Subject` here and one PROFILES
+ * entry (src/boardProfile.ts); nothing else hand-lists the subjects.
+ */
+export const SUBJECTS: readonly Subject[] = ["maths", "language"];

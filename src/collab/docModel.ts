@@ -97,6 +97,10 @@ export function seedDoc(h: DocHandles, board: BoardDocument): void {
     h.meta.set("name", board.name);
     h.meta.set("background", board.background);
     h.meta.set("createdAt", board.createdAt);
+    // The board's subject travels in meta too, so a document that round-trips
+    // through a session (solo seed or shared join) keeps its flavour. Legacy
+    // documents carry none; readers default it to maths (see subjectOf).
+    if (board.subject) h.meta.set("subject", board.subject);
     // Custom content packs travel with the board (see BoardDocument). Stored as
     // one whole meta value (last-writer-wins) — they change rarely, only when the
     // set of imported content a board uses changes.
@@ -171,6 +175,7 @@ export class DocMirror {
 
     const meta = this.h.meta;
     const contentPacks = meta.get("contentPacks") as BoardDocument["contentPacks"];
+    const subject = meta.get("subject") as BoardDocument["subject"];
     return {
       id: (meta.get("id") as string) ?? fallbackId,
       name: (meta.get("name") as string) ?? UNTITLED_NAME,
@@ -179,6 +184,7 @@ export class DocMirror {
       strokes,
       createdAt: (meta.get("createdAt") as number) ?? 0,
       updatedAt: Date.now(),
+      ...(subject ? { subject } : {}),
       ...(Array.isArray(contentPacks) && contentPacks.length > 0 ? { contentPacks } : {}),
     };
   }
