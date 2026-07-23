@@ -30,6 +30,19 @@ import {
  *  from the tested catalogue), so it is not re-validated at load. */
 export const BASE_PACK = baseJson as unknown as ContentPack;
 
+// A pack's LANGUAGE SIGNATURE: its language codes, sorted and joined. Two packs
+// may only be combined (active together) when their signatures match — an
+// English↔French pack is never mixed into an English↔Spanish board. This is the
+// same rule the new-board picker groups by; enforcing it here makes it hold for
+// every path (import, the content manager's checkboxes, programmatic toggles).
+const sigOf = (p: { languages?: { code: string }[] }): string =>
+  (p.languages ?? [])
+    .map((l) => l.code)
+    .slice()
+    .sort()
+    .join(",");
+const BASE_SIG = sigOf(BASE_PACK);
+
 const STORAGE_KEY = "langboard.content.v1";
 // Which imported packs are currently ACTIVE — i.e. contribute to the merged
 // catalogue widgets draw from. The open board's own packs are always active;
@@ -263,10 +276,15 @@ export function importPackJson(text: string): ImportResult {
   else imported.push(pack);
   // Loading a pack makes it the sole active one — a lesson usually wants a
   // single pack's content, not everything merged. The user can re-enable other
-  // packs with their checkboxes to combine several again.
+  // SAME-LANGUAGE packs with their checkboxes to combine several again.
   activeIds = new Set([pack.id]);
+  // Only same-language packs combine: a pack teaching a different language set
+  // than the built-in English↔French base switches base off so the two aren't
+  // mixed (base stays on for a same-language import — they can be combined).
+  if (sigOf(pack) !== BASE_SIG) baseEnabled = false;
   persist();
   persistActive();
+  persistBase();
   rebuild();
   return { ok: true, pack, replaced };
 }
@@ -325,8 +343,16 @@ export function canDisableBase(): boolean {
 export function setBaseActive(active: boolean): void {
   if (baseEnabled === active) return;
   if (!active && !canDisableBase()) return;
+  if (active) {
+    // Base is English↔French; switching it on drops any active import of a
+    // different language set so only same-language packs stay combined.
+    for (const p of imported) {
+      if (activeIds.has(p.id) && sigOf(p) !== BASE_SIG) activeIds.delete(p.id);
+    }
+  }
   baseEnabled = active;
   persistBase();
+  persistActive();
   rebuild();
 }
 
@@ -348,12 +374,26 @@ export function isPackActive(id: string): boolean {
 }
 
 /** Turn an imported pack on or off. Unknown ids are ignored. A no-op (the pack
- *  is already in the requested state) skips the rebuild. */
+ *  is already in the requested state) skips the rebuild. Switching a pack ON
+ *  drops every active pack (base or import) of a different language set, so only
+ *  same-language packs are ever combined. */
 export function setPackActive(id: string, active: boolean): void {
-  if (!imported.some((p) => p.id === id)) return;
+  const pack = imported.find((p) => p.id === id);
+  if (!pack) return;
   if (activeIds.has(id) === active) return;
-  if (active) activeIds.add(id);
-  else activeIds.delete(id);
+  if (active) {
+    const sig = sigOf(pack);
+    // A different-language pack can't share the catalogue with the base pack…
+    if (sig !== BASE_SIG) baseEnabled = false;
+    // …nor with imports of another language set.
+    for (const p of imported) {
+      if (p.id !== id && activeIds.has(p.id) && sigOf(p) !== sig) activeIds.delete(p.id);
+    }
+    activeIds.add(id);
+  } else {
+    activeIds.delete(id);
+  }
   persistActive();
+  persistBase();
   rebuild();
 }

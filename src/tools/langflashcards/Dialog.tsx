@@ -11,6 +11,7 @@ import { useState } from "react";
 import type { ToolDialogProps } from "@/tools/registry";
 import { clamp } from "@/board/geometry";
 import { languageByCode } from "@/lang/data";
+import { DirectionSwap, pairSides } from "@/lang/DirectionSwap";
 import { CategoryLevelPicker } from "@/lang/CategoryLevelPicker";
 import { useContentPicker } from "@/lang/contentPicker";
 import { categoriesFromObj } from "@/lang/pairs";
@@ -49,6 +50,8 @@ export function LangFlashDialog({
 
   const knownName = languageByCode(pair.known)?.name ?? pair.known;
   const learningName = languageByCode(pair.learning)?.name ?? pair.learning;
+  const sides = pairSides(pair);
+  const knownFirst = direction === "known-first";
 
   function submit() {
     onSubmit({
@@ -84,15 +87,15 @@ export function LangFlashDialog({
       )}
 
       <div className="field">
-        <label htmlFor="lfDir">Show first</label>
-        <select
-          id="lfDir"
-          value={direction}
-          onChange={(e) => setDirection(e.target.value as Direction)}
-        >
-          <option value="known-first">{knownName} → {learningName}</option>
-          <option value="learning-first">{learningName} → {knownName}</option>
-        </select>
+        <label>Show first</label>
+        <DirectionSwap
+          leftRole="Front"
+          rightRole="Back"
+          left={knownFirst ? sides.known : sides.learning}
+          right={knownFirst ? sides.learning : sides.known}
+          onSwap={() => setDirection(knownFirst ? "learning-first" : "known-first")}
+          swapTitle="Swap which side shows first"
+        />
       </div>
 
       {!isCustom && (

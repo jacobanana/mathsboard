@@ -161,8 +161,30 @@ describe("importPackJson / registry", () => {
   });
 
   it("never lets an imported verb id shadow a built-in one", () => {
-    const pack = spanishPack();
-    pack.verbs[0].id = "etre"; // collides with a base verb id
+    // A same-language (English↔French) pack so it stays combined with base; its
+    // verb reuses a base id to prove base wins the clash rather than being hidden.
+    const forms = ["x", "x", "x", "x", "x", "x"];
+    const pack: ContentPack = {
+      formatVersion: 1,
+      id: "clash",
+      name: "Clash",
+      languages: [
+        { code: "en", name: "English", nativeName: "English", flag: "🇬🇧" },
+        { code: "fr", name: "French", nativeName: "Français", flag: "🇫🇷" },
+      ],
+      categories: [{ id: "colours", label: "Colours", emoji: "🎨" }],
+      pronouns: {},
+      vocab: [],
+      sentences: [],
+      verbs: [
+        {
+          id: "etre", // collides with a base verb id
+          level: "basic",
+          infinitive: { en: "to be", fr: "être" },
+          forms: { fr: { present: forms, past: forms, imperfect: forms, futureSimple: forms } },
+        },
+      ],
+    };
     importPackJson(JSON.stringify(pack));
     // The built-in French "être" table still resolves (base wins on id clash).
     expect(conjugationFor("etre", "present", "fr").map((r) => r.form)).toEqual([
@@ -172,6 +194,30 @@ describe("importPackJson / registry", () => {
 });
 
 describe("active-pack selection", () => {
+  /** A second English↔French pack (same languages as base) — so it combines. */
+  function frenchPack(id: string): ContentPack {
+    return {
+      ...spanishPack(id),
+      name: "French test",
+      languages: [
+        { code: "en", name: "English", nativeName: "English", flag: "🇬🇧" },
+        { code: "fr", name: "French", nativeName: "Français", flag: "🇫🇷" },
+      ],
+      vocab: [{ category: "colours", level: "basic", terms: { en: "red", fr: "rouge" } }],
+      verbs: [],
+    };
+  }
+
+  /** A second English↔Spanish pack with a distinct word, so two same-language
+   *  packs can be told apart when combined. */
+  function spanishPackBlue(id: string): ContentPack {
+    return {
+      ...spanishPack(id),
+      vocab: [{ category: "colours", level: "basic", terms: { en: "blue", es: "azul" } }],
+      verbs: [],
+    };
+  }
+
   /** A second pack adding German + a distinct word, so we can tell packs apart. */
   function germanPack(id = "test-de"): ContentPack {
     return {
@@ -202,19 +248,39 @@ describe("active-pack selection", () => {
     expect(currentContent().vocab.some((v) => v.terms.es === "rojo")).toBe(false);
   });
 
-  it("keeps the base pack contributing even when an import narrows the selection", () => {
-    importPackJson(JSON.stringify(spanishPack("a")));
-    // Base languages/verbs are still merged although only the import is active.
+  it("keeps base combined with a same-language import but drops it for a different one", () => {
+    // A same-language import (English↔French) stays combined with the base pack.
+    importPackJson(JSON.stringify(frenchPack("fr2")));
+    expect(isBaseActive()).toBe(true);
     expect(currentContent().languages.some((l) => l.code === "fr")).toBe(true);
+    removeImportedPack("fr2");
+    // A different-language import (English↔Spanish) switches base off, so the
+    // board isn't left mixing English↔French with English↔Spanish content.
+    importPackJson(JSON.stringify(spanishPack("es")));
+    expect(isBaseActive()).toBe(false);
+    expect(currentContent().languages.some((l) => l.code === "fr")).toBe(false);
+    expect(currentContent().languages.some((l) => l.code === "es")).toBe(true);
   });
 
-  it("can combine several packs by switching them back on", () => {
+  it("combines several packs that teach the SAME languages", () => {
     importPackJson(JSON.stringify(spanishPack("a")));
-    importPackJson(JSON.stringify(germanPack("b"))); // now only "b" is active
-    setPackActive("a", true); // re-enable Spanish alongside German
+    importPackJson(JSON.stringify(spanishPackBlue("b"))); // now only "b" is active
+    setPackActive("a", true); // both English↔Spanish — combine them
     expect(activePackIds().sort()).toEqual(["a", "b"]);
     expect(currentContent().vocab.some((v) => v.terms.es === "rojo")).toBe(true);
-    expect(currentContent().vocab.some((v) => v.terms.de === "rot")).toBe(true);
+    expect(currentContent().vocab.some((v) => v.terms.es === "azul")).toBe(true);
+  });
+
+  it("won't combine packs of different languages — switching one on drops the other", () => {
+    importPackJson(JSON.stringify(spanishPack("a"))); // English↔Spanish
+    importPackJson(JSON.stringify(germanPack("b"))); // English↔German; now only "b" active
+    setPackActive("a", true); // different languages — replaces German, doesn't merge
+    expect(activePackIds()).toEqual(["a"]);
+    expect(isPackActive("b")).toBe(false);
+    // The base pack (English↔French) can't join a different-language selection either.
+    expect(isBaseActive()).toBe(false);
+    expect(currentContent().vocab.some((v) => v.terms.es === "rojo")).toBe(true);
+    expect(currentContent().vocab.some((v) => v.terms.de === "rot")).toBe(false);
   });
 
   it("switching a pack off drops its content without removing it", () => {
