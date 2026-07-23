@@ -3,11 +3,13 @@
     <stop offset="0" stop-color="#FBBF24"/><stop offset="1" stop-color="#F97316"/>
   </linearGradient></defs>
   <rect width="512" height="512" fill="url(#g)"/>
-  <line x1="0" y1="96" x2="512" y2="96" stroke="#fff" stroke-opacity="0.14" stroke-width="3"/><line x1="0" y1="168" x2="512" y2="168" stroke="#fff" stroke-opacity="0.14" stroke-width="3"/><line x1="0" y1="240" x2="512" y2="240" stroke="#fff" stroke-opacity="0.14" stroke-width="3"/><line x1="0" y1="312" x2="512" y2="312" stroke="#fff" stroke-opacity="0.14" stroke-width="3"/><line x1="0" y1="384" x2="512" y2="384" stroke="#fff" stroke-opacity="0.14" stroke-width="3"/><line x1="0" y1="456" x2="512" y2="456" stroke="#fff" stroke-opacity="0.14" stroke-width="3"/>
-  <g stroke="#fff" fill="#fff" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="256" y1="150" x2="182" y2="378" stroke-width="30" stroke-linecap="round"/>
-    <line x1="256" y1="150" x2="330" y2="378" stroke-width="30" stroke-linecap="round"/>
-    <line x1="214" y1="306" x2="298" y2="306" stroke-width="30" stroke-linecap="round"/>
-    <line x1="280" y1="120" x2="318" y2="96" stroke-width="30" stroke-linecap="round"/>
+  <g stroke="#fff" stroke-opacity="0.13" stroke-width="3">
+    <line x1="0" y1="120" x2="512" y2="120"/><line x1="0" y1="196" x2="512" y2="196"/>
+    <line x1="0" y1="316" x2="512" y2="316"/><line x1="0" y1="392" x2="512" y2="392"/>
   </g>
+  <g fill="#fff"><rect x="72" y="92" width="238" height="150" rx="40"/><path d="M104 236 L150 236 L104 286 Z"/></g>
+  <text x="191" y="170" font-family="'Noto Sans','DejaVu Sans',sans-serif" font-size="118" font-weight="700" fill="#EA580C" text-anchor="middle" dominant-baseline="central">文</text>
+  <rect x="193" y="219" width="256" height="168" rx="49" fill="url(#g)"/>
+  <g fill="#fff"><rect x="202" y="228" width="238" height="150" rx="40"/><path d="M408 372 L362 372 L408 422 Z"/></g>
+  <text x="321" y="304" font-family="'Noto Sans','DejaVu Sans',sans-serif" font-size="128" font-weight="800" fill="#EA580C" text-anchor="middle" dominant-baseline="central">A</text>
 </svg>

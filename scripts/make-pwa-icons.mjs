@@ -68,26 +68,35 @@ const MATHS = `
   ${op("/", 318, 318, 46, 28)}
 </svg>`;
 
-// A bold accented "A" — the universal letter/alphabet mark, with a diacritic
-// stroke to say "language / accents", on lined paper.
-const A_APEX_X = 256,
-  A_APEX_Y = 150,
-  A_FOOT_Y = 378,
-  A_HALF = 74,
-  A_W = 30;
+// Two overlapping speech bubbles carrying letters from different scripts (文 +
+// A) — the international "language / translation" mark, saying conversation
+// across languages far more directly than a lone letter would. The trick that
+// keeps the overlap crisp: after the back bubble, paint a slightly-enlarged copy
+// of the FRONT bubble's body with the SAME background gradient, carving a clean
+// gap wherever the two bubbles meet (and invisible everywhere else). Glyphs are
+// rendered as text — the render Chromium has full multi-script coverage, and the
+// output is a baked PNG, so this doesn't depend on the end user's fonts.
+const INK = "#EA580C"; // deep orange, legible on the amber paper
+/** A rounded speech bubble: rounded-rect body + a small triangular tail. */
+const bubble = (x, y, w, h, tail) =>
+  `<g fill="#fff"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="40"/><path d="${tail}"/></g>`;
+const glyph = (ch, x, y, size, weight) =>
+  `<text x="${x}" y="${y}" font-family="'Noto Sans','DejaVu Sans',sans-serif" font-size="${size}" font-weight="${weight}" fill="${INK}" text-anchor="middle" dominant-baseline="central">${ch}</text>`;
 const LANGUAGE = `
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0" stop-color="#FBBF24"/><stop offset="1" stop-color="#F97316"/>
   </linearGradient></defs>
   <rect width="512" height="512" fill="url(#g)"/>
-  ${paper("lined")}
-  <g stroke="#fff" fill="#fff" stroke-linecap="round" stroke-linejoin="round">
-    ${line(A_APEX_X, A_APEX_Y, A_APEX_X - A_HALF, A_FOOT_Y, A_W)}
-    ${line(A_APEX_X, A_APEX_Y, A_APEX_X + A_HALF, A_FOOT_Y, A_W)}
-    ${line(A_APEX_X - 42, 306, A_APEX_X + 42, 306, A_W)}
-    ${line(A_APEX_X + 24, 120, A_APEX_X + 62, 96, A_W)}
+  <g stroke="#fff" stroke-opacity="0.13" stroke-width="3">
+    <line x1="0" y1="120" x2="512" y2="120"/><line x1="0" y1="196" x2="512" y2="196"/>
+    <line x1="0" y1="316" x2="512" y2="316"/><line x1="0" y1="392" x2="512" y2="392"/>
   </g>
+  ${bubble(72, 92, 238, 150, "M104 236 L150 236 L104 286 Z")}
+  ${glyph("文", 191, 170, 118, 700)}
+  <rect x="193" y="219" width="256" height="168" rx="49" fill="url(#g)"/>
+  ${bubble(202, 228, 238, 150, "M408 372 L362 372 L408 422 Z")}
+  ${glyph("A", 321, 304, 128, 800)}
 </svg>`;
 
 // ---- render ----------------------------------------------------------------
