@@ -64,8 +64,9 @@ calculating tools support the **fill-in-then-reveal** answer toggle.
 
 ## Language Board
 
-The same infinite canvas, retuned for **learning languages** — open it at
-**`/language`**. On the way in you choose the language you already speak and the
+The same infinite canvas, retuned for **learning languages** — live at
+**[languageboard.mixedmode.ch](https://languageboard.mixedmode.ch)** (its own
+installable app). On the way in you choose the language you already speak and the
 one you want to learn (**English ↔ French** to start, built to add more), and the
 Insert gallery swaps the maths widgets for language activities aimed at beginners
 (around 10 years old):
@@ -105,7 +106,7 @@ projects it stands on, and exactly what happens to your data are in
 ## Run it yourself & contribute
 
 Everything technical — local setup, architecture, tests, and self-hosting your
-own instance (a single small VPS, one domain, roughly €3–4/month) — is in the
+own instance (a single small VPS, two board domains, roughly €3–4/month) — is in the
 [**Development & self-hosting guide**](DEVELOPMENT.md). Where the product is
 headed lives in the [feature roadmap](docs/feature-roadmap.md).
 

@@ -5,7 +5,7 @@
 // lives here where it can be asserted without navigating.
 
 import { describe, expect, it } from "vitest";
-import { pathForSubject, crossAppRedirect } from "@/subject";
+import { pathForSubject, hostForSubject, crossAppRedirect } from "@/subject";
 
 describe("pathForSubject", () => {
   it("maps to the language directory and back at the site root", () => {
@@ -67,5 +67,41 @@ describe("crossAppRedirect", () => {
     expect(
       crossAppRedirect(undefined, "https://host/language/?board=abcd1234", "language"),
     ).toBeNull();
+  });
+});
+
+describe("multi-domain routing", () => {
+  it("swaps the subdomain label, keeping the rest of the domain", () => {
+    expect(hostForSubject("language", "mathsboard.mixedmode.ch")).toBe(
+      "languageboard.mixedmode.ch",
+    );
+    expect(hostForSubject("maths", "languageboard.mixedmode.ch")).toBe(
+      "mathsboard.mixedmode.ch",
+    );
+  });
+
+  it("bounces across DOMAINS on a board host, resetting to the root", () => {
+    // A language board opened on the maths domain -> the language domain.
+    expect(
+      crossAppRedirect(
+        "language",
+        "https://mathsboard.mixedmode.ch/?board=4f2a9c1b",
+        "maths",
+      ),
+    ).toBe("https://languageboard.mixedmode.ch/?board=4f2a9c1b");
+    // And the reverse.
+    expect(
+      crossAppRedirect(
+        "maths",
+        "https://languageboard.mixedmode.ch/?board=abcd1234",
+        "language",
+      ),
+    ).toBe("https://mathsboard.mixedmode.ch/?board=abcd1234");
+  });
+
+  it("still toggles the PATH on a non-board host (dev / GitHub Pages)", () => {
+    expect(
+      crossAppRedirect("language", "https://host/mathsboard/?board=42", "maths"),
+    ).toBe("https://host/mathsboard/language/?board=42");
   });
 });

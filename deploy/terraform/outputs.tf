@@ -1,5 +1,5 @@
 output "floating_ip" {
-  description = "Public IP. Point your board.<domain> A record here AND set it as the DEPLOY_HOST GitHub secret."
+  description = "Public IP. Point BOTH board A records (site_address + language_site_address, plus analytics_address) here AND set it as the DEPLOY_HOST GitHub secret."
   value       = openstack_networking_floatingip_v2.fip.address
 }
 

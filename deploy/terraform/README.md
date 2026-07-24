@@ -50,8 +50,8 @@ the **private** half becomes the `DEPLOY_SSH_KEY` secret in step 7.
 ### 4. Fill in variables
 ```sh
 cp terraform.tfvars.example terraform.tfvars
-# edit: os_cloud, site_address, analytics_address, ssh_public_key,
-#       y_sweet_auth, y_sweet_server_token
+# edit: os_cloud, site_address, language_site_address, analytics_address,
+#       ssh_public_key, y_sweet_auth, y_sweet_server_token
 ```
 Confirm `image_name`, `flavor_name`, `external_network_name`, and `s3_endpoint`
 match your region (see the commented block in the example) before applying.
@@ -67,11 +67,12 @@ terraform output floating_ip     # -> A record + DEPLOY_HOST secret
 ```
 
 ### 6. DNS
-In the Infomaniak Manager, add an **A record**: `board` → the `floating_ip`,
-plus a second one for the analytics subdomain (`analytics` → the same
-`floating_ip`, matching `analytics_address`). Floating IPs are stable, so this
-is a one-time step. Caddy issues each TLS certificate automatically on the first
-HTTPS request once DNS resolves — nothing to provision by hand.
+In the Infomaniak Manager, add an **A record** for **each** board domain
+(`mathsboard` and `languageboard` → the `floating_ip`, matching `site_address`
+and `language_site_address`), plus one for the analytics subdomain (`analytics` →
+the same `floating_ip`, matching `analytics_address`). Floating IPs are stable, so
+this is a one-time step. Caddy issues each TLS certificate automatically on the
+first HTTPS request once DNS resolves — nothing to provision by hand.
 
 ### 7. GitHub secrets
 The deploy job SSHes into the box, so it needs three secrets. Run these from
