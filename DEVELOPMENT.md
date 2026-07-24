@@ -98,7 +98,7 @@ Both boards are ONE build. Which flavour a page is resolves once at module load
 in `src/subject.ts`, and there are two URL layouts:
 
 - **Multi-domain (production)** — each board on its own domain
-  (`mathsboard.mixedmode.ch` / `languageboard.mixedmode.ch`). The leftmost DNS
+  (`mathsboard.mixedmode.ch` / `langsboard.mixedmode.ch`). The leftmost DNS
   label is authoritative. Caddy serves the language board's page — built under
   `/language/` — at the language domain's root; its relative asset URLs (baked at
   `/language/` depth) resolve to the shared `/assets` and `/icons` because
@@ -357,7 +357,7 @@ From then on, `git push` to `main` builds, ships and restarts automatically.
 Any box with Docker and the compose plugin works, without Terraform:
 
 1. **DNS** — point an A record for **each** board domain (e.g.
-   `mathsboard.example.com` and `languageboard.example.com`) at the VPS.
+   `mathsboard.example.com` and `langsboard.example.com`) at the VPS.
 2. **Firewall** — open **80** and **443** (also 443/UDP for HTTP/3).
 3. `git clone` this repo onto the box.
 4. `cp .env.example .env` and fill it in:

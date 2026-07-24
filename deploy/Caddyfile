@@ -18,7 +18,7 @@
 #
 # Addresses come from the environment (see .env.example):
 #   production   SITE_ADDRESS=mathsboard.example.com
-#                LANGUAGE_SITE_ADDRESS=languageboard.example.com
+#                LANGUAGE_SITE_ADDRESS=langsboard.example.com
 #                ANALYTICS_ADDRESS=analytics.example.com
 #                (automatic HTTPS via ACME on the first request to each; certs
 #                live in the caddy_data volume - keep it)

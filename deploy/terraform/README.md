@@ -68,7 +68,7 @@ terraform output floating_ip     # -> A record + DEPLOY_HOST secret
 
 ### 6. DNS
 In the Infomaniak Manager, add an **A record** for **each** board domain
-(`mathsboard` and `languageboard` → the `floating_ip`, matching `site_address`
+(`mathsboard` and `langsboard` → the `floating_ip`, matching `site_address`
 and `language_site_address`), plus one for the analytics subdomain (`analytics` →
 the same `floating_ip`, matching `analytics_address`). Floating IPs are stable, so
 this is a one-time step. Caddy issues each TLS certificate automatically on the

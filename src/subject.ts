@@ -4,7 +4,7 @@
 // DETECTION resolves the subject once, at module load. There are TWO layouts:
 //
 //   • MULTI-DOMAIN (production): each board has its OWN domain
-//     (mathsboard.mixedmode.ch / languageboard.mixedmode.ch). The leftmost DNS
+//     (mathsboard.mixedmode.ch / langsboard.mixedmode.ch). The leftmost DNS
 //     label is authoritative — see boardHostSubject.
 //   • SINGLE-ORIGIN (local dev, GitHub Pages, e2e): both boards share one origin
 //     and the `/language/` path segment selects. The production build emits a
@@ -33,13 +33,13 @@ export const SUBJECTS: readonly Subject[] = ["maths", "language"];
 
 /**
  * Each subject's own subdomain label on the multi-domain production deploy
- * (mathsboard.mixedmode.ch / languageboard.mixedmode.ch). The leftmost DNS
+ * (mathsboard.mixedmode.ch / langsboard.mixedmode.ch). The leftmost DNS
  * label of a "board host" names its subject; every other origin (localhost, the
  * GitHub Pages host) is not a board host and falls back to path selection.
  */
 const HOST_LABELS: Record<Subject, string> = {
   maths: "mathsboard",
-  language: "languageboard",
+  language: "langsboard",
 };
 
 /**
@@ -92,7 +92,7 @@ export function pathForSubject(subject: Subject, pathname: string): string {
 
 /**
  * Swap a board host's leftmost DNS label so it serves `subject`, preserving the
- * rest of the domain — mathsboard.mixedmode.ch <-> languageboard.mixedmode.ch.
+ * rest of the domain — mathsboard.mixedmode.ch <-> langsboard.mixedmode.ch.
  * Only meaningful for hosts boardHostSubject recognises (the multi-domain
  * deploy); crossAppRedirect gates on that before calling it.
  */

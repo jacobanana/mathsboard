@@ -10,7 +10,7 @@ os_cloud = ""
 # EACH (-> the `floating_ip` output) in the Infomaniak Manager. Caddy provisions
 # each TLS cert on the first HTTPS request after its DNS resolves.
 site_address          = "mathsboard.example.com"
-language_site_address = "languageboard.example.com"
+language_site_address = "langsboard.example.com"
 
 # Subdomain for the self-hosted Umami analytics dashboard (analytics is enabled
 # on Terraform deploys). Add its OWN A record -> the same `floating_ip`; Caddy
