@@ -241,6 +241,18 @@ export function SaveIcon(): JSX.Element {
   );
 }
 
+// A floppy disk — the universal "save this board to my library" glyph, as
+// opposed to SaveIcon (a download tray) which means "save an image file".
+export function DiskIcon(): JSX.Element {
+  return (
+    <svg {...svgProps}>
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+      <polyline points="17 21 17 13 7 13 7 21" />
+      <polyline points="7 3 7 8 15 8" />
+    </svg>
+  );
+}
+
 export function KeyboardIcon(): JSX.Element {
   return (
     <svg {...svgProps}>

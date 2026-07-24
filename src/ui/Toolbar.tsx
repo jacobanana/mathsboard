@@ -43,6 +43,7 @@ import {
   RedoIcon,
   PlusIcon,
   ShareIcon,
+  DiskIcon,
 } from "@/ui/icons";
 
 export interface ToolbarCallbacks {
@@ -50,6 +51,9 @@ export interface ToolbarCallbacks {
   /** Tap the board-title chip. Opens the launcher hub on the language board,
    *  the boards manager on the maths board. */
   onTitle: () => void;
+  /** Quick-save the current board over its library entry (or Save as if it has
+   *  never been saved). Mirrors Ctrl/Cmd+S. */
+  onSave: () => void;
   onBoards: () => void;
   onPaper: (anchor: HTMLElement) => void;
   onSaveImage: () => void;
@@ -118,6 +122,24 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
             </span>
             {dirty && <span className="bt-dot" title="Unsaved changes" />}
           </button>
+          {/* Quick-save the board to the library, right where the name lives.
+              A SHARED board persists online continuously and has no local save
+              (the boards manager offers Rename instead), so this is solo-only.
+              Disabled once everything's already saved — nothing to write. */}
+          {collabMode !== "shared" && (
+            <button
+              className="btn small board-save"
+              id="saveBoardBtn"
+              title={`Save board (${keyHint("save")})`}
+              aria-label="Save board"
+              disabled={saved && !dirty}
+              onClick={props.onSave}
+            >
+              <span className="ico">
+                <DiskIcon />
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="island">
