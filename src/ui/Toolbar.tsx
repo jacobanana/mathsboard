@@ -31,6 +31,7 @@
 import { isSavedBoard, useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
 import { COLLAB_ENABLED } from "@/config";
+import { IS_LANGUAGE } from "@/subject";
 import { PROFILE } from "@/boardProfile";
 import { OptionsStrip } from "@/ui/OptionsStrip";
 import { OverflowMenu } from "@/ui/OverflowMenu";
@@ -46,6 +47,9 @@ import {
 
 export interface ToolbarCallbacks {
   onInsert: () => void;
+  /** Tap the board-title chip. Opens the launcher hub on the language board,
+   *  the boards manager on the maths board. */
+  onTitle: () => void;
   onBoards: () => void;
   onPaper: (anchor: HTMLElement) => void;
   onSaveImage: () => void;
@@ -102,8 +106,12 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
           <button
             className="board-title"
             id="boardTitle"
-            title="Open the boards manager"
-            onClick={props.onBoards}
+            title={
+              IS_LANGUAGE
+                ? "New board, open one, or join with a code"
+                : "Open the boards manager"
+            }
+            onClick={props.onTitle}
           >
             <span className="bt-name">
               {saved ? boardName : "Untitled draft"}

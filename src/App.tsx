@@ -157,6 +157,9 @@ export default function App(): JSX.Element {
     <>
       <Toolbar
         onInsert={() => setModal({ kind: "insert" })}
+        // The title chip opens the launcher hub on the language board (new /
+        // open / join in one place), the boards manager on the maths board.
+        onTitle={() => setModal({ kind: IS_LANGUAGE ? "welcome" : "boards" })}
         onBoards={() => setModal({ kind: "boards" })}
         onPaper={(anchor) => setPaperAnchor(anchor)}
         onSaveImage={exportPNG}
