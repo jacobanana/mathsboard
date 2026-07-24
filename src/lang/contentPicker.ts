@@ -7,8 +7,10 @@
 import { useMemo, useState } from "react";
 import type { Category, Level } from "@/lang/data";
 import {
+  categoriesForArticleNouns,
   categoriesForSentences,
   categoriesForVocab,
+  levelsForArticleCategories,
   levelsForSentenceCategories,
   levelsForVocabCategories,
   resolveLevel,
@@ -16,7 +18,19 @@ import {
   type LevelFilter,
 } from "@/lang/pairs";
 
-export type ContentKind = "vocab" | "sentences";
+export type ContentKind = "vocab" | "sentences" | "gender";
+
+const CATS_OF = {
+  vocab: categoriesForVocab,
+  sentences: categoriesForSentences,
+  gender: categoriesForArticleNouns,
+} as const;
+
+const LEVELS_OF = {
+  vocab: levelsForVocabCategories,
+  sentences: levelsForSentenceCategories,
+  gender: levelsForArticleCategories,
+} as const;
 
 export interface ContentPicker {
   /** The chosen theme ids — always at least one. */
@@ -39,8 +53,8 @@ export function useContentPicker(
   /** Minimum items a theme must have (at any level) to be offered. */
   minCategory = 1,
 ): ContentPicker {
-  const catsOf = kind === "vocab" ? categoriesForVocab : categoriesForSentences;
-  const levelsOf = kind === "vocab" ? levelsForVocabCategories : levelsForSentenceCategories;
+  const catsOf = CATS_OF[kind];
+  const levelsOf = LEVELS_OF[kind];
 
   const categories = useMemo(
     () => catsOf(pair, "mixed", minCategory),

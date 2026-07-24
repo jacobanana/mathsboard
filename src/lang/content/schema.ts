@@ -25,6 +25,13 @@ export type Level = (typeof LEVELS)[number];
 export const STORED_TENSES = ["present", "past", "imperfect", "futureSimple"] as const;
 export type StoredTense = (typeof STORED_TENSES)[number];
 
+/** The spatial relations the preposition game can DRAW — an object placed
+ *  relative to a box. Every stored preposition tags itself with one of these so
+ *  the widget can render the scene ("on" → sitting on top, "under" → beneath).
+ *  A small, deliberately unambiguous set: each reads clearly with two emoji. */
+export const PREP_POSITIONS = ["on", "in", "under", "front", "behind", "beside"] as const;
+export type PrepPosition = (typeof PREP_POSITIONS)[number];
+
 /** A language the pack teaches or teaches from. */
 export interface PackLanguage {
   /** ISO 639-1 code ("en", "fr", "es", …) — the key used everywhere else. */
@@ -57,6 +64,15 @@ export interface PackVocab {
    *  languages whose script the learner can't sound out (e.g. { "ja":
    *  "konnichiwa" } beside こんにちは). Only add entries where they help. */
   phonetics?: Record<string, string>;
+  /** Optional DEFINITE ARTICLE per language code, for nouns that carry
+   *  grammatical gender — the surface word the learner sorts by in the gender
+   *  game: { "fr": "le" } / { "fr": "la" }, { "de": "der" | "die" | "das" }.
+   *  Store the gender-carrying form ("le"/"la"), never the elided one ("l'"),
+   *  so the bucket is unambiguous. The game is offered for a language only when
+   *  its loaded content has at least TWO distinct articles — so English (only
+   *  "the") never shows it, French and German do. Omit for genderless nouns and
+   *  for languages without article gender. */
+  article?: Record<string, string>;
 }
 
 /** One sentence, tagged with the same { category, level } as vocab. */
@@ -80,6 +96,15 @@ export interface PackVerb {
   forms: Record<string, PackVerbForms>;
 }
 
+/** One spatial preposition for the "where is it?" game: the word in each
+ *  language plus the relation the widget draws to illustrate it. */
+export interface PackPreposition {
+  /** The preposition in each language, keyed by code: { en: "on", fr: "sur" }. */
+  terms: Record<string, string>;
+  /** Which drawn scene this preposition names (see {@link PREP_POSITIONS}). */
+  position: PrepPosition;
+}
+
 /** A complete, self-contained content pack. */
 export interface ContentPack {
   /** Bumped only on a breaking format change; today's packs are `1`. */
@@ -97,6 +122,8 @@ export interface ContentPack {
   vocab: PackVocab[];
   sentences: PackSentence[];
   verbs: PackVerb[];
+  /** Spatial prepositions for the "where is it?" game (optional). */
+  prepositions?: PackPreposition[];
 }
 
 /** The result of flattening the base pack + every imported pack into the
@@ -108,6 +135,7 @@ export interface MergedContent {
   vocab: PackVocab[];
   sentences: PackSentence[];
   verbs: PackVerb[];
+  prepositions: PackPreposition[];
 }
 
 // --- the downloadable JSON Schema -------------------------------------------
@@ -216,6 +244,12 @@ export const CONTENT_SCHEMA = {
               "Optional pronunciation aid per language code (e.g. a romanization). Shown beside the word but NEVER read aloud by text-to-speech. Use for languages whose script the learner can't sound out — put the reading HERE, not inside `terms`, so speech reads the word once, not the word and its transcription.",
             additionalProperties: { type: "string" },
           },
+          article: {
+            type: "object",
+            description:
+              "Optional definite article per language code for nouns with grammatical gender (e.g. { \"fr\": \"le\" }, { \"de\": \"der\" }). Powers the gender sort game. Store the gender-carrying form (\"le\"/\"la\"), NOT the elided \"l'\". The game only appears for a language once its content has 2+ distinct articles, so English (\"the\" only) never shows it. Omit for genderless nouns.",
+            additionalProperties: { type: "string" },
+          },
         },
       },
     },
@@ -278,6 +312,29 @@ export const CONTENT_SCHEMA = {
         },
       },
     },
+    prepositions: {
+      type: "array",
+      description:
+        "Spatial prepositions for the \"where is it?\" game. Each names a relation the app draws between an object and a box. Include the learner's language too, so pairs resolve. The game appears only when the learning language has 3+ prepositions loaded.",
+      items: {
+        type: "object",
+        required: ["terms", "position"],
+        additionalProperties: false,
+        properties: {
+          terms: {
+            type: "object",
+            description: "The preposition in each language, e.g. { \"en\": \"on\", \"fr\": \"sur\" }.",
+            additionalProperties: { type: "string" },
+            minProperties: 1,
+          },
+          position: {
+            enum: [...PREP_POSITIONS],
+            description:
+              "The drawn scene this preposition names: \"on\" (on top of the box), \"in\" (inside it), \"under\" (beneath it), \"front\" (in front of it), \"behind\" (behind it), \"beside\" (next to it).",
+          },
+        },
+      },
+    },
   },
 } as const;
 
@@ -306,17 +363,17 @@ function termsErrors(terms: unknown, where: string, errors: string[]): void {
   }
 }
 
-/** The optional `phonetics` map: when present it must be { languageCode: reading }
- *  with non-empty string readings. Absent is always fine (it is optional). */
-function phoneticsErrors(phonetics: unknown, where: string, errors: string[]): void {
-  if (phonetics === undefined) return;
-  if (!isObj(phonetics)) {
-    errors.push(`${where}: "phonetics" must be an object of { languageCode: reading }.`);
+/** An optional per-language map (`phonetics`, `article`): when present it must be
+ *  { languageCode: value } with non-empty string values. Absent is always fine. */
+function optionalLangMap(value: unknown, field: string, where: string, errors: string[]): void {
+  if (value === undefined) return;
+  if (!isObj(value)) {
+    errors.push(`${where}: "${field}" must be an object of { languageCode: value }.`);
     return;
   }
-  for (const k of Object.keys(phonetics)) {
-    if (!isStr(phonetics[k]) || (phonetics[k] as string).trim() === "")
-      errors.push(`${where}: phonetics for "${k}" must be a non-empty string.`);
+  for (const k of Object.keys(value)) {
+    if (!isStr(value[k]) || (value[k] as string).trim() === "")
+      errors.push(`${where}: ${field} for "${k}" must be a non-empty string.`);
   }
 }
 
@@ -383,7 +440,8 @@ export function validatePack(value: unknown): ValidationResult {
         knownCat(it.category, `vocab[${i}]`);
         if (!isLevel(it.level)) errors.push(`vocab[${i}]: level must be basic, medium or advanced.`);
         termsErrors(it.terms, `vocab[${i}]`, errors);
-        phoneticsErrors(it.phonetics, `vocab[${i}]`, errors);
+        optionalLangMap(it.phonetics, "phonetics", `vocab[${i}]`, errors);
+        optionalLangMap(it.article, "article", `vocab[${i}]`, errors);
       });
   }
 
@@ -396,7 +454,7 @@ export function validatePack(value: unknown): ValidationResult {
         knownCat(it.category, `sentences[${i}]`);
         if (!isLevel(it.level)) errors.push(`sentences[${i}]: level must be basic, medium or advanced.`);
         termsErrors(it.terms, `sentences[${i}]`, errors);
-        phoneticsErrors(it.phonetics, `sentences[${i}]`, errors);
+        optionalLangMap(it.phonetics, "phonetics", `sentences[${i}]`, errors);
       });
   }
 
@@ -434,6 +492,20 @@ export function validatePack(value: unknown): ValidationResult {
             }
           }
         }
+      });
+  }
+
+  // prepositions
+  if (value.prepositions !== undefined) {
+    if (!Array.isArray(value.prepositions)) errors.push('"prepositions" must be an array.');
+    else
+      value.prepositions.forEach((pp, i) => {
+        if (!isObj(pp)) return errors.push(`prepositions[${i}] must be an object.`);
+        termsErrors(pp.terms, `prepositions[${i}]`, errors);
+        if (!isStr(pp.position) || !(PREP_POSITIONS as readonly string[]).includes(pp.position))
+          errors.push(
+            `prepositions[${i}]: position must be one of ${PREP_POSITIONS.join(", ")}.`,
+          );
       });
   }
 

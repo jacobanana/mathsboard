@@ -4,15 +4,20 @@
 //
 // Layout mirrors the prototype: a 2-col .gallery with a full-width .gsub
 // heading per category (in CATEGORY_ORDER), then a .tile per tool
-// (listByCategory already filters inGallery !== false). Empty categories are
-// skipped. Clicking a tile delegates to the host via onPick(type); the host
-// (App) opens that tool's Dialog in CREATE mode (or, for a gallery tool with no
-// Dialog, places it with defaults).
+// (listByCategory already filters inGallery !== false AND content-gated tools
+// whose `available()` is false right now — e.g. "le or la?" only shows on a
+// board whose language has gendered nouns). Empty categories are skipped.
+// Clicking a tile delegates to the host via onPick(type); the host (App) opens
+// that tool's Dialog in CREATE mode (or, for a gallery tool with no Dialog,
+// places it with defaults).
 
+import { useSyncExternalStore } from "react";
 import {
   CATEGORY_ORDER,
   CATEGORY_LABELS,
+  getGalleryVersion,
   listByCategory,
+  subscribeGallery,
 } from "@/tools/registry";
 
 interface InsertGalleryProps {
@@ -21,6 +26,10 @@ interface InsertGalleryProps {
 }
 
 export function InsertGallery({ onPick }: InsertGalleryProps): JSX.Element {
+  // Re-render when a content gate might have flipped (pair / content change), so
+  // content-gated tiles appear or disappear live without reopening the gallery.
+  useSyncExternalStore(subscribeGallery, getGalleryVersion, getGalleryVersion);
+
   return (
     <>
       <h2>Insert a tool</h2>

@@ -13,6 +13,7 @@ import { useBoardStore } from "@/board/store";
 import { placeObject } from "@/board/commands";
 import { track } from "@/analytics";
 import { SpeakButton } from "@/lang/SpeakButton";
+import { usePickPlace } from "@/lang/usePickPlace";
 import {
   allFilled,
   checkPatch,
@@ -53,7 +54,6 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
   const checked = isChecked(mo);
   const correct = correctCount(table, mo);
   const used = usedSlots(mo);
-  const [selBank, setSelBank] = useState<number | null>(null);
   // Type mode keeps its inputs in LOCAL state (committed on Check), so typing
   // doesn't write to the shared doc on every keystroke.
   const [typed, setTyped] = useState<Record<number, string>>({});
@@ -64,24 +64,27 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
     useBoardStore.getState().board.objects.find((o) => o.id === obj.id) as ConjObj | undefined;
 
   // --- pick mode -------------------------------------------------------------
-  function placeInRow(i: number) {
-    if (selBank == null || checked) return;
-    updateWidgetState(obj.id, placePatch(i, selBank));
-    setSelBank(null);
-    // Auto-check once every row is filled.
-    const m = fresh();
-    if (m && allFilled(table, m)) {
-      updateWidgetState(obj.id, checkPatch());
-      track("tool_action", { tool: "langconjugate", action: "check" });
-    }
-  }
+  // Drag a bank form onto a row, OR tap the form then tap the row — both land
+  // here (see usePickPlace).
+  const place = usePickPlace({
+    onPlace: (slotStr, rowStr) => {
+      if (checked) return;
+      const slot = Number(slotStr);
+      const i = Number(rowStr);
+      updateWidgetState(obj.id, placePatch(i, slot));
+      // Auto-check once every row is filled.
+      const m = fresh();
+      if (m && allFilled(table, m)) {
+        updateWidgetState(obj.id, checkPatch());
+        track("tool_action", { tool: "langconjugate", action: "check" });
+      }
+    },
+  });
+  useEffect(() => place.reset(), [obj.verb, obj.tense, obj.round, obj.mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function clearRow(i: number) {
     if (checked) return;
     updateWidgetState(obj.id, clearCellPatch(i));
-  }
-  function selectBank(slot: number) {
-    if (checked || used.has(slot)) return;
-    setSelBank((s) => (s === slot ? null : slot));
   }
 
   // --- type mode -------------------------------------------------------------
@@ -103,12 +106,12 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
 
   // --- shared ---------------------------------------------------------------
   function newGame() {
-    setSelBank(null);
+    place.reset();
     updateWidgetState(obj.id, newRoundPatch(fresh() ?? mo));
     track("tool_action", { tool: "langconjugate", action: "new" });
   }
   function tryAgain() {
-    setSelBank(null);
+    place.reset();
     setTyped({});
     updateWidgetState(obj.id, resetSessionPatch(fresh() ?? mo));
   }
@@ -236,16 +239,27 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
                       />
                     )
                   ) : (
-                    // pick mode
-                    <button
-                      className={
-                        "cj-cell cj-pickcell" +
-                        (checked ? (ok ? " ok" : " no") : cellStr ? " filled" : " empty")
-                      }
-                      onClick={() => (cellStr ? clearRow(i) : placeInRow(i))}
-                    >
-                      {checked && bad ? r.form : cellStr || "____"}
-                    </button>
+                    // pick mode — a drop target for the bank forms, and a tap
+                    // target when a form is picked; tapping a filled cell clears it.
+                    (() => {
+                      const tp = place.targetProps(String(i), { disabled: checked });
+                      return (
+                        <button
+                          ref={tp.ref}
+                          data-over={tp["data-over"]}
+                          className={
+                            "cj-cell cj-pickcell" +
+                            (checked ? (ok ? " ok" : " no") : cellStr ? " filled" : " empty")
+                          }
+                          onClick={(e) => {
+                            if (place.picked != null) tp.onClick(e);
+                            else if (cellStr) clearRow(i);
+                          }}
+                        >
+                          {checked && bad ? r.form : cellStr || "____"}
+                        </button>
+                      );
+                    })()
                   )}
                 </div>
               );
@@ -257,11 +271,9 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
               {table.bank.map((form, slot) => (
                 <button
                   key={slot}
-                  className={
-                    "cj-bankitem" + (used.has(slot) ? " used" : "") + (selBank === slot ? " sel" : "")
-                  }
+                  className={"cj-bankitem" + (used.has(slot) ? " used" : "")}
                   disabled={used.has(slot)}
-                  onClick={() => selectBank(slot)}
+                  {...place.sourceProps(String(slot), { disabled: used.has(slot) })}
                 >
                   {form}
                 </button>
@@ -292,6 +304,13 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* The floating form that follows the pointer while dragging. */}
+      {place.dragId != null && place.ghost && table.bank[Number(place.dragId)] != null && (
+        <div className="pick-ghost" style={{ left: place.ghost.x, top: place.ghost.y }}>
+          {table.bank[Number(place.dragId)]}
         </div>
       )}
     </div>

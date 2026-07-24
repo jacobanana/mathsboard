@@ -13,6 +13,7 @@
 
 import { create } from "zustand";
 import { defaultPair, isValidPair, type LangPair } from "@/lang/pairs";
+import { bumpGalleryVersion } from "@/tools/registry";
 
 const STORAGE_KEY = "langboard.pair.v1";
 
@@ -51,6 +52,9 @@ export const useLangStore = create<LangState>((set, get) => ({
     if (!isValidPair(pair)) return;
     persist(pair);
     set({ pair });
+    // A new learning language may gain or lose gendered nouns / prepositions —
+    // let the Insert gallery re-check its content-gated tools.
+    bumpGalleryVersion();
   },
   setKnown(code) {
     const next = { ...get().pair, known: code };
