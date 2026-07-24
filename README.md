@@ -65,7 +65,7 @@ calculating tools support the **fill-in-then-reveal** answer toggle.
 ## Language Board
 
 The same infinite canvas, retuned for **learning languages** — live at
-**[languageboard.mixedmode.ch](https://languageboard.mixedmode.ch)** (its own
+**[langsboard.mixedmode.ch](https://langsboard.mixedmode.ch)** (its own
 installable app). On the way in you choose the language you already speak and the
 one you want to learn (**English ↔ French** to start, built to add more), and the
 Insert gallery swaps the maths widgets for language activities aimed at beginners

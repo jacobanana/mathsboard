@@ -69,7 +69,7 @@ variable "site_address" {
 }
 
 variable "language_site_address" {
-  description = "Public FQDN for the Language board, e.g. languageboard.example.com. Needs its own DNS A record -> the same VPS; Caddy provisions its TLS cert automatically."
+  description = "Public FQDN for the Language board, e.g. langsboard.example.com. Needs its own DNS A record -> the same VPS; Caddy provisions its TLS cert automatically."
   type        = string
 }
 

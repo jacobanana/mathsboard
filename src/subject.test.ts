@@ -73,9 +73,9 @@ describe("crossAppRedirect", () => {
 describe("multi-domain routing", () => {
   it("swaps the subdomain label, keeping the rest of the domain", () => {
     expect(hostForSubject("language", "mathsboard.mixedmode.ch")).toBe(
-      "languageboard.mixedmode.ch",
+      "langsboard.mixedmode.ch",
     );
-    expect(hostForSubject("maths", "languageboard.mixedmode.ch")).toBe(
+    expect(hostForSubject("maths", "langsboard.mixedmode.ch")).toBe(
       "mathsboard.mixedmode.ch",
     );
   });
@@ -88,8 +88,21 @@ describe("multi-domain routing", () => {
         "https://mathsboard.mixedmode.ch/?board=4f2a9c1b",
         "maths",
       ),
-    ).toBe("https://languageboard.mixedmode.ch/?board=4f2a9c1b");
+    ).toBe("https://langsboard.mixedmode.ch/?board=4f2a9c1b");
     // And the reverse.
+    expect(
+      crossAppRedirect(
+        "maths",
+        "https://langsboard.mixedmode.ch/?board=abcd1234",
+        "language",
+      ),
+    ).toBe("https://mathsboard.mixedmode.ch/?board=abcd1234");
+  });
+
+  it("recognises a board host by PREFIX, so an in-family rename still routes", () => {
+    // Host detection is prefix-based: a differently-named language subdomain
+    // (here the older "languageboard") is still treated as a board host and
+    // redirected to the canonical peer, no code change needed.
     expect(
       crossAppRedirect(
         "maths",
