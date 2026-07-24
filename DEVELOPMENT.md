@@ -99,7 +99,10 @@ in `src/subject.ts`, and there are two URL layouts:
 
 - **Multi-domain (production)** — each board on its own domain
   (`mathsboard.mixedmode.ch` / `langsboard.mixedmode.ch`). The leftmost DNS
-  label is authoritative. Caddy serves the language board's page — built under
+  label is authoritative, matched by **prefix** (`maths…` / `lang…`) so an
+  in-family subdomain rename needs no code change; only the canonical peer label
+  used to build a cross-app redirect is exact (`HOST_CONFIG` in `src/subject.ts`).
+  Caddy serves the language board's page — built under
   `/language/` — at the language domain's root; its relative asset URLs (baked at
   `/language/` depth) resolve to the shared `/assets` and `/icons` because
   browsers clamp `..` at `/`. Only the manifest is rewritten to the language copy.

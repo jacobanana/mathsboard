@@ -99,6 +99,19 @@ describe("multi-domain routing", () => {
     ).toBe("https://mathsboard.mixedmode.ch/?board=abcd1234");
   });
 
+  it("recognises a board host by PREFIX, so an in-family rename still routes", () => {
+    // Host detection is prefix-based: a differently-named language subdomain
+    // (here the older "languageboard") is still treated as a board host and
+    // redirected to the canonical peer, no code change needed.
+    expect(
+      crossAppRedirect(
+        "maths",
+        "https://languageboard.mixedmode.ch/?board=abcd1234",
+        "language",
+      ),
+    ).toBe("https://mathsboard.mixedmode.ch/?board=abcd1234");
+  });
+
   it("still toggles the PATH on a non-board host (dev / GitHub Pages)", () => {
     expect(
       crossAppRedirect("language", "https://host/mathsboard/?board=42", "maths"),

@@ -32,14 +32,21 @@ export type Subject = "maths" | "language";
 export const SUBJECTS: readonly Subject[] = ["maths", "language"];
 
 /**
- * Each subject's own subdomain label on the multi-domain production deploy
- * (mathsboard.mixedmode.ch / langsboard.mixedmode.ch). The leftmost DNS
- * label of a "board host" names its subject; every other origin (localhost, the
- * GitHub Pages host) is not a board host and falls back to path selection.
+ * How each subject maps onto the multi-domain production deploy, where each
+ * board has its own subdomain (mathsboard.mixedmode.ch / langsboard.mixedmode.ch):
+ *   • `prefix` DETECTS the subject from the leftmost DNS label — a PREFIX, not an
+ *     exact match, so the board survives a subdomain rename within its family
+ *     (langsboard / languageboard / lang… all resolve to "language") without a
+ *     code change. The prefixes must stay mutually exclusive.
+ *   • `label` CONSTRUCTS the peer board's host for a cross-app hand-off
+ *     (hostForSubject) — the canonical subdomain to redirect to. This one IS the
+ *     exact live subdomain, so if it's ever renamed, update it here.
+ * Any host whose label matches no prefix (localhost, the GitHub Pages host) is
+ * not a board host and falls back to path selection.
  */
-const HOST_LABELS: Record<Subject, string> = {
-  maths: "mathsboard",
-  language: "langsboard",
+const HOST_CONFIG: Record<Subject, { prefix: string; label: string }> = {
+  maths: { prefix: "maths", label: "mathsboard" },
+  language: { prefix: "lang", label: "langsboard" },
 };
 
 /**
@@ -49,8 +56,8 @@ const HOST_LABELS: Record<Subject, string> = {
  * back to the single-origin `/language/` path rule.
  */
 function boardHostSubject(hostname: string): Subject | null {
-  const label = hostname.split(".")[0];
-  return SUBJECTS.find((s) => label === HOST_LABELS[s]) ?? null;
+  const label = hostname.split(".")[0].toLowerCase();
+  return SUBJECTS.find((s) => label.startsWith(HOST_CONFIG[s].prefix)) ?? null;
 }
 
 function detectSubject(): Subject {
@@ -97,7 +104,7 @@ export function pathForSubject(subject: Subject, pathname: string): string {
  * deploy); crossAppRedirect gates on that before calling it.
  */
 export function hostForSubject(subject: Subject, hostname: string): string {
-  return [HOST_LABELS[subject], ...hostname.split(".").slice(1)].join(".");
+  return [HOST_CONFIG[subject].label, ...hostname.split(".").slice(1)].join(".");
 }
 
 /**
