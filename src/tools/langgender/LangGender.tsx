@@ -15,6 +15,7 @@ import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
 import { track } from "@/analytics";
 import { SpeakButton } from "@/lang/SpeakButton";
+import { usePickPlace } from "@/lang/usePickPlace";
 import {
   allSorted,
   cardsInBucket,
@@ -48,11 +49,6 @@ export function LangGender({ obj }: WidgetProps<LangGenderParams>) {
   const done = allSorted(mo);
   const correct = correctCount(round, mo);
 
-  // The word the learner has "picked up", waiting for a basket. LOCAL, ephemeral
-  // (each collaborator has their own selection); placement is the shared state.
-  const [picked, setPicked] = useState<number | null>(null);
-  useEffect(() => setPicked(null), [obj.round, size]);
-
   const [fx, setFx] = useState<{ kind: "ok" | "no"; n: number } | null>(null);
   const fxSeq = useRef(0);
   const fxTimer = useRef(0);
@@ -64,26 +60,29 @@ export function LangGender({ obj }: WidgetProps<LangGenderParams>) {
   }
   useEffect(() => () => window.clearTimeout(fxTimer.current), []);
 
+  // Drag a word into a basket, OR tap the word then tap the basket — both land
+  // here (see usePickPlace). Correctness is derived; we just play the fx.
+  const place = usePickPlace({
+    onPlace: (wordId, bucketId) => {
+      const i = Number(wordId);
+      const bucket = Number(bucketId);
+      const right = round.buckets[bucket] === round.items[i]?.article;
+      updateWidgetState(obj.id, placePatch(i, bucket));
+      bumpFx(right ? "ok" : "no");
+      track("tool_action", { tool: "langgender", action: right ? "correct" : "wrong" });
+    },
+  });
+  // A fresh deal clears any selection / drag in progress.
+  useEffect(() => place.reset(), [obj.round, size]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const pile = pileCards(round, mo);
 
-  function pick(i: number) {
-    setPicked((cur) => (cur === i ? null : i));
-  }
-  function drop(bucket: number) {
-    if (picked == null) return;
-    const i = picked;
-    setPicked(null);
-    const rightBasket = round.buckets[bucket] === round.items[i]?.article;
-    updateWidgetState(obj.id, placePatch(i, bucket));
-    bumpFx(rightBasket ? "ok" : "no");
-    track("tool_action", { tool: "langgender", action: rightBasket ? "correct" : "wrong" });
-  }
   function sendBack(i: number) {
     updateWidgetState(obj.id, removePatch(i));
     setFx(null);
   }
   function newGame() {
-    setPicked(null);
+    place.reset();
     setFx(null);
     const fresh =
       (useBoardStore.getState().board.objects.find((o) => o.id === obj.id) as unknown as
@@ -151,11 +150,7 @@ export function LangGender({ obj }: WidgetProps<LangGenderParams>) {
               pile.map((i) => {
                 const n = round.items[i];
                 return (
-                  <button
-                    key={i}
-                    className={"gd-word" + (picked === i ? " picked" : "")}
-                    onClick={() => pick(i)}
-                  >
+                  <button key={i} className="gd-word" {...place.sourceProps(String(i))}>
                     {n.emoji && <span className="gd-emoji">{n.emoji}</span>}
                     <span className="gd-w">{n.learning}</span>
                     <span className="gd-gloss">{n.known}</span>
@@ -169,11 +164,10 @@ export function LangGender({ obj }: WidgetProps<LangGenderParams>) {
           {/* the baskets, one per article */}
           <div className="gd-baskets">
             {round.buckets.map((article, b) => (
-              <button
+              <div
                 key={b}
-                className={"gd-basket" + (picked != null ? " active" : "")}
-                onClick={() => drop(b)}
-                disabled={picked == null}
+                className={"gd-basket" + (place.active ? " active" : "")}
+                {...place.targetProps(String(b))}
               >
                 <span className="gd-basket-head">{article}</span>
                 <span className="gd-basket-cards">
@@ -199,7 +193,7 @@ export function LangGender({ obj }: WidgetProps<LangGenderParams>) {
                     );
                   })}
                 </span>
-              </button>
+              </div>
             ))}
           </div>
 
@@ -208,10 +202,22 @@ export function LangGender({ obj }: WidgetProps<LangGenderParams>) {
               <span className="gd-foot-done">Every word in the right basket 🎉</span>
             ) : (
               <span className="gd-foot-hint">
-                {picked == null ? "Tap a word, then tap its basket" : "Now tap the right basket"}
+                {place.active
+                  ? "Drop it in the right basket"
+                  : "Drag a word to its basket — or tap it, then tap the basket"}
               </span>
             )}
           </div>
+        </div>
+      )}
+
+      {/* The floating token that follows the pointer while dragging. */}
+      {place.dragId != null && place.ghost && round.items[Number(place.dragId)] && (
+        <div className="pick-ghost" style={{ left: place.ghost.x, top: place.ghost.y }}>
+          {round.items[Number(place.dragId)].emoji && (
+            <span className="gd-emoji">{round.items[Number(place.dragId)].emoji}</span>
+          )}
+          <span className="gd-w">{round.items[Number(place.dragId)].learning}</span>
         </div>
       )}
     </div>
