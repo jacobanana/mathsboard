@@ -54,6 +54,7 @@ import langGapsTool from "@/tools/langgaps";
 import langConjugateTool from "@/tools/langconjugate";
 import langGenderTool from "@/tools/langgender";
 import langPrepTool from "@/tools/langprep";
+import langListenTool from "@/tools/langlisten";
 
 // The always-available foundation tools shared by BOTH subjects: free text and
 // the draw-tool primitives (maths notation, shapes). They are inGallery:false —
@@ -132,6 +133,8 @@ const LANG_TOOLS = [
   langMatchTool,
   langSentenceTool,
   langGapsTool,
+  // Listening — hear a word, tap the picture (needs speech; see `available`).
+  langListenTool,
   // Grammar games — shown only when the loaded content supports them (a language
   // with gendered nouns / with prepositions). See each tool's `available`.
   langGenderTool,
