@@ -746,6 +746,37 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .welcome-row{display:flex;gap:10px;margin-top:10px;}
 .welcome-row .btn{flex:1;justify-content:center;min-height:44px;color:var(--ink);background:#EEF1F0;}
 .welcome-row .btn:hover{background:#E3E8E6;}
+
+/* --- Language board launcher hub (LangWelcome): three big choice rows,
+   plus a resume bar when there's work to come back to. --- */
+.lang-welcome{display:flex;flex-direction:column;}
+.lw-options{display:flex;flex-direction:column;gap:9px;margin-top:12px;}
+/* One choice row: icon · title+subtitle · arrow. Full-width & tappable. */
+.lw-option,.lw-resume{display:flex;align-items:center;gap:13px;width:100%;text-align:left;font-family:inherit;padding:14px 16px;border-radius:14px;border:2px solid transparent;transition:background .12s,border-color .12s,transform .12s cubic-bezier(.34,1.56,.64,1);}
+.lw-option{background:#F4F6F5;color:var(--ink);}
+.lw-option:hover{background:#E8EDEB;}
+.lw-option:active{transform:scale(.98);}
+.lw-option[disabled]{opacity:.4;pointer-events:none;}
+.lw-option.open{border-color:var(--accent);background:#fff;}
+/* New board leads as the primary action — brand-dark, like Continue. */
+.lw-option.primary{background:var(--bar);color:#fff;}
+.lw-option.primary:hover{background:#15302f;}
+.lw-option.primary .lw-sub{color:rgba(255,255,255,.72);}
+.lw-option.primary .lw-arrow{color:rgba(255,255,255,.8);}
+/* Resume bar: softer accent tint, sits above the three choices. */
+.lw-resume{background:var(--accent-soft);color:var(--ink);cursor:pointer;margin-bottom:2px;}
+.lw-resume:hover{background:#F7DC9E;}
+.lw-resume:active{transform:scale(.98);}
+.lw-ico{flex:0 0 auto;font-size:22px;line-height:1;width:26px;text-align:center;}
+.lw-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.lw-title{font-weight:800;font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lw-sub{font-size:12.5px;font-weight:600;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lw-arrow{flex:0 0 auto;font-size:18px;font-weight:800;color:var(--muted);transition:transform .12s;}
+.lw-option:hover .lw-arrow{transform:translateX(2px);}
+.lw-option.open:hover .lw-arrow{transform:none;}
+/* The Join code form, revealed inline under its choice row. */
+.lw-join{padding:2px 2px 4px;animation:rise-left .16s cubic-bezier(.34,1.4,.64,1);}
+.lang-welcome .welcome-voices-link{margin-top:12px;}
 .share-linkrow{display:flex;gap:8px;margin:12px 0 4px;}
 .share-linkrow input{flex:1;min-width:0;font-family:inherit;font-size:13.5px;font-weight:600;border:2px solid #E0E4E2;border-radius:10px;padding:9px 11px;color:var(--ink);background:#F7F9F8;}
 .share-linkrow input:focus{outline:none;border-color:var(--accent);}
@@ -976,13 +1007,6 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 
 /* Flash-cards dialog: the "your own words" note (custom deck). */
 .lf-customnote{font-weight:700;font-size:14px;color:var(--ink);background:var(--hover);border-radius:10px;padding:9px 12px;}
-
-/* --- Welcome screen: the "I speak / I want to learn" chooser --- */
-.lang-picker{display:flex;align-items:flex-end;justify-content:center;gap:12px;flex-wrap:wrap;margin:6px 0 16px;padding:14px;border-radius:14px;background:var(--hover);}
-.lang-pick{display:flex;flex-direction:column;gap:5px;font-weight:800;font-size:12px;letter-spacing:.3px;text-transform:uppercase;color:var(--muted);}
-.lang-pick select{font-family:inherit;font-size:15px;font-weight:700;color:var(--ink);padding:8px 10px;border-radius:10px;border:2px solid #E4E7EC;background:#fff;cursor:pointer;}
-.lang-pick select:focus{outline:none;border-color:var(--accent);}
-.lang-arrow{font-size:20px;font-weight:900;color:var(--muted);padding-bottom:8px;}
 
 /* --- New board: pick a pack + direction --- */
 .pack-picker{display:flex;flex-direction:column;gap:12px;margin:6px 0 16px;}

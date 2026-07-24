@@ -12,6 +12,7 @@ import { getTool } from "@/tools/registry";
 import { setStoredName } from "@/collab/profile";
 import { IS_LANGUAGE } from "@/subject";
 import { LangNewBoard } from "@/lang/LangNewBoard";
+import { LangWelcome } from "@/lang/LangWelcome";
 import { ContentStudio } from "@/lang/ContentStudio";
 import { ContentLibrary } from "@/lang/ContentLibrary";
 import { VoiceSettings } from "@/lang/VoiceSettings";
@@ -49,22 +50,31 @@ function joinWithName(name: string, api: ModalApi): void {
   void useBoardStore.getState().init();
 }
 
-// Welcome screen (plain loads only; share links join directly). Closing it any
-// way — Continue, backdrop, Escape — resumes the draft.
+// Welcome screen — the landing hub. Plain loads front it (share links join
+// directly), and the board-title chip reopens it. Closing it any way —
+// Continue, backdrop, Escape — resumes the draft. The language board gets the
+// three-choice launcher (new / open / join); the maths board keeps its simpler
+// welcome (continue + new + open + inline join).
 const welcomeModal = defineModal("welcome", {
-  render: (_s, api) => (
-    <WelcomeModal
-      onClose={api.close}
-      onOpenBoards={() => api.open({ kind: "boards" })}
-      // Language board: "New board" first asks which languages (langNew).
-      onNewBoard={IS_LANGUAGE ? () => api.open({ kind: "langNew" }) : undefined}
-      onVoices={IS_LANGUAGE ? () => api.open({ kind: "voices" }) : undefined}
-    />
-  ),
+  render: (_s, api) =>
+    IS_LANGUAGE ? (
+      <LangWelcome
+        onClose={api.close}
+        onNew={() => api.open({ kind: "langNew" })}
+        onOpen={() => api.open({ kind: "boards" })}
+        onVoices={() => api.open({ kind: "voices" })}
+      />
+    ) : (
+      <WelcomeModal
+        onClose={api.close}
+        onOpenBoards={() => api.open({ kind: "boards" })}
+      />
+    ),
 });
 
 // Language board only: choose the languages when starting a new board, then
-// create it. Reached from the welcome screen and the boards manager's New.
+// create it. Reached from the welcome hub and the boards manager's New; Cancel
+// returns to the welcome hub so backing out of creation lands on the launcher.
 const langNewModal = defineModal("langNew", {
   render: (_s, api) => (
     <LangNewBoard
@@ -72,7 +82,7 @@ const langNewModal = defineModal("langNew", {
         void useBoardStore.getState().newBoard();
         api.close();
       }}
-      onCancel={api.close}
+      onCancel={() => api.open({ kind: "welcome" })}
     />
   ),
 });
