@@ -25,6 +25,7 @@ import {
   type ContentPack,
   type MergedContent,
 } from "@/lang/content/schema";
+import { bumpGalleryVersion } from "@/tools/registry";
 
 /** The built-in pack. Authored in the pack format and trusted (it is generated
  *  from the tested catalogue), so it is not re-validated at load. */
@@ -66,6 +67,8 @@ function mergedFrom(packs: ContentPack[]): MergedContent {
   const sentences: MergedContent["sentences"] = [];
   const verbs: MergedContent["verbs"] = [];
   const seenVerb = new Set<string>();
+  const prepositions: MergedContent["prepositions"] = [];
+  const seenPrep = new Set<string>();
 
   for (const pack of packs) {
     for (const l of pack.languages ?? []) {
@@ -89,9 +92,17 @@ function mergedFrom(packs: ContentPack[]): MergedContent {
       seenVerb.add(vb.id);
       verbs.push(vb);
     }
+    for (const pp of pack.prepositions ?? []) {
+      // Dedupe on the whole meaning (position + every term) so two packs that
+      // both teach "sur → on" don't double it, but "sur" and "sous" stay apart.
+      const sig = pp.position + "|" + JSON.stringify(pp.terms ?? {});
+      if (seenPrep.has(sig)) continue;
+      seenPrep.add(sig);
+      prepositions.push(pp);
+    }
   }
 
-  return { languages, categories, pronouns, vocab, sentences, verbs };
+  return { languages, categories, pronouns, vocab, sentences, verbs, prepositions };
 }
 
 // --- persistence ------------------------------------------------------------
@@ -233,6 +244,9 @@ function rebuild(): void {
   merged = computeMerged();
   for (const consume of consumers) consume(merged);
   for (const listener of listeners) listener();
+  // Imported/removed content can add or drop gendered nouns / prepositions —
+  // re-check the Insert gallery's content-gated tools.
+  bumpGalleryVersion();
 }
 
 const idsSig = (packs: ContentPack[]): string => packs.map((p) => p.id).join(",");

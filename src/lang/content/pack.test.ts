@@ -128,6 +128,43 @@ describe("validatePack", () => {
     (bad2.vocab[0] as { phonetics: unknown }).phonetics = "rojo";
     expect(validatePack(bad2).ok).toBe(false);
   });
+
+  it("accepts optional article on vocab, rejects an empty one", () => {
+    const ok = spanishPack();
+    ok.vocab[0].article = { es: "el" };
+    expect(validatePack(ok).ok).toBe(true);
+
+    const bad = spanishPack();
+    bad.vocab[0].article = { es: "" };
+    const r = validatePack(bad);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.join(" ")).toContain("article");
+  });
+
+  it("accepts a valid prepositions array", () => {
+    const pack = spanishPack();
+    pack.prepositions = [
+      { terms: { en: "on", es: "sobre" }, position: "on" },
+      { terms: { en: "under", es: "debajo de" }, position: "under" },
+    ];
+    expect(validatePack(pack).ok).toBe(true);
+  });
+
+  it("rejects a preposition with an unknown position or missing terms", () => {
+    const bad = spanishPack();
+    (bad as ContentPack).prepositions = [
+      { terms: { en: "on", es: "sobre" }, position: "nope" as unknown as "on" },
+    ];
+    const r1 = validatePack(bad);
+    expect(r1.ok).toBe(false);
+    if (!r1.ok) expect(r1.errors.join(" ")).toContain("position");
+
+    const bad2 = spanishPack();
+    (bad2 as ContentPack).prepositions = [
+      { terms: {}, position: "on" },
+    ];
+    expect(validatePack(bad2).ok).toBe(false);
+  });
 });
 
 describe("importPackJson / registry", () => {

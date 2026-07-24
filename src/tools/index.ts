@@ -52,6 +52,8 @@ import langMatchTool from "@/tools/langmatch";
 import langSentenceTool from "@/tools/langsentence";
 import langGapsTool from "@/tools/langgaps";
 import langConjugateTool from "@/tools/langconjugate";
+import langGenderTool from "@/tools/langgender";
+import langPrepTool from "@/tools/langprep";
 
 // The always-available foundation tools shared by BOTH subjects: free text and
 // the draw-tool primitives (maths notation, shapes). They are inGallery:false —
@@ -130,6 +132,10 @@ const LANG_TOOLS = [
   langMatchTool,
   langSentenceTool,
   langGapsTool,
+  // Grammar games — shown only when the loaded content supports them (a language
+  // with gendered nouns / with prepositions). See each tool's `available`.
+  langGenderTool,
+  langPrepTool,
 ];
 
 // Assemble the registry for THIS subject: the shared core tools plus the maths

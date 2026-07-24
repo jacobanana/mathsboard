@@ -722,6 +722,9 @@
       "terms": {
         "en": "dog",
         "fr": "chien"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -731,6 +734,9 @@
       "terms": {
         "en": "cat",
         "fr": "chat"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -749,6 +755,9 @@
       "terms": {
         "en": "fish",
         "fr": "poisson"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -758,6 +767,9 @@
       "terms": {
         "en": "rabbit",
         "fr": "lapin"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -767,6 +779,9 @@
       "terms": {
         "en": "horse",
         "fr": "cheval"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -776,6 +791,9 @@
       "terms": {
         "en": "cow",
         "fr": "vache"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -785,6 +803,9 @@
       "terms": {
         "en": "pig",
         "fr": "cochon"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -794,6 +815,9 @@
       "terms": {
         "en": "sheep",
         "fr": "mouton"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -803,6 +827,9 @@
       "terms": {
         "en": "mouse",
         "fr": "souris"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -812,6 +839,9 @@
       "terms": {
         "en": "dolphin",
         "fr": "dauphin"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -830,6 +860,9 @@
       "terms": {
         "en": "snake",
         "fr": "serpent"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -839,6 +872,9 @@
       "terms": {
         "en": "wolf",
         "fr": "loup"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -848,6 +884,9 @@
       "terms": {
         "en": "fox",
         "fr": "renard"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -857,6 +896,9 @@
       "terms": {
         "en": "apple",
         "fr": "pomme"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -866,6 +908,9 @@
       "terms": {
         "en": "bread",
         "fr": "pain"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -884,6 +929,9 @@
       "terms": {
         "en": "milk",
         "fr": "lait"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -893,6 +941,9 @@
       "terms": {
         "en": "cheese",
         "fr": "fromage"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -911,6 +962,9 @@
       "terms": {
         "en": "chocolate",
         "fr": "chocolat"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -920,6 +974,9 @@
       "terms": {
         "en": "strawberry",
         "fr": "fraise"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -929,6 +986,9 @@
       "terms": {
         "en": "pear",
         "fr": "poire"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -938,6 +998,9 @@
       "terms": {
         "en": "vegetable",
         "fr": "légume"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -947,6 +1010,9 @@
       "terms": {
         "en": "meat",
         "fr": "viande"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -956,6 +1022,9 @@
       "terms": {
         "en": "breakfast",
         "fr": "petit-déjeuner"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -965,6 +1034,9 @@
       "terms": {
         "en": "meal",
         "fr": "repas"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -974,6 +1046,9 @@
       "terms": {
         "en": "mother",
         "fr": "mère"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -983,6 +1058,9 @@
       "terms": {
         "en": "father",
         "fr": "père"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -992,6 +1070,9 @@
       "terms": {
         "en": "sister",
         "fr": "sœur"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1001,6 +1082,9 @@
       "terms": {
         "en": "brother",
         "fr": "frère"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1010,6 +1094,9 @@
       "terms": {
         "en": "grandmother",
         "fr": "grand-mère"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1019,6 +1106,9 @@
       "terms": {
         "en": "grandfather",
         "fr": "grand-père"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1028,6 +1118,9 @@
       "terms": {
         "en": "baby",
         "fr": "bébé"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1045,6 +1138,9 @@
       "terms": {
         "en": "cousin",
         "fr": "cousin"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1061,6 +1157,9 @@
       "terms": {
         "en": "aunt",
         "fr": "tante"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1078,6 +1177,9 @@
       "terms": {
         "en": "head",
         "fr": "tête"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1087,6 +1189,9 @@
       "terms": {
         "en": "hand",
         "fr": "main"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1096,6 +1201,9 @@
       "terms": {
         "en": "foot",
         "fr": "pied"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1123,6 +1231,9 @@
       "terms": {
         "en": "nose",
         "fr": "nez"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1132,6 +1243,9 @@
       "terms": {
         "en": "mouth",
         "fr": "bouche"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1141,6 +1255,9 @@
       "terms": {
         "en": "arm",
         "fr": "bras"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1150,6 +1267,9 @@
       "terms": {
         "en": "leg",
         "fr": "jambe"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1167,6 +1287,9 @@
       "terms": {
         "en": "finger",
         "fr": "doigt"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1175,6 +1298,9 @@
       "terms": {
         "en": "knee",
         "fr": "genou"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1184,6 +1310,9 @@
       "terms": {
         "en": "tooth",
         "fr": "dent"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1201,6 +1330,9 @@
       "terms": {
         "en": "t-shirt",
         "fr": "tee-shirt"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1210,6 +1342,9 @@
       "terms": {
         "en": "trousers",
         "fr": "pantalon"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1228,6 +1363,9 @@
       "terms": {
         "en": "hat",
         "fr": "chapeau"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1237,6 +1375,9 @@
       "terms": {
         "en": "dress",
         "fr": "robe"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1246,6 +1387,9 @@
       "terms": {
         "en": "coat",
         "fr": "manteau"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1281,6 +1425,9 @@
       "terms": {
         "en": "jumper",
         "fr": "pull"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1298,6 +1445,9 @@
       "terms": {
         "en": "jacket",
         "fr": "veste"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1307,6 +1457,9 @@
       "terms": {
         "en": "book",
         "fr": "livre"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1316,6 +1469,9 @@
       "terms": {
         "en": "pencil",
         "fr": "crayon"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1325,6 +1481,9 @@
       "terms": {
         "en": "pen",
         "fr": "stylo"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1334,6 +1493,9 @@
       "terms": {
         "en": "bag",
         "fr": "sac"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1343,6 +1505,9 @@
       "terms": {
         "en": "notebook",
         "fr": "cahier"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1352,6 +1517,9 @@
       "terms": {
         "en": "chair",
         "fr": "chaise"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1361,6 +1529,9 @@
       "terms": {
         "en": "teacher",
         "fr": "professeur"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1386,6 +1557,9 @@
       "terms": {
         "en": "lesson",
         "fr": "leçon"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1395,6 +1569,9 @@
       "terms": {
         "en": "ruler",
         "fr": "règle"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1403,6 +1580,9 @@
       "terms": {
         "en": "rubber",
         "fr": "gomme"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1412,6 +1592,9 @@
       "terms": {
         "en": "house",
         "fr": "maison"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1421,6 +1604,9 @@
       "terms": {
         "en": "door",
         "fr": "porte"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1430,6 +1616,9 @@
       "terms": {
         "en": "window",
         "fr": "fenêtre"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1439,6 +1628,9 @@
       "terms": {
         "en": "bed",
         "fr": "lit"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1448,6 +1640,9 @@
       "terms": {
         "en": "kitchen",
         "fr": "cuisine"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1457,6 +1652,9 @@
       "terms": {
         "en": "garden",
         "fr": "jardin"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1466,6 +1664,9 @@
       "terms": {
         "en": "key",
         "fr": "clé"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1475,6 +1676,9 @@
       "terms": {
         "en": "lamp",
         "fr": "lampe"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1484,6 +1688,9 @@
       "terms": {
         "en": "bathroom",
         "fr": "salle de bain"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1500,6 +1707,9 @@
       "terms": {
         "en": "wall",
         "fr": "mur"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1508,6 +1718,9 @@
       "terms": {
         "en": "roof",
         "fr": "toit"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1616,6 +1829,9 @@
       "terms": {
         "en": "flower",
         "fr": "fleur"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1625,6 +1841,9 @@
       "terms": {
         "en": "moon",
         "fr": "lune"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1643,6 +1862,9 @@
       "terms": {
         "en": "sea",
         "fr": "mer"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1652,6 +1874,9 @@
       "terms": {
         "en": "mountain",
         "fr": "montagne"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1661,6 +1886,9 @@
       "terms": {
         "en": "river",
         "fr": "rivière"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1670,6 +1898,9 @@
       "terms": {
         "en": "leaf",
         "fr": "feuille"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1679,6 +1910,9 @@
       "terms": {
         "en": "forest",
         "fr": "forêt"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1688,6 +1922,9 @@
       "terms": {
         "en": "beach",
         "fr": "plage"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -1696,6 +1933,9 @@
       "terms": {
         "en": "field",
         "fr": "champ"
+      },
+      "article": {
+        "fr": "le"
       }
     },
     {
@@ -1705,6 +1945,9 @@
       "terms": {
         "en": "stone",
         "fr": "pierre"
+      },
+      "article": {
+        "fr": "la"
       }
     },
     {
@@ -3641,6 +3884,50 @@
           ]
         }
       }
+    }
+  ],
+  "prepositions": [
+    {
+      "terms": {
+        "en": "on",
+        "fr": "sur"
+      },
+      "position": "on"
+    },
+    {
+      "terms": {
+        "en": "in",
+        "fr": "dans"
+      },
+      "position": "in"
+    },
+    {
+      "terms": {
+        "en": "under",
+        "fr": "sous"
+      },
+      "position": "under"
+    },
+    {
+      "terms": {
+        "en": "in front of",
+        "fr": "devant"
+      },
+      "position": "front"
+    },
+    {
+      "terms": {
+        "en": "behind",
+        "fr": "derrière"
+      },
+      "position": "behind"
+    },
+    {
+      "terms": {
+        "en": "next to",
+        "fr": "à côté de"
+      },
+      "position": "beside"
     }
   ]
 }

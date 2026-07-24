@@ -13,6 +13,7 @@ import baseJson from "@/lang/content/base.json";
 import {
   CONTENT_SCHEMA,
   LEVELS,
+  PREP_POSITIONS,
   STORED_TENSES,
   type ContentPack,
 } from "@/lang/content/schema";
@@ -105,8 +106,10 @@ ${notesBlock}
 - "categories": the themes items are grouped under, each { id (kebab-case), label, emoji }. THESE ARE YOURS TO CHOOSE — invent whatever themes suit the age and theme above. As a starting point, the app already knows these themes, and reusing their ids makes your pack line up with the built-in content: ${suggestedCats}. Feel free to rename, drop or add to them.
 - Every vocab and sentence item has: "category" (an id from your categories), "level" (${levels}), and "terms": a map of languageCode → word/sentence. ALWAYS include BOTH the taught language AND the learner's language in "terms" — an item is only usable when both sides are present. "emoji" is optional on vocab.
 - "phonetics" (OPTIONAL, on vocab and sentences): a map languageCode → pronunciation, for languages whose script the learner can't sound out (Japanese, Chinese, Korean, Arabic, Russian, Greek, …). Put the romanization/reading HERE — NEVER inside "terms". Keeping "terms" clean means text-to-speech reads the real word once (not the word AND its transcription), while the app still shows the reading beside it. E.g. terms { "en": "hello", "ja": "こんにちは" } with phonetics { "ja": "konnichiwa" }. Omit it for languages the learner can already read (no phonetics for Spanish, French, etc.).
+- "article" (OPTIONAL, on vocab NOUNS): a map languageCode → definite article, for languages where nouns carry grammatical gender (French le/la, German der/die/das, Spanish el/la). This powers a "sort the words by gender" game, which only appears once a language has 2+ distinct articles. Store the gender-carrying form ("le"/"la"), NOT the elided one ("l'"). TIP: to keep the spoken word natural, add articles mainly to nouns that DON'T start with a vowel or silent h (so speech says "le chien", not an un-elided "la eau"). Omit for genderless nouns, for non-nouns, and for languages without article gender (no "article" for English "the").
 - "pronouns": for each language that has verbs, ${FORM_COUNT} subject pronouns in order [I, you, he/she, we, you-plural, they].
 - "verbs": each has "id" (kebab-case), "level", "infinitive" (map languageCode → infinitive, e.g. {"en":"to be","es":"ser"}), and "forms": a map languageCode → { ${STORED_TENSES.map((t) => `"${t}":[${FORM_COUNT}]`).join(", ")} }. Each tense array has EXACTLY ${FORM_COUNT} forms, in the same pronoun order as above. Give the ${known} forms too. Store only these tenses (${tenses}) — the app derives the near future itself.
+- "prepositions" (OPTIONAL): spatial prepositions for a "where is it?" game that draws an object on / in / under / in front of / behind / beside a box. Each is { "terms": { languageCode → word }, "position": one of ${PREP_POSITIONS.map((p) => `"${p}"`).join(", ")} }. Include BOTH languages in "terms". "position" is the scene drawn: "on" (on top of the box), "in" (inside it), "under" (beneath), "front" (in front), "behind" (behind), "beside" (next to). Aim to cover all six positions where the language has a word for them. The game appears only when 3+ prepositions are loaded. Omit the whole array for languages where this doesn't make sense.
 
 ## Suggested size (a starting point, go bigger where you can)
 - ~120+ vocab items spread across the themes and levels.
@@ -132,10 +135,15 @@ ${notesBlock}
   },
   "vocab": [
     { "category": "greetings", "level": "basic", "emoji": "👋", "terms": { "en": "hello", "es": "hola" } },
-    { "category": "colours", "level": "basic", "emoji": "🔴", "terms": { "en": "red", "es": "rojo" } }
+    { "category": "colours", "level": "basic", "emoji": "🔴", "terms": { "en": "red", "es": "rojo" } },
+    { "category": "animals", "level": "basic", "emoji": "🐶", "terms": { "en": "dog", "es": "perro" }, "article": { "es": "el" } }
   ],
   "sentences": [
     { "category": "greetings", "level": "basic", "terms": { "en": "Hello!", "es": "¡Hola!" } }
+  ],
+  "prepositions": [
+    { "terms": { "en": "on", "es": "sobre" }, "position": "on" },
+    { "terms": { "en": "under", "es": "debajo de" }, "position": "under" }
   ],
   "verbs": [
     {

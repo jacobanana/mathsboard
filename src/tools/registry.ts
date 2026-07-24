@@ -95,6 +95,16 @@ export interface ToolMeta {
   /** Show in the Insert gallery? Defaults to true; set false for e.g. free text. */
   inGallery?: boolean;
   /**
+   * Optional CONTENT GATE: hide this gallery tool unless the currently loaded
+   * content supports it. Read live state itself (the language pair, the merged
+   * catalogue) and return false to hide the tile. The gallery re-checks this on
+   * every pair/content change. Used by the grammar widgets — "le or la?" only
+   * appears when the learning language has gendered nouns, the preposition game
+   * only when prepositions are loaded — so a French board shows them and an
+   * English one doesn't. Omit for tools that always apply.
+   */
+  available?: () => boolean;
+  /**
    * Does this tool have a revealable worked answer? When true, the board shows
    * a systemic "show answer" toggle at the object's top-left (AnswerButtonLayer)
    * and the tool's draw() reads the object's `revealed` flag to show or hide it.
@@ -389,9 +399,41 @@ export function listTools(): Tool[] {
   return [...REGISTRY.values()];
 }
 
-/** Gallery-visible tools for a category, in registration order. */
+/** Gallery-visible tools for a category, in registration order. Tools with a
+ *  content gate (`available`) that returns false right now are dropped, so the
+ *  gallery only offers what the loaded content supports. */
 export function listByCategory(category: ToolCategory): Tool[] {
   return listTools().filter(
-    (t) => t.category === category && t.inGallery !== false,
+    (t) =>
+      t.category === category &&
+      t.inGallery !== false &&
+      (t.available == null || t.available()),
   );
+}
+
+// --- gallery availability signal --------------------------------------------
+// A tool's `available()` reads live state (the language pair, the loaded
+// content). The gallery must re-check when that state changes, but the registry
+// stays subject-agnostic — the language layer calls bumpGalleryVersion() when a
+// pair or content change could flip a tool's availability; the gallery
+// subscribes through useSyncExternalStore. Kept here so InsertGallery never has
+// to import the language modules (which would pull the content catalogue into
+// the maths build).
+
+let galleryVersion = 0;
+const galleryListeners = new Set<() => void>();
+
+/** The current gallery-availability version (a snapshot for useSyncExternalStore). */
+export const getGalleryVersion = (): number => galleryVersion;
+
+/** Subscribe to gallery-availability changes; returns an unsubscribe fn. */
+export function subscribeGallery(listener: () => void): () => void {
+  galleryListeners.add(listener);
+  return () => galleryListeners.delete(listener);
+}
+
+/** Signal that a tool's `available()` result may have changed (pair/content). */
+export function bumpGalleryVersion(): void {
+  galleryVersion += 1;
+  for (const l of galleryListeners) l();
 }

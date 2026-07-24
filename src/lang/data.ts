@@ -28,6 +28,7 @@ import {
   type Level,
   type PackCategory,
   type PackLanguage,
+  type PackPreposition,
   type PackSentence,
   type PackVocab,
 } from "@/lang/content/schema";
@@ -81,6 +82,13 @@ export type SentenceItem = PackSentence;
 
 export const SENTENCES: SentenceItem[] = [];
 
+// --- prepositions -----------------------------------------------------------
+
+/** One spatial preposition (word per language + the scene it names). */
+export type PrepositionItem = PackPreposition;
+
+export const PREPOSITIONS: PrepositionItem[] = [];
+
 // --- keep the app-facing arrays mirroring the merged catalogue --------------
 // Splice in place (rather than reassign) so modules that captured these arrays
 // at import time — and the many `.filter` / `for..of` callers — keep seeing the
@@ -90,4 +98,5 @@ registerContentConsumer((content) => {
   CATEGORIES.splice(0, CATEGORIES.length, ...content.categories);
   VOCAB.splice(0, VOCAB.length, ...content.vocab);
   SENTENCES.splice(0, SENTENCES.length, ...content.sentences);
+  PREPOSITIONS.splice(0, PREPOSITIONS.length, ...content.prepositions);
 });
