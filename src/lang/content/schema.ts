@@ -107,6 +107,9 @@ export interface PackPreposition {
 
 /** A complete, self-contained content pack. */
 export interface ContentPack {
+  /** Optional link back to the published schema (CONTENT_SCHEMA.$id), so
+   *  editors can validate and autocomplete a pack as it's written. */
+  $schema?: string;
   /** Bumped only on a breaking format change; today's packs are `1`. */
   formatVersion: number;
   /** A stable id ("base", "spanish-food", …) — imported packs replace an
@@ -139,6 +142,13 @@ export interface MergedContent {
 }
 
 // --- the downloadable JSON Schema -------------------------------------------
+
+/** Where the schema is PUBLISHED: the path under the site root that serves
+ *  CONTENT_SCHEMA verbatim. vite.config.ts emits the file there at build time
+ *  and serves it in dev, so the `$id` below — and the `$schema` link every pack
+ *  carries — resolve to real JSON instead of falling through to the SPA shell.
+ *  A test keeps this and `$id` in step. */
+export const CONTENT_SCHEMA_PATH = "schemas/language-content.schema.json";
 
 /** A JSON Schema (draft-07) for a content pack. Offered as a download from the
  *  content-creation help page and handy to paste into an LLM. Hand-written to

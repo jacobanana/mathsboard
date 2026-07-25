@@ -3,7 +3,12 @@
 // to (and removes from) the live catalogue the widgets read.
 
 import { afterEach, describe, expect, it } from "vitest";
-import { CONTENT_SCHEMA, validatePack, type ContentPack } from "@/lang/content/schema";
+import {
+  CONTENT_SCHEMA,
+  CONTENT_SCHEMA_PATH,
+  validatePack,
+  type ContentPack,
+} from "@/lang/content/schema";
 import {
   BASE_PACK,
   activePackIds,
@@ -409,5 +414,12 @@ describe("CONTENT_SCHEMA", () => {
     expect(Object.keys(CONTENT_SCHEMA.properties)).toEqual(
       expect.arrayContaining(["languages", "categories", "pronouns", "vocab", "sentences", "verbs"]),
     );
+  });
+
+  it("claims the $id the build actually publishes it at", () => {
+    // vite.config.ts emits the schema at CONTENT_SCHEMA_PATH. If $id names a
+    // different URL, packs point somewhere that serves the SPA shell instead.
+    expect(CONTENT_SCHEMA.$id.endsWith("/" + CONTENT_SCHEMA_PATH)).toBe(true);
+    expect(BASE_PACK.$schema).toBe(CONTENT_SCHEMA.$id);
   });
 });
