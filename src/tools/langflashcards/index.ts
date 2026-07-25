@@ -2,7 +2,9 @@
 //
 // A study deck of word cards from a topic, shown one at a time on a big flip
 // card: see a word, flip to reveal the translation, self-rate "Knew it" /
-// "Practise". The languages are baked into the object at creation (from the
+// "Didn't know" — and at the end add the ones you didn't know to a practice
+// set, a deck of its own that shrinks as those words stick. The languages are
+// baked into the object at creation (from the
 // learner's current pair) so a placed deck is stable and collaboration-safe even
 // if the learner later switches languages — the same reason the maths widgets
 // store their generated content on the object. The engine lives in ./deck.ts.
@@ -36,6 +38,9 @@ export interface LangFlashParams {
   easy: boolean;
   /** The learner's OWN words (from the My words table) — overrides `category`. */
   custom?: CustomPair[];
+  /** This deck IS the practice set: the words collected off other decks with
+   *  "Didn't know", held in `custom` (see deck.ts). */
+  practice?: boolean;
   // --- live widget state (NOT set from the dialog; via updateWidgetState) ---
   round?: number;
   idx?: number;
