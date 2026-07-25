@@ -4,20 +4,30 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  customWords,
   deckTitle,
   deriveDeck,
   flipPatch,
   isCustom,
+  isPractice,
   knewField,
   knewIt,
+  knownPairs,
+  mergePairs,
+  missedPairs,
   newDeckPatch,
+  newToSet,
+  pairOfCard,
   pruneRatings,
   ratePatch,
+  removePairs,
   replayPatch,
   resetSessionPatch,
   scoreCount,
   scoreDeck,
   verdict,
+  type CustomPair,
+  type LangCard,
   type LangFlashObj,
 } from "@/tools/langflashcards/deck";
 import { vocabFor } from "@/lang/pairs";
@@ -151,6 +161,110 @@ describe("session patches", () => {
     const patch = resetSessionPatch(o);
     expect(patch).not.toHaveProperty("round");
     expect(patch.idx).toBe(0);
+  });
+});
+
+describe("the practice set", () => {
+  const card = (over: Partial<LangCard> = {}): LangCard => ({
+    front: "hello",
+    back: "bonjour",
+    ...over,
+  });
+  const set = (...pairs: [string, string][]): CustomPair[] =>
+    pairs.map(([known, learning]) => ({ known, learning }));
+
+  it("stores a card known-first whichever way the deck was facing", () => {
+    const c = card({ front: "hello", back: "bonjour" });
+    expect(pairOfCard(c, "known-first")).toMatchObject({
+      known: "hello",
+      learning: "bonjour",
+    });
+    // A reversed deck deals the SAME word the other way up — it must still be
+    // filed known-first, or the set would disagree with itself.
+    expect(pairOfCard({ front: "bonjour", back: "hello" }, "learning-first")).toMatchObject({
+      known: "hello",
+      learning: "bonjour",
+    });
+  });
+
+  it("carries the picture cue and the readings onto the stored pair", () => {
+    const c = card({ emoji: "👋", frontPhonetic: "he-LOH", backPhonetic: "bon-ZHOOR" });
+    expect(pairOfCard(c, "known-first")).toEqual({
+      known: "hello",
+      learning: "bonjour",
+      emoji: "👋",
+      knownPhonetic: "he-LOH",
+      learningPhonetic: "bon-ZHOOR",
+    });
+    // Reversed: the front reading belongs to the LEARNING side.
+    expect(pairOfCard(c, "learning-first")).toMatchObject({
+      known: "bonjour",
+      learning: "hello",
+      knownPhonetic: "bon-ZHOOR",
+      learningPhonetic: "he-LOH",
+    });
+  });
+
+  it("splits a finished run into what needs practice and what stuck", () => {
+    const deck = [card({ front: "a" }), card({ front: "b" }), card({ front: "c" })];
+    const o = obj({ [knewField(1)]: 1 });
+    expect(missedPairs(o, deck).map((p) => p.known)).toEqual(["a", "c"]);
+    expect(knownPairs(o, deck).map((p) => p.known)).toEqual(["b"]);
+  });
+
+  it("merging keeps order and never files the same word twice", () => {
+    const existing = set(["hello", "bonjour"], ["thanks", "merci"]);
+    const merged = mergePairs(existing, set(["Hello ", "BONJOUR"], ["yes", "oui"]));
+    // The repeat (differing only in case/space) is dropped; the new one is appended.
+    expect(merged.map((p) => p.known)).toEqual(["hello", "thanks", "yes"]);
+    expect(newToSet(existing, set(["hello", "bonjour"]))).toBe(0);
+    expect(newToSet(existing, set(["no", "non"]))).toBe(1);
+  });
+
+  it("removing retires the learned words by identity", () => {
+    const existing = set(["hello", "bonjour"], ["thanks", "merci"], ["yes", "oui"]);
+    const left = removePairs(existing, set(["HELLO", "bonjour "], ["yes", "oui"]));
+    expect(left.map((p) => p.known)).toEqual(["thanks"]);
+    // Removing everything empties it (rather than leaving a stale word behind).
+    expect(removePairs(left, set(["thanks", "merci"]))).toEqual([]);
+  });
+
+  it("a practice deck runs on its own words and says so", () => {
+    const o = obj({ practice: true, custom: set(["hello", "bonjour"], ["yes", "oui"]) });
+    expect(isPractice(o)).toBe(true);
+    expect(deckTitle(o)).toBe("🔁 Practice set");
+    expect(deriveDeck(o).map((c) => c.front).sort()).toEqual(["hello", "yes"]);
+    expect(customWords(o)).toHaveLength(2);
+  });
+
+  it("an EMPTIED practice set deals no cards (never falls back to a topic)", () => {
+    // isCustom() is false for an empty list, so without the practice flag this
+    // deck would quietly start dealing the `category` topic again.
+    const o = obj({ practice: true, custom: [], category: "colours" });
+    expect(isCustom(o)).toBe(false);
+    expect(deriveDeck(o)).toEqual([]);
+    expect(customWords(o)).toEqual([]);
+  });
+
+  it("round-trips a topic run into the set and back out again", () => {
+    const deck = deriveDeck(obj());
+    expect(deck.length).toBeGreaterThan(2);
+    // The learner knew the first card only.
+    const run = obj({ [knewField(0)]: 1 });
+    const collected = mergePairs([], missedPairs(run, deck));
+    expect(collected).toHaveLength(deck.length - 1);
+
+    // Practising those, they now know the first two of them...
+    const practice = obj({ id: "lf-2", practice: true, custom: collected });
+    const pDeck = deriveDeck(practice);
+    expect(pDeck).toHaveLength(collected.length);
+    const pRun = { ...practice, [knewField(0)]: 1, [knewField(1)]: 1 };
+    const left = removePairs(customWords(pRun), knownPairs(pRun, pDeck));
+    expect(left).toHaveLength(collected.length - 2);
+    // ...and what's left is exactly what they still got wrong.
+    expect(left.map((p) => p.known).sort()).toEqual(
+      missedPairs(pRun, pDeck).map((p) => p.known).sort(),
+    );
   });
 });
 

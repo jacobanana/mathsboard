@@ -7,7 +7,7 @@
 // write races. Bumping `round` ("New deck") reshuffles everywhere at once.
 //
 // A card shows a word in one language; the learner thinks of the translation,
-// flips to check, and taps "Knew it" or "Practise". That self-rating is live
+// flips to check, and taps "Knew it" or "Didn't know". That self-rating is live
 // widget-state (one `fk:<i>` field per card) plus the position (`idx`) and flip
 // (`flipped`), exactly the undo-invisible, synced, persisted model the maths
 // widgets use.
@@ -28,10 +28,15 @@ export type Direction = "known-first" | "learning-first";
 
 export const DIRECTIONS: Direction[] = ["known-first", "learning-first"];
 
-/** A learner-authored word pair (from the "My words" table). */
+/** A learner-authored word pair: typed into the "My words" table, or collected
+ *  into a practice set. The picture cue and the readings ride along (optional)
+ *  so a word gathered off a topic card keeps them. */
 export interface CustomPair {
   known: string;
   learning: string;
+  emoji?: string;
+  knownPhonetic?: string;
+  learningPhonetic?: string;
 }
 
 /** The shape the component reads: params plus live widget-state (fk:*). */
@@ -55,6 +60,10 @@ export interface LangFlashObj {
   /** When present, the deck is the learner's OWN words (from the My words
    *  table) instead of a preset topic — `topic` is then ignored. */
   custom?: CustomPair[];
+  /** This deck IS the practice set: the words gathered off other decks with
+   *  "Didn't know". They live in `custom` and the list shrinks as they're
+   *  learned, so an empty set means an empty deck (never a topic fallback). */
+  practice?: boolean;
   // --- live widget state (via updateWidgetState, undo-invisible) ---
   /** Monotonic "new deck" counter; the deck is re-derived from it. */
   round?: number;
@@ -109,12 +118,30 @@ function toCard(v: VocabPair, dir: Direction): LangCard {
 export const isCustom = (obj: LangFlashObj): boolean =>
   Array.isArray(obj.custom) && obj.custom.length > 0;
 
+/** True when this deck IS the practice set (see "the practice set" below). */
+export const isPractice = (obj: LangFlashObj): boolean => obj.practice === true;
+
+/** Does this deck carry its OWN words (My words / the practice set) rather than
+ *  drawing on a theme? A practice set counts even when empty — it has simply
+ *  been cleared, and must NOT fall back to a topic. */
+const ownWords = (obj: LangFlashObj): boolean => isPractice(obj) || isCustom(obj);
+
+/** The words a own-words deck holds (the practice set's live contents). */
+export const customWords = (obj: LangFlashObj): CustomPair[] =>
+  Array.isArray(obj.custom) ? obj.custom : [];
+
 /** The pairs a widget draws from: the learner's own words, or a topic's set. */
 function sourcePairs(obj: LangFlashObj): VocabPair[] {
-  if (isCustom(obj)) {
-    return obj.custom!
+  if (ownWords(obj)) {
+    return customWords(obj)
       .filter((p) => p.known?.trim() && p.learning?.trim())
-      .map((p) => ({ known: p.known.trim(), learning: p.learning.trim() }));
+      .map((p) => ({
+        known: p.known.trim(),
+        learning: p.learning.trim(),
+        emoji: p.emoji,
+        knownPhonetic: p.knownPhonetic,
+        learningPhonetic: p.learningPhonetic,
+      }));
   }
   return vocabForCategories(categoriesOf(obj), levelOf(obj), pairOf(obj));
 }
@@ -129,7 +156,7 @@ export function deriveDeck(obj: LangFlashObj): LangCard[] {
   // Direction is deliberately NOT in the seed: it only orients each card
   // (front/back), so flipping it keeps the SAME deck order and simply turns the
   // cards over — it never reshuffles the words.
-  const key = isCustom(obj)
+  const key = ownWords(obj)
     ? `custom:${pairs.length}`
     : `${categoriesOf(obj).join(",")}:${levelOf(obj)}`;
   const rng = rngFromSeed(`${obj.id}:${round}:${key}:${obj.known}:${obj.learning}`);
@@ -141,6 +168,7 @@ export const deckLength = (obj: LangFlashObj): number => deriveDeck(obj).length;
 
 /** Header title, e.g. "Colours" — or "My words" for a learner's own deck. */
 export function deckTitle(obj: LangFlashObj): string {
+  if (isPractice(obj)) return "🔁 Practice set";
   if (isCustom(obj)) return "My words";
   return categoriesLabel(categoriesOf(obj), "Vocabulary");
 }
@@ -175,6 +203,12 @@ export function scoreDeck(obj: LangFlashObj, deck: LangCard[]): ScoredCard[] {
 export const scoreCount = (scored: ScoredCard[]): number =>
   scored.reduce((n, s) => n + (s.knew ? 1 : 0), 0);
 
+/** The dealt cards of a finished run, split by how the learner rated them. */
+export const missedCards = (obj: LangFlashObj, deck: LangCard[]): LangCard[] =>
+  deck.filter((_, i) => !knewIt(obj, i));
+export const knownCards = (obj: LangFlashObj, deck: LangCard[]): LangCard[] =>
+  deck.filter((_, i) => knewIt(obj, i));
+
 export function verdict(known: number, total: number): { emoji: string; text: string } {
   const pct = total > 0 ? known / total : 0;
   if (pct >= 0.9) return { emoji: "🌟", text: "Brilliant!" };
@@ -182,6 +216,69 @@ export function verdict(known: number, total: number): { emoji: string; text: st
   if (pct >= 0.5) return { emoji: "👍", text: "Good effort" };
   return { emoji: "💪", text: "Keep practising" };
 }
+
+// --- the practice set -------------------------------------------------------
+//
+// The words a learner taps "Didn't know" on can be COLLECTED into a practice
+// set: an ordinary custom deck flagged `practice: true`, whose `custom` list
+// holds the gathered pairs. One set per language pair — collecting again merges
+// into it rather than littering the board — and it SHRINKS as words are learned
+// ("remove the ones I knew" at the end of a practice run).
+//
+// Pairs are always stored known-first, so a set gathered off a reversed deck
+// still reads the right way round, and the two decks agree on identity.
+
+/** The storable pair behind a dealt card (undoing the direction's orientation). */
+export function pairOfCard(card: LangCard, direction: Direction): CustomPair {
+  const knownFirst = direction === "known-first";
+  const pair: CustomPair = {
+    known: knownFirst ? card.front : card.back,
+    learning: knownFirst ? card.back : card.front,
+  };
+  const knownPhonetic = knownFirst ? card.frontPhonetic : card.backPhonetic;
+  const learningPhonetic = knownFirst ? card.backPhonetic : card.frontPhonetic;
+  if (card.emoji) pair.emoji = card.emoji;
+  if (knownPhonetic) pair.knownPhonetic = knownPhonetic;
+  if (learningPhonetic) pair.learningPhonetic = learningPhonetic;
+  return pair;
+}
+
+/** A pair's identity — what makes two entries "the same word". Case- and
+ *  space-insensitive; the NUL keeps the two sides from bleeding together. */
+const pairKey = (p: CustomPair): string =>
+  `${p.known.trim().toLowerCase()}\u0000${p.learning.trim().toLowerCase()}`;
+
+/** The cards of a finished run the learner did NOT know, ready to collect. */
+export const missedPairs = (obj: LangFlashObj, deck: LangCard[]): CustomPair[] =>
+  missedCards(obj, deck).map((c) => pairOfCard(c, obj.direction));
+
+/** The cards of a finished run the learner DID know, ready to retire. */
+export const knownPairs = (obj: LangFlashObj, deck: LangCard[]): CustomPair[] =>
+  knownCards(obj, deck).map((c) => pairOfCard(c, obj.direction));
+
+/** Add pairs to a set, keeping the existing order and skipping words already
+ *  in it (so collecting the same card twice never duplicates it). */
+export function mergePairs(set: CustomPair[], add: CustomPair[]): CustomPair[] {
+  const seen = new Set(set.map(pairKey));
+  const out = [...set];
+  for (const p of add) {
+    const key = pairKey(p);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(p);
+  }
+  return out;
+}
+
+/** Drop pairs from a set (by identity) — the learned words leaving practice. */
+export function removePairs(set: CustomPair[], remove: CustomPair[]): CustomPair[] {
+  const drop = new Set(remove.map(pairKey));
+  return set.filter((p) => !drop.has(pairKey(p)));
+}
+
+/** How many of `add` are genuinely new to `set` (0 ⇒ collecting is a no-op). */
+export const newToSet = (set: CustomPair[], add: CustomPair[]): number =>
+  mergePairs(set, add).length - set.length;
 
 // --- session control (the exact patch each transition writes) ---------------
 

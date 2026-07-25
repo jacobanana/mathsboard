@@ -822,23 +822,44 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
    ============================================================================ */
 
 /* --- Vocabulary flash cards: extras over the shared .iflash look --- */
+/* A face is a fixed frame: the word block (.lf-body) is the ONLY flexible part
+   and clips if a very long word meets a very small card, so the action row —
+   "Show answer" on the front, the two rating buttons on the back — is always on
+   the card instead of being pushed out of the box and cut off by .iflash's
+   overflow. Nothing here carries preserve-3d, so clipping is safe (the flip
+   lives on .if-flip, which must stay overflow:visible). */
+.lf-body{flex:1 1 auto;min-height:0;max-width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding-top:26px;}  /* clear of the flip button */
+.if-check.lf-flipbtn{flex:0 0 auto;max-width:100%;}
 .lf-emoji{font-size:calc(var(--ifq) * 1.05);line-height:1;margin-bottom:8px;filter:drop-shadow(0 3px 8px rgba(0,0,0,.25));}
 .lf-word{white-space:normal;text-align:center;line-height:1.1;max-width:100%;overflow-wrap:break-word;}
 /* Pronunciation reading under a card word — shown, never spoken. */
 .lf-phon{margin-top:6px;font-style:italic;font-weight:600;line-height:1.15;text-align:center;max-width:100%;overflow-wrap:break-word;opacity:.8;font-size:calc(var(--ifq) * 0.44);}
-.lf-rate{display:flex;gap:10px;margin-top:18px;}
-.lf-btn{padding:9px 16px;border-radius:12px;border:0;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.2);text-shadow:none;}
+/* The rating row wraps rather than overflowing, so both buttons stay reachable
+   on a narrow card ("Didn't know" is a wide label). */
+.lf-rate{flex:0 0 auto;display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px;max-width:100%;}
+.lf-btn{padding:9px 14px;border-radius:12px;border:0;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.2);text-shadow:none;max-width:100%;}
 .lf-btn.knew{background:#16A34A;color:#fff;}
-.lf-btn.practise{background:rgba(255,255,255,.96);color:#B45309;}
+.lf-btn.missed{background:rgba(255,255,255,.96);color:#B45309;}
 .lf-btn:hover{filter:brightness(.96);}
 .lf-btn:active{transform:scale(.97);}
 .lf-srow-c{color:#0D9488;}
 .lf-empty{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;color:var(--muted);font-weight:700;text-align:center;}
-/* "See the first side again" — a round flip button in the back face's corner. */
-.lf-flipback{position:absolute;top:10px;right:10px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.22);color:#fff;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.18);transition:background .12s,transform .12s;}
-.lf-flipback:hover{background:rgba(255,255,255,.38);}
-.lf-flipback:active{transform:scale(.9);}
-.lf-flipback svg{display:block;}
+/* Summary: the one action that carries the run forward — add the words you
+   didn't know to the practice set, or retire the practice words that stuck. */
+.lf-collect,.lf-prune{flex:0 0 auto;width:100%;padding:9px 8px;border-radius:11px;border:0;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;}
+.lf-collect{background:#FEF3C7;color:#92400E;}
+.lf-collect:disabled{background:#F1F5F4;color:var(--muted);cursor:default;}
+.lf-prune{background:#DCFCE7;color:#15803D;}
+.lf-collect:not(:disabled):hover,.lf-prune:hover{filter:brightness(.97);}
+.lf-collect:not(:disabled):active,.lf-prune:active{transform:scale(.99);}
+/* Turn the card over — a round flip button in the corner of BOTH faces, so it is
+   always on screen whichever side shows. It is positioned (never in the flexible
+   .lf-body) and raised above the word, so no length of word can cover or shift
+   it; the outline keeps it legible on every front gradient. */
+.lf-turn{position:absolute;top:10px;right:10px;z-index:2;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:1.5px solid rgba(255,255,255,.7);border-radius:50%;background:rgba(0,0,0,.22);color:#fff;cursor:pointer;text-shadow:none;box-shadow:0 2px 6px rgba(0,0,0,.22);transition:background .12s,transform .12s;}
+.lf-turn:hover{background:rgba(0,0,0,.36);}
+.lf-turn:active{transform:scale(.9);}
+.lf-turn svg{display:block;}
 
 /* --- Tap-the-word to hear it (.spoken-word): the whole word is the target --- */
 .spoken-word{display:inline-flex;align-items:baseline;justify-content:center;gap:.3em;max-width:100%;flex-wrap:wrap;}

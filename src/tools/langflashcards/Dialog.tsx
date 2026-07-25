@@ -34,6 +34,9 @@ export function LangFlashDialog({
   const pair = { known: base.known, learning: base.learning };
   const custom = base.custom;
   const isCustom = Array.isArray(custom) && custom.length > 0;
+  // The practice set carries its own (shrinking) word list, so it keeps that
+  // list — and its flag — through an edit exactly like a My-words deck does.
+  const practice = base.practice === true;
 
   const picker = useContentPicker(
     "vocab",
@@ -58,7 +61,8 @@ export function LangFlashDialog({
       level: picker.level,
       direction,
       easy,
-      ...(isCustom ? { custom } : {}),
+      ...(isCustom || practice ? { custom: custom ?? [] } : {}),
+      ...(practice ? { practice: true } : {}),
     });
   }
 
@@ -70,7 +74,15 @@ export function LangFlashDialog({
         to check, and say if you knew it.
       </p>
 
-      {isCustom ? (
+      {practice ? (
+        <div className="field">
+          <label>Words</label>
+          <div className="lf-customnote">
+            🔁 Your practice set — {custom?.length ?? 0} to work on. Add words at
+            the end of any deck; they leave once you know them.
+          </div>
+        </div>
+      ) : isCustom ? (
         <div className="field">
           <label>Words</label>
           <div className="lf-customnote">
