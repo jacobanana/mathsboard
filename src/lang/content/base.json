@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "id": "base",
   "name": "Base content — English & French",
-  "description": "The content that ships with the Language Board: vocabulary, sentences and verb conjugations for English and French.",
+  "description": "Starter English ↔ French content: greetings, everyday things and daily-routine phrases, themes, pronouns, vocabulary, sentences and verb conjugations.",
   "languages": [
     {
       "code": "en",
@@ -80,6 +80,11 @@
       "emoji": "🏠"
     },
     {
+      "id": "everyday",
+      "label": "Everyday things",
+      "emoji": "🪥"
+    },
+    {
       "id": "weather",
       "label": "Weather",
       "emoji": "🌤️"
@@ -98,6 +103,11 @@
       "id": "time",
       "label": "Days & time",
       "emoji": "📅"
+    },
+    {
+      "id": "routine",
+      "label": "Daily routine",
+      "emoji": "⏰"
     },
     {
       "id": "actions",
@@ -1724,6 +1734,356 @@
       }
     },
     {
+      "category": "everyday",
+      "level": "basic",
+      "emoji": "🪥",
+      "terms": {
+        "en": "toothbrush",
+        "fr": "brosse à dents"
+      },
+      "article": {
+        "fr": "la"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "basic",
+      "emoji": "🧼",
+      "terms": {
+        "en": "soap",
+        "fr": "savon"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "basic",
+      "emoji": "🛁",
+      "terms": {
+        "en": "towel",
+        "fr": "serviette"
+      },
+      "article": {
+        "fr": "la"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "basic",
+      "emoji": "🥛",
+      "terms": {
+        "en": "glass",
+        "fr": "verre"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "basic",
+      "emoji": "🍽️",
+      "terms": {
+        "en": "plate",
+        "fr": "assiette"
+      },
+      "article": {
+        "fr": "la"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "basic",
+      "emoji": "🥄",
+      "terms": {
+        "en": "spoon",
+        "fr": "cuillère"
+      },
+      "article": {
+        "fr": "la"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "basic",
+      "emoji": "🍴",
+      "terms": {
+        "en": "fork",
+        "fr": "fourchette"
+      },
+      "article": {
+        "fr": "la"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "basic",
+      "emoji": "🔪",
+      "terms": {
+        "en": "knife",
+        "fr": "couteau"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "basic",
+      "emoji": "📱",
+      "terms": {
+        "en": "phone",
+        "fr": "téléphone"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "basic",
+      "emoji": "⌚",
+      "terms": {
+        "en": "watch",
+        "fr": "montre"
+      },
+      "article": {
+        "fr": "la"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "terms": {
+        "en": "toothpaste",
+        "fr": "dentifrice"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "emoji": "🧴",
+      "terms": {
+        "en": "shampoo",
+        "fr": "shampooing"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "terms": {
+        "en": "comb",
+        "fr": "peigne"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "emoji": "🪞",
+      "terms": {
+        "en": "mirror",
+        "fr": "miroir"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "emoji": "🛌",
+      "terms": {
+        "en": "pillow",
+        "fr": "oreiller"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "terms": {
+        "en": "blanket",
+        "fr": "couverture"
+      },
+      "article": {
+        "fr": "la"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "emoji": "⏰",
+      "terms": {
+        "en": "alarm clock",
+        "fr": "réveil"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "emoji": "🗑️",
+      "terms": {
+        "en": "bin",
+        "fr": "poubelle"
+      },
+      "article": {
+        "fr": "la"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "emoji": "☂️",
+      "terms": {
+        "en": "umbrella",
+        "fr": "parapluie"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "emoji": "🎒",
+      "terms": {
+        "en": "backpack",
+        "fr": "sac à dos"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "emoji": "🥤",
+      "terms": {
+        "en": "bottle",
+        "fr": "bouteille"
+      },
+      "article": {
+        "fr": "la"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "emoji": "👓",
+      "terms": {
+        "en": "glasses",
+        "fr": "lunettes"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "advanced",
+      "emoji": "📺",
+      "terms": {
+        "en": "television",
+        "fr": "télévision"
+      },
+      "article": {
+        "fr": "la"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "advanced",
+      "terms": {
+        "en": "remote control",
+        "fr": "télécommande"
+      },
+      "article": {
+        "fr": "la"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "advanced",
+      "emoji": "💻",
+      "terms": {
+        "en": "computer",
+        "fr": "ordinateur"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "advanced",
+      "emoji": "🔌",
+      "terms": {
+        "en": "charger",
+        "fr": "chargeur"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "advanced",
+      "emoji": "👛",
+      "terms": {
+        "en": "wallet",
+        "fr": "portefeuille"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "advanced",
+      "emoji": "🧺",
+      "terms": {
+        "en": "basket",
+        "fr": "panier"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "advanced",
+      "emoji": "🤧",
+      "terms": {
+        "en": "tissue",
+        "fr": "mouchoir"
+      },
+      "article": {
+        "fr": "le"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "advanced",
+      "emoji": "✂️",
+      "terms": {
+        "en": "scissors",
+        "fr": "ciseaux"
+      }
+    },
+    {
       "category": "weather",
       "level": "basic",
       "emoji": "☀️",
@@ -2177,6 +2537,168 @@
       "terms": {
         "en": "hour",
         "fr": "heure"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "emoji": "⏰",
+      "terms": {
+        "en": "to wake up",
+        "fr": "se réveiller"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "emoji": "🛌",
+      "terms": {
+        "en": "to get up",
+        "fr": "se lever"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "emoji": "🌙",
+      "terms": {
+        "en": "to go to bed",
+        "fr": "se coucher"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "emoji": "🧼",
+      "terms": {
+        "en": "to wash",
+        "fr": "se laver"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "emoji": "🪥",
+      "terms": {
+        "en": "to brush one's teeth",
+        "fr": "se brosser les dents"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "emoji": "👕",
+      "terms": {
+        "en": "to get dressed",
+        "fr": "s'habiller"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "emoji": "🧹",
+      "terms": {
+        "en": "to tidy up",
+        "fr": "ranger"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "emoji": "🧽",
+      "terms": {
+        "en": "to clean",
+        "fr": "nettoyer"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "emoji": "🚿",
+      "terms": {
+        "en": "to take a shower",
+        "fr": "prendre une douche"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "emoji": "🏃",
+      "terms": {
+        "en": "to hurry",
+        "fr": "se dépêcher"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "emoji": "⏳",
+      "terms": {
+        "en": "to wait",
+        "fr": "attendre"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "emoji": "🤝",
+      "terms": {
+        "en": "to help",
+        "fr": "aider"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "emoji": "✅",
+      "terms": {
+        "en": "ready",
+        "fr": "prêt"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "emoji": "💡",
+      "terms": {
+        "en": "to turn on",
+        "fr": "allumer"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "emoji": "🔌",
+      "terms": {
+        "en": "to turn off",
+        "fr": "éteindre"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "emoji": "🤔",
+      "terms": {
+        "en": "to forget",
+        "fr": "oublier"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "emoji": "😴",
+      "terms": {
+        "en": "to rest",
+        "fr": "se reposer"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "emoji": "⌛",
+      "terms": {
+        "en": "late",
+        "fr": "en retard"
       }
     },
     {
@@ -3101,6 +3623,334 @@
       "terms": {
         "en": "It is cold today.",
         "fr": "Il fait froid aujourd'hui."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "terms": {
+        "en": "Wake up!",
+        "fr": "Réveille-toi !"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "terms": {
+        "en": "It's time to go to bed.",
+        "fr": "C'est l'heure d'aller au lit."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "terms": {
+        "en": "Brush your teeth.",
+        "fr": "Brosse-toi les dents."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "terms": {
+        "en": "Wash your hands.",
+        "fr": "Lave-toi les mains."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "terms": {
+        "en": "Get dressed, please.",
+        "fr": "Habille-toi, s'il te plaît."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "terms": {
+        "en": "Come and eat!",
+        "fr": "Viens manger !"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "terms": {
+        "en": "Put on your shoes.",
+        "fr": "Mets tes chaussures."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "terms": {
+        "en": "Sit down, please.",
+        "fr": "Assieds-toi, s'il te plaît."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "terms": {
+        "en": "Wait a moment.",
+        "fr": "Attends un moment."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "terms": {
+        "en": "Good night, sleep well.",
+        "fr": "Bonne nuit, dors bien."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "basic",
+      "terms": {
+        "en": "Let's go!",
+        "fr": "On y va !"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "terms": {
+        "en": "Can you clean your room?",
+        "fr": "Tu peux ranger ta chambre ?"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "terms": {
+        "en": "It's time to get up.",
+        "fr": "C'est l'heure de se lever."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "terms": {
+        "en": "Hurry up, we're going to be late!",
+        "fr": "Dépêche-toi, on va être en retard !"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "terms": {
+        "en": "Turn off the light, please.",
+        "fr": "Éteins la lumière, s'il te plaît."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "terms": {
+        "en": "Have you done your homework?",
+        "fr": "Tu as fait tes devoirs ?"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "terms": {
+        "en": "Don't forget your coat.",
+        "fr": "N'oublie pas ton manteau."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "terms": {
+        "en": "Can you set the table?",
+        "fr": "Tu peux mettre la table ?"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "terms": {
+        "en": "I'm taking a shower.",
+        "fr": "Je prends une douche."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "terms": {
+        "en": "Wash your face.",
+        "fr": "Lave-toi le visage."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "terms": {
+        "en": "Are you ready?",
+        "fr": "Tu es prêt ?"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "terms": {
+        "en": "Put your shoes away.",
+        "fr": "Range tes chaussures."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "medium",
+      "terms": {
+        "en": "It's time for breakfast!",
+        "fr": "C'est l'heure du petit-déjeuner !"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "terms": {
+        "en": "Put your toys away before dinner.",
+        "fr": "Range tes jouets avant le dîner."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "terms": {
+        "en": "Don't forget to turn off the television.",
+        "fr": "N'oublie pas d'éteindre la télévision."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "terms": {
+        "en": "Can you take out the bin?",
+        "fr": "Tu peux sortir la poubelle ?"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "terms": {
+        "en": "I have already brushed my teeth.",
+        "fr": "Je me suis déjà brossé les dents."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "terms": {
+        "en": "We're leaving in five minutes.",
+        "fr": "On part dans cinq minutes."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "terms": {
+        "en": "Put your dirty clothes in the basket.",
+        "fr": "Mets tes vêtements sales dans le panier."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "terms": {
+        "en": "Ten more minutes, then bed.",
+        "fr": "Encore dix minutes, puis au lit."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "terms": {
+        "en": "Did you pack your bag for tomorrow?",
+        "fr": "Tu as préparé ton sac pour demain ?"
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "terms": {
+        "en": "Please make your bed.",
+        "fr": "Fais ton lit, s'il te plaît."
+      }
+    },
+    {
+      "category": "routine",
+      "level": "advanced",
+      "terms": {
+        "en": "Can you feed the cat?",
+        "fr": "Tu peux donner à manger au chat ?"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "basic",
+      "terms": {
+        "en": "Here is your glass.",
+        "fr": "Voici ton verre."
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "basic",
+      "terms": {
+        "en": "Where is my toothbrush?",
+        "fr": "Où est ma brosse à dents ?"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "terms": {
+        "en": "I need a towel.",
+        "fr": "J'ai besoin d'une serviette."
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "terms": {
+        "en": "Where is the remote control?",
+        "fr": "Où est la télécommande ?"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "medium",
+      "terms": {
+        "en": "My phone is in my backpack.",
+        "fr": "Mon téléphone est dans mon sac à dos."
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "advanced",
+      "terms": {
+        "en": "Can you pass me the scissors?",
+        "fr": "Tu peux me passer les ciseaux ?"
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "advanced",
+      "terms": {
+        "en": "I forgot my umbrella at school.",
+        "fr": "J'ai oublié mon parapluie à l'école."
+      }
+    },
+    {
+      "category": "everyday",
+      "level": "advanced",
+      "terms": {
+        "en": "The alarm clock rings at seven.",
+        "fr": "Le réveil sonne à sept heures."
       }
     }
   ],
