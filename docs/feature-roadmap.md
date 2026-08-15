@@ -34,7 +34,7 @@ its three sub-categories.
   snapping**, and a **laser pointer**. This is the layer Miro/Excalidraw are
   built on; it used to be the **thin** part of our app but the Track-A parity
   floor (A1–A5) is now shipped.
-- **Maths content** — ~24 registry tools (numberline, long division, fraction
+- **Maths content** — the registry tools (numberline, long division, fraction
   wall, bar-method arithmetic, clock, protractor, coordinate grid, rendered
   **KaTeX notation**, …) plus two systemic interaction layers: the
   **answer-reveal toggle** and **type-in answer boxes** (pupils type into method

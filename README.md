@@ -49,7 +49,7 @@ learner acting on their own screen, in real time.
 
 ## The maths toolbox
 
-Over 20 purpose-built tools, grouped the way you'd reach for them. Most
+Purpose-built tools, grouped the way you'd reach for them. Most
 calculating tools support the **fill-in-then-reveal** answer toggle.
 
 | Group | Tools |
@@ -106,7 +106,7 @@ projects it stands on, and exactly what happens to your data are in
 ## Run it yourself & contribute
 
 Everything technical — local setup, architecture, tests, and self-hosting your
-own instance (a single small VPS, two board domains, roughly €3–4/month) — is in the
+own instance (a single small VPS serving both board domains) — is in the
 [**Development & self-hosting guide**](DEVELOPMENT.md). Where the product is
 headed lives in the [feature roadmap](docs/feature-roadmap.md).
 

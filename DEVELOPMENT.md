@@ -220,7 +220,7 @@ present (`Add to board`/`Back` vs `Save`/`Cancel`); validate on submit, set the
 ## Unit tests
 
 The behavioural suite in `src/**/*.test.ts` runs headlessly with
-[Vitest](https://vitest.dev) + jsdom — no Docker, no browser — in seconds:
+[Vitest](https://vitest.dev) + jsdom — no Docker, no browser:
 
 ```bash
 npm test              # run once           (make test)
@@ -232,12 +232,9 @@ The tests drive the same seams the real UI drives (store actions, interaction
 controllers, the shortcut dispatcher) and assert only on observable outcomes:
 the document mirror, the selection, localStorage, the undo flags. Solo mode
 runs on a real local `Y.Doc`, so undo/redo semantics are exercised against the
-real `Y.UndoManager` — no mocks. Covered: document edits + undo step
-boundaries, the geometric eraser, the draft/library persistence lifecycle,
-placement + clipboard commands, select-tool interactions (click/lasso/resize),
-keyboard-shortcut dispatch, viewport maths, worksheet generation/marking, and
-a registry sweep every tool must pass (`src/tools/registry.test.ts` — a new
-tool gets its baseline checks for free). Shared fixtures live in
+real `Y.UndoManager` — no mocks. A registry sweep
+(`src/tools/registry.test.ts`) runs baseline checks over every registered
+tool, so a new tool gets them for free. Shared fixtures live in
 `src/testing/fixtures.ts`; the lone environment shim (a canvas text-measure
 stub) in `src/testing/vitestSetup.ts`. Rendering and collaboration are
 deliberately out of scope here — they belong to the Playwright suite below.
@@ -247,7 +244,7 @@ In CI the suite is the fast gate in front of everything else
 (`e2e.yml`), and a push to `main` runs it at the head of both deploy
 pipelines — `publish.yml` (unit → e2e → image build → VPS deploy) and
 `deploy.yml` (unit → GitHub Pages build → deploy). A red unit suite therefore
-blocks every deployment and skips the 30-minute e2e run entirely.
+blocks every deployment and skips the far longer e2e run entirely.
 
 ## Test the whole stack locally
 
@@ -366,8 +363,8 @@ The `.env` and the GitHub config never overlap.
 ### Infomaniak Public Cloud, with Terraform (recommended)
 
 `deploy/terraform/` provisions everything on Infomaniak's OpenStack — one small
-instance running the compose stack, an S3-compatible bucket, and a floating IP,
-for roughly €3–4/month. Full walkthrough:
+instance running the compose stack, an S3-compatible bucket, and a floating IP.
+Full walkthrough:
 [`deploy/terraform/README.md`](deploy/terraform/README.md). In short:
 
 1. Drop your `clouds.yaml` in `~/.config/openstack/`, then
