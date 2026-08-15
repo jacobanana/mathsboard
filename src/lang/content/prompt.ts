@@ -1,6 +1,13 @@
-// THE CONTENT-CREATION PROMPT — a ready-to-use LLM prompt the content page
-// offers for copy/download. Paste it into any capable model, and it returns a
-// content pack that imports straight into the Language Board.
+// THE CONTENT-CREATION PROMPT — a ready-to-use LLM prompt the content manager
+// offers for copy/download. Paste it into any capable model and it hands back a
+// content pack that loads straight into the Language Board.
+//
+// It asks for the pack as a DOWNLOADABLE .json FILE, not as pasted text: the app
+// loads a file, and a 120-word pack pasted into a chat reply is something the
+// author then has to copy into an editor and save by hand (getting a stray fence
+// or a truncated tail for their trouble). Every capable model can write a real
+// file — an attachment, an analysis-tool file, an artifact — so the prompt says
+// so up front, and keeps "just print the JSON" as the explicit fallback.
 //
 // IMPORTANT: the prompt is GENERATED from the schema (schema.ts), not written
 // out by hand. The volatile bits — the allowed levels, the stored tenses, the
@@ -96,8 +103,20 @@ ${themeLine}
 
 Generate rich, age-appropriate content: vocabulary, sentences, and verb conjugations. Aim for breadth and cover all three difficulty levels (${levels}).
 ${notesBlock}
+## How to deliver it
+Give me the pack as a DOWNLOADABLE .json FILE, because that is what the app
+loads — it takes a file, not pasted text. Use whatever your tools offer to
+produce a real file I can save: a file attachment, a code-interpreter /
+analysis-tool file written to disk, or a downloadable artifact/canvas. Name it
+after the pack's id, e.g. \`spanish-starter.json\`.
+- The file must contain ONLY the JSON object — no prose, no markdown fences, no
+  comments, no trailing commas. It has to parse as-is.
+- Keep your chat reply to a sentence or two (the download link and a one-line
+  summary). Do NOT also paste the whole pack into the message.
+- If you genuinely cannot produce a file, then — and only then — output the raw
+  JSON on its own so I can save it as \`<id>.json\` myself.
+
 ## Output rules
-- Output ONLY the JSON — no prose, no markdown fences.
 - Required top-level fields: ${required}.
 - "formatVersion": ${FORMAT_VERSION}.
 - "id": a short kebab-case id, e.g. "spanish-starter".
@@ -161,7 +180,7 @@ ${notesBlock}
 ## The exact format (JSON Schema — your output must validate against this)
 ${JSON.stringify(CONTENT_SCHEMA, null, 2)}
 
-Now generate the full pack.`;
+Now generate the full pack and give it to me as a downloadable .json file.`;
 }
 
 /** The prompt with default options — the value shown before the form is touched

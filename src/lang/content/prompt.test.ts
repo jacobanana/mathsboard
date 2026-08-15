@@ -28,6 +28,16 @@ describe("content prompt generation", () => {
     expect(LLM_PROMPT).toMatch(/vocabulary and verbs you put in THIS pack/);
   });
 
+  it("asks for the pack as a downloadable .json file, with a paste fallback", () => {
+    // The app loads a FILE, so the prompt has to ask for one — otherwise the
+    // author copies a 120-word pack out of a chat window by hand.
+    expect(LLM_PROMPT).toMatch(/DOWNLOADABLE \.json FILE/);
+    expect(LLM_PROMPT).toMatch(/Name it\s*\n?after the pack's id/);
+    expect(LLM_PROMPT).toMatch(/downloadable \.json file\.$/);
+    // …and still says what to do when the model has no way to write a file.
+    expect(LLM_PROMPT).toMatch(/cannot produce a file/);
+  });
+
   it("weaves the form options into the prompt", () => {
     const prompt = buildLlmPrompt({
       knownLanguage: "French",

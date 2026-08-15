@@ -3,7 +3,9 @@
 //
 //   1. Grab the format — download the JSON Schema and/or an example pack, or
 //      copy a ready-made LLM prompt that produces a valid pack.
-//   2. Generate content with that prompt in any LLM (or hand-write it).
+//   2. Generate content with that prompt in any LLM (or hand-write it). The
+//      prompt asks the model for a downloadable .json FILE, which is what step
+//      3 takes — no copying a wall of JSON out of a chat window.
 //   3. Load the finished file — validated, saved on this device, and ready to
 //      tick onto a board from the "This board" tab.
 //
@@ -94,9 +96,10 @@ export function ContentStudio({ onLoad }: ContentStudioProps): JSX.Element {
 
       <h2>2. Generate content with an LLM</h2>
       <p>
-        Build a prompt to paste into ChatGPT, Claude or any capable model — it
-        will produce a ready-to-add pack. The prompt is generated from the
-        current format, so it always matches what the app accepts.
+        Build a prompt to paste into ChatGPT, Claude or any capable model. It
+        asks for the pack as a <strong>downloadable .json file</strong> — the
+        same kind of file step 3 takes — and is generated from the current
+        format, so it always matches what the app accepts.
       </p>
       <button
         className="btn cs-accordion"
@@ -178,9 +181,9 @@ export function ContentStudio({ onLoad }: ContentStudioProps): JSX.Element {
 
       <h2>3. Load your pack</h2>
       <p>
-        Pick the file you made (or several). It&rsquo;s checked before anything
-        is added, then joins your <b>Library</b> — tick it under{" "}
-        <b>This board</b> to teach from it.
+        Pick the file the model gave you (or several). It&rsquo;s checked
+        before anything is added, then joins your <b>Library</b> — tick it
+        under <b>This board</b> to teach from it.
       </p>
       <div className="cs-buttons">
         <button className="btn primary" onClick={onLoad}>
