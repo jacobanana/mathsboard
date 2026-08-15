@@ -13,9 +13,11 @@
 // The hook is deliberately generic: sources and targets are identified by plain
 // string ids, and a single `onPlace(sourceId, targetId)` callback does the actual
 // work (write widget-state, mark, etc.). The consumer renders its own ghost from
-// `dragId` (positioned at `ghost`, which is in viewport coords — a position:fixed
-// element, so it ignores the board's camera transform). Styling hooks come as
-// data-attributes: sources get data-picked / data-dragging, targets get data-over.
+// `dragId` — wrapped in <PickGhost at={ghost}>, which portals it to <body> so the
+// viewport coords in `ghost` mean what they say (inside the card, the camera's CSS
+// transform would redefine them and the token would drift off the finger).
+// Styling hooks come as data-attributes: sources get data-picked / data-dragging,
+// targets get data-over.
 
 import { useCallback, useRef, useState } from "react";
 

@@ -21,9 +21,10 @@
 // selection frame and FloatButtons cover the whole widget, whose height depends
 // on the question count.
 
-import { useLayoutEffect, useRef } from "react";
+import { useRef } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
+import { useCardSize } from "@/tools/useCardSize";
 import {
   ansField,
   genQuestions,
@@ -59,30 +60,8 @@ export function Worksheet({ obj }: WidgetProps<WorksheetParams>) {
   const cardRef = useRef<HTMLDivElement | null>(null);
 
   // Keep the object's box matched to the rendered card so the selection frame
-  // and float buttons cover the whole widget. offset sizes are the unscaled
-  // layout size (the camera scale is a CSS transform, which doesn't affect
-  // them), and at scale 1 one CSS px is one world unit — so they ARE the box.
-  // Written as live widget state: shared + persisted, never an undo step.
-  const lastSize = useRef({ w: obj.w, h: obj.h });
-  useLayoutEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-    const sync = () => {
-      const w = el.offsetWidth;
-      const h = el.offsetHeight;
-      if (
-        Math.abs(w - lastSize.current.w) > 0.5 ||
-        Math.abs(h - lastSize.current.h) > 0.5
-      ) {
-        lastSize.current = { w, h };
-        updateWidgetState(obj.id, { w, h });
-      }
-    };
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [obj.id, updateWidgetState]);
+  // and float buttons cover the whole widget.
+  useCardSize(obj, cardRef);
 
   // --- card drag (any press that isn't on a control moves the object) ------
   function onCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {

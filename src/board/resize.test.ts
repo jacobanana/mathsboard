@@ -8,6 +8,7 @@ import {
   RESIZE_CURSOR,
   resizeRect,
   singleResizableObject,
+  widgetHandles,
 } from "@/board/resize";
 import { RESIZE_HANDLES } from "@/board/geometry";
 import { id as newId } from "@/board/types";
@@ -113,5 +114,26 @@ describe("singleResizableObject", () => {
         strokeIds: ["s1"],
       }),
     ).toBeNull();
+  });
+});
+
+describe("widgetHandles", () => {
+  it("offers all eight grips to a normal widget", () => {
+    expect(widgetHandles(false)).toEqual(RESIZE_HANDLES);
+    expect(widgetHandles(undefined)).toEqual(RESIZE_HANDLES);
+  });
+
+  it("offers only the side grips to an auto-height card", () => {
+    // Its height comes from its content (useCardSize), so a vertical drag would
+    // be measured away on the next frame -- don't offer one.
+    expect(widgetHandles(true)).toEqual(["e", "w"]);
+  });
+
+  it("side grips move the width alone, leaving the measured height", () => {
+    const start = { x: 0, y: 0, w: 200, h: 100 };
+    const wider = resizeRect(start, "e", 320, 999, true);
+    expect(wider).toEqual({ x: 0, y: 0, w: 320, h: 100 });
+    const narrower = resizeRect(start, "w", 60, 999, true);
+    expect(narrower).toEqual({ x: 60, y: 0, w: 140, h: 100 });
   });
 });

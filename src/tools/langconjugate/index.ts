@@ -40,6 +40,8 @@ const langConjugateTool = defineWidgetTool<LangConjugateParams>({
   defaultSize: { w: 340, h: 400 },
   resizable: true,
   freeAspect: true,
+  // The card measures its own height (useCardSize) — width handles only.
+  autoHeight: true,
   Component: LangConjugate,
   Dialog: LangConjugateDialog,
   resetOnEdit: (obj) => resetSessionPatch(obj as unknown as ConjObj),
