@@ -13,6 +13,7 @@ import type { BoardRepository } from "@/board/persistence/BoardRepository";
 import type {
   BoardDocument,
   BoardSummary,
+  Camera,
   DraftEnvelope,
   RemoteBoardRef,
 } from "@/board/types";
@@ -36,12 +37,21 @@ const draftKeyFor = (subject: Subject): string =>
 // entries carry none and read as maths).
 const REMOTES_KEY = "mathsboard:remotes";
 
+// Where each board was last left (camera x/y/scale), as one { id -> view } map.
+// Per-device and local-only — a view never enters the document, so collaborators
+// on a shared board each keep their own place. Board ids are unique across
+// subjects, so one map serves every flavour. Capped (LRU by `at`) so a long-lived
+// library never grows this without bound.
+const VIEWS_KEY = "mathsboard:views";
+const MAX_VIEWS = 200;
+
 // Reserved keys that share the PREFIX but are NOT library boards, so list()
 // must skip them (their ids never collide because library ids are UUIDs). Every
 // subject's draft key is reserved, not just this repository's, so one flavour's
 // list() never mistakes another flavour's draft envelope for a board.
 const RESERVED_KEYS = new Set<string>([
   REMOTES_KEY,
+  VIEWS_KEY,
   ...SUBJECTS.map(draftKeyFor),
 ]);
 
@@ -49,6 +59,24 @@ interface RemoteEntry {
   name: string;
   updatedAt: number;
   subject?: Subject;
+}
+
+/** A stored camera plus when it was last written (for LRU eviction). */
+interface ViewEntry extends Camera {
+  at: number;
+}
+
+/** Is this a usable stored camera? Guards against hand-edited / corrupt entries
+ *  restoring a board to a blank (NaN-transformed) canvas. */
+function isCamera(v: unknown): v is ViewEntry {
+  const c = v as Camera | null;
+  return (
+    !!c &&
+    Number.isFinite(c.x) &&
+    Number.isFinite(c.y) &&
+    Number.isFinite(c.scale) &&
+    c.scale > 0
+  );
 }
 
 export class LocalBoardRepository implements BoardRepository {
@@ -166,6 +194,45 @@ export class LocalBoardRepository implements BoardRepository {
 
   async clearDraft(): Promise<void> {
     localStorage.removeItem(this.draftKey);
+  }
+
+  // --- per-board camera views ---
+  private readViews(): Record<string, ViewEntry> {
+    const raw = localStorage.getItem(VIEWS_KEY);
+    if (!raw) return {};
+    try {
+      return JSON.parse(raw) as Record<string, ViewEntry>;
+    } catch {
+      return {};
+    }
+  }
+
+  async loadView(boardId: string): Promise<Camera | null> {
+    const v = this.readViews()[boardId];
+    return isCamera(v) ? { x: v.x, y: v.y, scale: v.scale } : null;
+  }
+
+  async saveView(boardId: string, camera: Camera): Promise<void> {
+    if (!isCamera(camera)) return;
+    const map = this.readViews();
+    map[boardId] = { x: camera.x, y: camera.y, scale: camera.scale, at: Date.now() };
+    const ids = Object.keys(map);
+    if (ids.length > MAX_VIEWS) {
+      // Drop the least-recently-left boards first; the current one was just
+      // stamped, so it can never be the one evicted.
+      ids
+        .sort((a, b) => (map[a].at ?? 0) - (map[b].at ?? 0))
+        .slice(0, ids.length - MAX_VIEWS)
+        .forEach((id) => delete map[id]);
+    }
+    localStorage.setItem(VIEWS_KEY, JSON.stringify(map));
+  }
+
+  async removeView(boardId: string): Promise<void> {
+    const map = this.readViews();
+    if (!(boardId in map)) return;
+    delete map[boardId];
+    localStorage.setItem(VIEWS_KEY, JSON.stringify(map));
   }
 }
 

@@ -29,7 +29,7 @@ import { PaperMenu } from "@/ui/PaperMenu";
 import { ModalHost, pickTool } from "@/ui/modals";
 import type { ModalState } from "@/ui/modals";
 import { useImageDrop } from "@/ui/useImageDrop";
-import { useBoardStore } from "@/board/store";
+import { flushView, useBoardStore } from "@/board/store";
 import { useCollabStore } from "@/collab/collabStore";
 import { useUiStore } from "@/ui/uiStore";
 import { placeObject } from "@/board/commands";
@@ -76,6 +76,16 @@ export default function App(): JSX.Element {
     setModal({ kind: "welcome" });
     void init();
   }, [init]);
+
+  // The remembered view (zoom + position) is written on a debounce, so a close
+  // or a reload within that window would lose the last pan. `pagehide` covers
+  // the cases `beforeunload` misses — a phone backgrounding the tab, an iOS
+  // Safari swipe away — and writing it twice is harmless.
+  useEffect(() => {
+    const onHide = () => void flushView();
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
+  }, []);
 
   const closeModal = useCallback(() => setModal(null), []);
 

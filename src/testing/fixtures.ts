@@ -39,7 +39,7 @@ export function freshBoard(partial: Partial<BoardDocument> = {}): BoardDocument 
     sourceId: null,
     dirty: false,
     camera: { x: 0, y: 0, scale: 1 },
-    tool: "pen",
+    tool: "pan",
     color: theme.ink,
     sizes: defaultSizes(),
     textAlign: "left",

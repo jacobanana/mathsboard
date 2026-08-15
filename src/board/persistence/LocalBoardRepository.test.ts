@@ -115,3 +115,54 @@ describe("remembered remote (shared) boards are scoped to the subject", () => {
     expect(await language.listRemotes()).toHaveLength(0);
   });
 });
+
+describe("per-board views (where each board was left)", () => {
+  it("round-trips a camera per board and returns null for an unseen one", async () => {
+    await maths.saveView("board-a", { x: -120, y: 40, scale: 2 });
+    await maths.saveView("board-b", { x: 8, y: 9, scale: 0.5 });
+
+    expect(await maths.loadView("board-a")).toEqual({ x: -120, y: 40, scale: 2 });
+    expect(await maths.loadView("board-b")).toEqual({ x: 8, y: 9, scale: 0.5 });
+    expect(await maths.loadView("never-opened")).toBeNull();
+  });
+
+  it("is shared across subjects (board ids are unique) and survives a rewrite", async () => {
+    await maths.saveView("board-a", { x: 1, y: 2, scale: 1 });
+    expect(await language.loadView("board-a")).toEqual({ x: 1, y: 2, scale: 1 });
+
+    await maths.saveView("board-a", { x: 3, y: 4, scale: 3 });
+    expect(await maths.loadView("board-a")).toEqual({ x: 3, y: 4, scale: 3 });
+  });
+
+  it("removeView forgets one board and leaves the others alone", async () => {
+    await maths.saveView("board-a", { x: 1, y: 2, scale: 1 });
+    await maths.saveView("board-b", { x: 3, y: 4, scale: 1 });
+
+    await maths.removeView("board-a");
+
+    expect(await maths.loadView("board-a")).toBeNull();
+    expect(await maths.loadView("board-b")).not.toBeNull();
+  });
+
+  it("ignores a corrupt or unusable stored view rather than restoring a broken camera", async () => {
+    localStorage.setItem(
+      "mathsboard:views",
+      JSON.stringify({
+        nan: { x: 0, y: 0, scale: null },
+        zero: { x: 0, y: 0, scale: 0 },
+        good: { x: 5, y: 5, scale: 1.5 },
+      }),
+    );
+
+    expect(await maths.loadView("nan")).toBeNull();
+    expect(await maths.loadView("zero")).toBeNull();
+    expect(await maths.loadView("good")).toEqual({ x: 5, y: 5, scale: 1.5 });
+  });
+
+  it("the views map is not mistaken for a library board", async () => {
+    await maths.save(aDoc({ name: "Fractions", subject: "maths" }));
+    await maths.saveView("board-a", { x: 1, y: 2, scale: 1 });
+
+    expect((await maths.list()).map((b) => b.name)).toEqual(["Fractions"]);
+  });
+});

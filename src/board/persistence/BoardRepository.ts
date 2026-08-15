@@ -6,6 +6,7 @@
 import type {
   BoardDocument,
   BoardSummary,
+  Camera,
   DraftEnvelope,
   RemoteBoardRef,
 } from "@/board/types";
@@ -43,4 +44,14 @@ export interface BoardRepository {
   saveDraft(draft: DraftEnvelope): Promise<void>;
   /** Discard the working draft. */
   clearDraft(): Promise<void>;
+
+  // --- per-board camera views (where you last were on each board) ---
+  // Local-only and per-device: a view is never part of the document and never
+  // syncs, so two collaborators on the same shared board keep their own place.
+  /** The remembered camera for a board, or null if it has never been viewed. */
+  loadView(boardId: string): Promise<Camera | null>;
+  /** Remember where a board was left (zoom + position). */
+  saveView(boardId: string, camera: Camera): Promise<void>;
+  /** Forget a board's remembered view (the board itself is untouched). */
+  removeView(boardId: string): Promise<void>;
 }

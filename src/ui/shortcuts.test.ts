@@ -54,7 +54,7 @@ describe("gates", () => {
   it("nothing fires while a modal is open", () => {
     useUiStore.setState({ modalOpen: true });
     expect(fire(keydown("d"))).toBe(false);
-    expect(st().tool).toBe("pen");
+    expect(st().tool).toBe("pan");
     expect(fire(keydown("s", { ctrl: true }))).toBe(false);
     expect(hostCalls).toEqual([]);
   });
@@ -62,7 +62,7 @@ describe("gates", () => {
   it("during in-place text editing only whileEditing shortcuts (Save) fire", () => {
     st().setEditingId("some-text");
     expect(fire(keydown("d"))).toBe(false);
-    expect(st().tool).toBe("pen");
+    expect(st().tool).toBe("pan");
 
     expect(fire(keydown("s", { ctrl: true }))).toBe(true);
     expect(fire(keydown("s", { ctrl: true, shift: true }))).toBe(true);
@@ -72,7 +72,7 @@ describe("gates", () => {
   it("bare keys are suppressed while typing in a form field, Ctrl+S is not", () => {
     const input = document.createElement("input");
     expect(fire(keydown("d", { target: input }))).toBe(false);
-    expect(st().tool).toBe("pen");
+    expect(st().tool).toBe("pan");
 
     expect(fire(keydown("s", { ctrl: true, target: input }))).toBe(true);
     expect(hostCalls).toEqual(["save"]);

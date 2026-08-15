@@ -70,8 +70,8 @@ test("letter keys D / T / E switch the active tool", async ({ newClient }) => {
   const page = await newClient();
   await openApp(page);
 
-  // The app starts on the pen; prove each mnemonic moves the active tool. The
-  // selected tool button carries the `active` class.
+  // The app starts on Move (pan); prove each mnemonic moves the active tool.
+  // The selected tool button carries the `active` class.
   await page.keyboard.press("t");
   await expect(page.locator("#textBtn")).toHaveClass(/active/);
 
