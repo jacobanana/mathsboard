@@ -46,7 +46,7 @@ const BANNERS: [string, string][] = [
   ["#EA580C", "#FB923C"],
 ];
 
-export function LangSentence({ obj }: WidgetProps<LangSentenceParams>) {
+export function LangSentence({ obj, onEdit }: WidgetProps<LangSentenceParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
@@ -157,13 +157,13 @@ export function LangSentence({ obj }: WidgetProps<LangSentenceParams>) {
       style={{ width: obj.w + "px", height: obj.h + "px" }}
       onPointerDown={onCardPointerDown}
     >
-      <div className="sb-head" style={{ height: HEAD_H + "px" }}>
+      <div className="sb-head widget-head" style={{ height: HEAD_H + "px" }}>
         <span className="sb-emoji" aria-hidden>
           🧩
         </span>
         <span className="sb-title">{deckTitle(mo)}</span>
         <span className="sb-progress">{finished ? "Results" : `${idx + 1} / ${rounds}`}</span>
-        <button className="sb-new" title="New game" onClick={newGame}>
+        <button className="sb-new" title="New — pick the options, then start again" onClick={onEdit ?? newGame}>
           New
         </button>
       </div>

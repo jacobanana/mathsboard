@@ -42,7 +42,7 @@ interface Pt {
   y: number;
 }
 
-export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
+export function LangMatch({ obj, onEdit }: WidgetProps<LangMatchParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
@@ -220,10 +220,10 @@ export function LangMatch({ obj }: WidgetProps<LangMatchParams>) {
       style={{ width: obj.w + "px", height: obj.h + "px" }}
       onPointerDown={onCardPointerDown}
     >
-      <div className="lm-head" style={{ height: HEAD_H + "px" }}>
+      <div className="lm-head widget-head" style={{ height: HEAD_H + "px" }}>
         <span className="lm-title">{title(mo)}</span>
         <span className="lm-progress">{done ? "Done! 🎉" : `${correct} / ${size}`}</span>
-        <button className="lm-new" title="New game" onClick={newGame}>
+        <button className="lm-new" title="New — pick the options, then start again" onClick={onEdit ?? newGame}>
           New
         </button>
       </div>

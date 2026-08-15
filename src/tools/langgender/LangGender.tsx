@@ -38,7 +38,7 @@ import type { LangGenderParams } from "@/tools/langgender";
 
 const HEAD_H = 40;
 
-export function LangGender({ obj }: WidgetProps<LangGenderParams>) {
+export function LangGender({ obj, onEdit }: WidgetProps<LangGenderParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
@@ -140,10 +140,10 @@ export function LangGender({ obj }: WidgetProps<LangGenderParams>) {
       style={{ width: obj.w + "px" }}
       onPointerDown={onCardPointerDown}
     >
-      <div className="gd-head" style={{ height: HEAD_H + "px" }}>
+      <div className="gd-head widget-head" style={{ height: HEAD_H + "px" }}>
         <span className="gd-title">{title(mo)}</span>
         <span className="gd-progress">{done ? "Done! 🎉" : `${correct} / ${size}`}</span>
-        <button className="gd-new" title="New game" onClick={newGame}>
+        <button className="gd-new" title="New — pick the options, then start again" onClick={onEdit ?? newGame}>
           New
         </button>
       </div>

@@ -335,6 +335,13 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .answer-btn.on:hover{background:#15302f;}
 .answer-btn:active{transform:scale(.92);}
 .answer-btn svg{width:17px;height:17px;}
+/* --- The widget top bar (WidgetLayer's long-press-to-delete zone) ---
+   Every widget card that HAS a title bar tags it .widget-head alongside its own
+   class; holding it asks to delete that widget. Purely behavioural — the look
+   stays with each widget's own rule. -webkit-touch-callout keeps iOS from
+   raising its own long-press menu over the confirmation. */
+.widget-head{-webkit-touch-callout:none;}
+
 .iworksheet{position:absolute;transform-origin:0 0;pointer-events:auto;width:300px;background:#fff;border:1px solid #E4D9B8;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;cursor:grab;user-select:none;touch-action:none;}
 .iworksheet:active{cursor:grabbing;}
 .iw-top{display:flex;align-items:center;gap:6px;margin-bottom:8px;}

@@ -21,7 +21,9 @@
 //   dock when the active tool has options and disappears otherwise. It's a
 //   separate layer, so the dock itself stays STATIC: buttons never move or
 //   reflow when the tool changes — users always find them where they left
-//   them.
+//   them. Pressing the ACTIVE tool's button folds the pill away and back
+//   (dockPick), leaving every setting in it untouched — the draw pill's two
+//   rows are a lot of a phone screen once you've picked your pen.
 //
 // Selection actions (edit / delete) are NOT here: they float next to the
 // selection itself (FloatButtons), plus the Delete key and double-click-to-
@@ -36,7 +38,8 @@ import { PROFILE } from "@/boardProfile";
 import { OptionsStrip } from "@/ui/OptionsStrip";
 import { OverflowMenu } from "@/ui/OverflowMenu";
 import { keyHint } from "@/ui/shortcuts";
-import { toolUiFor, type ToolUiSpec } from "@/ui/toolSpecs";
+import { dockPick, toolUiFor, type ToolUiSpec } from "@/ui/toolSpecs";
+import { useUiStore } from "@/ui/uiStore";
 import {
   ImageIcon,
   UndoIcon,
@@ -84,7 +87,7 @@ const DOCK_SPECS: ToolUiSpec[] = PROFILE.dockTools
 
 export function Toolbar(props: ToolbarCallbacks): JSX.Element {
   const tool = useBoardStore((s) => s.tool);
-  const setTool = useBoardStore((s) => s.setTool);
+  const optionsOpen = useUiStore((s) => s.optionsOpen);
   const undo = useBoardStore((s) => s.undo);
   const redo = useBoardStore((s) => s.redo);
   const canUndo = useBoardStore((s) => s.canUndo);
@@ -220,14 +223,19 @@ export function Toolbar(props: ToolbarCallbacks): JSX.Element {
         <div className="island dock-inner">
           {DOCK_SPECS.map((t) => {
             const Icon = t.icon;
+            const active = tool === t.tool;
             return (
               <button
                 key={t.tool}
-                className={"btn small" + (tool === t.tool ? " active" : "")}
+                className={"btn small" + (active ? " active" : "")}
                 id={t.domId}
                 title={t.title(keyHint(t.shortcut.id))}
                 aria-label={t.label}
-                onClick={() => (t.pick ? t.pick() : setTool(t.tool))}
+                // The active tool's own button folds its options pill away and
+                // back (dockPick, ui/toolSpecs.tsx) — announced here so the
+                // pill's state is readable, not just visible.
+                aria-expanded={active && t.Options ? optionsOpen : undefined}
+                onClick={() => (t.pick ? t.pick() : dockPick(t.tool))}
               >
                 <span className="ico">
                   <Icon />

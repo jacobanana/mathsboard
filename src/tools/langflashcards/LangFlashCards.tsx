@@ -94,7 +94,7 @@ function FlipButton({ label, onClick }: { label: string; onClick: () => void }):
   );
 }
 
-export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
+export function LangFlashCards({ obj, onEdit }: WidgetProps<LangFlashParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const updateObject = useBoardStore((s) => s.updateObject);
   const moveObject = useBoardStore((s) => s.moveObject);
@@ -275,12 +275,12 @@ export function LangFlashCards({ obj }: WidgetProps<LangFlashParams>) {
       style={{ width: W + "px", height: obj.h + "px", ...rootVars }}
       onPointerDown={onCardPointerDown}
     >
-      <div className="if-head" style={{ height: HEAD_H + "px" }}>
+      <div className="if-head widget-head" style={{ height: HEAD_H + "px" }}>
         <span className="if-title">{deckTitle(mo)}</span>
         <span className="if-progress">
           {finished ? "Results" : `${idx + 1} / ${count}`}
         </span>
-        <button className="if-new" title="New deck" onClick={newDeck}>
+        <button className="if-new" title="New — pick the options, then start again" onClick={onEdit ?? newDeck}>
           New
         </button>
       </div>

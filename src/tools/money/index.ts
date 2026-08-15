@@ -17,6 +17,7 @@
 import { defineWidgetTool } from "@/tools/registry";
 import { Money } from "@/tools/money/Money";
 import { MoneyDialog } from "@/tools/money/Dialog";
+import { newProblemPatch, type MoneyObj } from "@/tools/money/games";
 import type { CurrencyCode, Difficulty } from "@/tools/money/currencies";
 import type { MoneyGame, Relation } from "@/tools/money/games";
 
@@ -63,6 +64,9 @@ const moneyTool = defineWidgetTool<MoneyParams>({
   resizable: true,
   Component: Money,
   Dialog: MoneyDialog,
+  // The card's New button opens this sheet, so saving it must deal a fresh
+  // problem even when nothing in the sheet changed.
+  resetOnEdit: (obj) => newProblemPatch(obj as unknown as MoneyObj),
 });
 
 export default moneyTool;

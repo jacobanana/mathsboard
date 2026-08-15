@@ -20,6 +20,10 @@ export type ModalState =
       initial?: Record<string, unknown>;
     }
   | { kind: "boards" }
+  // "Delete this?" for one placed object, asked before it goes. Reached by the
+  // long press on a widget's top bar — a whole activity, with everyone's work
+  // in it, is not something to lose to a stray press.
+  | { kind: "confirmDelete"; objId: string }
   | { kind: "saveAs"; initial: string }
   | { kind: "share" }
   | { kind: "join" }

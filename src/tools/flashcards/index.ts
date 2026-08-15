@@ -18,7 +18,7 @@ import { defineWidgetTool } from "@/tools/registry";
 import { FlashCards } from "@/tools/flashcards/FlashCards";
 import { FlashCardsDialog } from "@/tools/flashcards/Dialog";
 import {
-  resetSessionPatch,
+  newDeckPatch,
   type FlashMode,
   type FlashObj,
   type Level,
@@ -67,7 +67,7 @@ const flashCardsTool = defineWidgetTool<FlashCardsParams>({
   Dialog: FlashCardsDialog,
   // Editing settings always restarts the (re-derived) session from card one and
   // clears the old answers, so a config change never leaves a half-played deck.
-  resetOnEdit: (obj) => resetSessionPatch(obj as unknown as FlashObj),
+  resetOnEdit: (obj) => newDeckPatch(obj as unknown as FlashObj),
 });
 
 export default flashCardsTool;

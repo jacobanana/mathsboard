@@ -44,7 +44,7 @@ const BANNERS: [string, string][] = [
   ["#EA580C", "#FB923C"],
 ];
 
-export function LangGaps({ obj }: WidgetProps<LangGapsParams>) {
+export function LangGaps({ obj, onEdit }: WidgetProps<LangGapsParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
@@ -164,10 +164,10 @@ export function LangGaps({ obj }: WidgetProps<LangGapsParams>) {
       style={{ width: obj.w + "px", height: obj.h + "px" }}
       onPointerDown={onCardPointerDown}
     >
-      <div className="gp-head" style={{ height: HEAD_H + "px" }}>
+      <div className="gp-head widget-head" style={{ height: HEAD_H + "px" }}>
         <span className="gp-title">{deckTitle(mo)}</span>
         <span className="gp-progress">{finished ? "Results" : `${idx + 1} / ${rounds}`}</span>
-        <button className="gp-new" title="New game" onClick={newGame}>
+        <button className="gp-new" title="New — pick the options, then start again" onClick={onEdit ?? newGame}>
           New
         </button>
       </div>

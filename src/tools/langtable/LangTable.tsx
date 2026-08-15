@@ -125,7 +125,7 @@ export function LangTable({ obj }: WidgetProps<LangTableParams>) {
 
   return (
     <div className="itable" data-id={obj.id} ref={cardRef} onPointerDown={onCardPointerDown}>
-      <div className="it-head">
+      <div className="it-head widget-head">
         <span className="it-title">My words</span>
       </div>
 

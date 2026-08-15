@@ -13,6 +13,7 @@
 // DSL: the pen's two-line layout and the laser rows stay plain components.
 
 import { DRAW_MODES, useBoardStore } from "@/board/store";
+import { useUiStore } from "@/ui/uiStore";
 import type { DrawMode } from "@/board/store";
 import { COLLAB_ENABLED } from "@/config";
 import { POLYGON_SIDES_RANGE } from "@/ui/constants";
@@ -78,6 +79,28 @@ export interface ToolUiSpec {
 
 // --- activation rules that go beyond setTool --------------------------------
 
+/**
+ * THE DOCK PRESS RULE, shared by every dock button (the Toolbar calls this
+ * when a spec declares no `pick` of its own, and the specs that do call it
+ * once they've handled their extra state).
+ *
+ * Arriving at a tool always shows its options pill; pressing the button of the
+ * tool you are ALREADY on folds that pill away, and pressing it again brings
+ * it back. Nothing inside the pill changes either way — the draw mode, the
+ * colour and the size are exactly where you left them. (The keyboard is
+ * different on purpose: a second press of the draw KEY cycles the modes.)
+ */
+export function dockPick(tool: ToolName): void {
+  const st = useBoardStore.getState();
+  const ui = useUiStore.getState();
+  if (st.tool === tool) {
+    ui.toggleOptions();
+    return;
+  }
+  st.setTool(tool);
+  ui.setOptionsOpen(true);
+}
+
 /** The pointer key/button policy: arriving at the pointer gives the NORMAL
  *  pointer; pressing its KEY again arms/disarms the laser (collab builds —
  *  the laser is a mode of the pointer, canvas/interactions/laser.ts). */
@@ -100,6 +123,8 @@ function drawOrCycle(): void {
   }
   const i = DRAW_MODES.findIndex((m) => m.mode === st.drawMode);
   st.setDrawMode(DRAW_MODES[(i + 1) % DRAW_MODES.length].mode);
+  // The cycle is only legible with the mode row on screen; unfold it.
+  useUiStore.getState().setOptionsOpen(true);
 }
 
 // --- options-pill bodies -----------------------------------------------------
@@ -301,11 +326,18 @@ export const TOOL_UI: ToolUiSpec[] = [
     label: "Select",
     title: (hint) =>
       `Select & move (${hint}) — click a shape or drawing, drag empty space to lasso, ${keyHint("selectAll")} for all`,
-    // The dock arrow always returns the NORMAL pointer (the key toggles the laser).
+    // The dock arrow always returns the NORMAL pointer (the key toggles the
+    // laser), so pressing it while AIMING lands the pointer rather than
+    // folding the pill — only a press on the plain pointer toggles.
     pick: () => {
       const st = useBoardStore.getState();
-      st.setTool("select");
+      if (st.tool === "select" && st.laserMode) {
+        st.setLaserMode(false);
+        useUiStore.getState().setOptionsOpen(true);
+        return;
+      }
       st.setLaserMode(false);
+      dockPick("select");
     },
     shortcut: {
       id: "tool-select",
@@ -320,7 +352,8 @@ export const TOOL_UI: ToolUiSpec[] = [
     domId: "drawBtn",
     icon: DrawIcon,
     label: "Draw",
-    title: (hint) => `Draw (${hint} — press again to cycle the modes)`,
+    title: (hint) =>
+      `Draw (${hint} — press the key again to cycle the modes, the button to show or hide the options)`,
     shortcut: {
       id: "tool-draw",
       keys: [["3"], ["D"]],

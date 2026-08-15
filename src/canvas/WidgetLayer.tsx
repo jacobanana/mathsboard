@@ -16,19 +16,37 @@
 // Delete key) any widget:
 //   - Select tool + press on the card  -> select it (shift toggles membership)
 //   - double-click on the card          -> open its settings Dialog
+//   - LONG PRESS on the card's top bar  -> ask to delete it
 // Presses on the widget's own controls (buttons, inputs) are left alone so the
 // widget stays fully interactive whatever the active tool.
+//
+// GESTURES: every press here is also registered with canvas/gestures, the
+// shared multi-touch registry the canvas uses. That is what makes a two-finger
+// zoom work when one finger is resting on a widget — the canvas never sees
+// that finger, so before this the gesture was one short of a pinch and became
+// a widget drag instead. While the pinch runs, the capture-phase handlers stop
+// the event before the card's own drag logic ever sees it.
 
+import { useCallback, useEffect, useRef } from "react";
 import { useBoardStore } from "@/board/store";
 import { worldToScreen } from "@/board/geometry";
 import { pressSelection } from "@/board/selection";
+import * as gestures from "@/canvas/gestures";
 import { getTool } from "@/tools/registry";
 import type { AnyBoardObject } from "@/board/types";
+
+/** Hold this long on a widget's top bar to be asked about deleting it. */
+const LONG_PRESS_MS = 550;
+/** Move further than this and the hold was a drag, not a long press (px). */
+const LONG_PRESS_SLOP = 8;
 
 interface WidgetLayerProps {
   /** Open a widget's settings Dialog (EDIT flow); routed through App, same as
    *  BoardCanvas's onEditObject for canvas objects. */
   onEditObject?: (obj: AnyBoardObject) => void;
+  /** Ask to delete a widget (the long press on its top bar). Routed through
+   *  App, which opens the confirmation. */
+  onDeleteObject?: (obj: AnyBoardObject) => void;
 }
 
 /** A press on one of the widget's own controls, not on its card/chrome. */
@@ -39,7 +57,21 @@ function onControl(target: EventTarget | null): boolean {
   );
 }
 
-export function WidgetLayer({ onEditObject }: WidgetLayerProps) {
+/**
+ * Is this press on the part of the card the long press owns? A widget with a
+ * top bar (.widget-head — the games, the worksheet, the vocabulary table)
+ * takes it there only, so a press in the middle of an activity is never a
+ * delete; a card with no bar at all (the die, the timer) takes it anywhere off
+ * its controls.
+ */
+function onDeleteZone(wrapper: HTMLElement, target: EventTarget | null): boolean {
+  if (onControl(target)) return false;
+  const head = wrapper.querySelector(".widget-head");
+  if (!head) return true;
+  return target instanceof Node && head.contains(target);
+}
+
+export function WidgetLayer({ onEditObject, onDeleteObject }: WidgetLayerProps) {
   // Re-render on board (objects) or camera change.
   const objects = useBoardStore((s) => s.board.objects);
   const camera = useBoardStore((s) => s.camera);
@@ -48,6 +80,20 @@ export function WidgetLayer({ onEditObject }: WidgetLayerProps) {
     const t = getTool(o.type);
     return t?.kind === "widget";
   });
+
+  // The armed long press: which finger, where it started, and its timer.
+  const hold = useRef<{
+    pid: number;
+    x: number;
+    y: number;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
+  const cancelHold = useCallback(() => {
+    if (!hold.current) return;
+    clearTimeout(hold.current.timer);
+    hold.current = null;
+  }, []);
+  useEffect(() => cancelHold, [cancelHold]);
 
   // Capture phase: the worksheet header's own drag handler stopPropagation()s,
   // and selection must land before the drag starts anyway. Same press rule as
@@ -66,6 +112,46 @@ export function WidgetLayer({ onEditObject }: WidgetLayerProps) {
       e.shiftKey,
     );
     if (selection !== st.selection) st.setSelection(selection);
+  };
+
+  const onDown = (o: AnyBoardObject, e: React.PointerEvent<HTMLElement>) => {
+    // The gesture layer takes the finger first. Once it owns a pinch, the card
+    // must not also drag — stop the event before it reaches the widget.
+    if (gestures.down(e.pointerId, gestures.pos(e))) {
+      cancelHold();
+      e.stopPropagation();
+      return;
+    }
+    cancelHold();
+    if (onDeleteObject && onDeleteZone(e.currentTarget, e.target)) {
+      const timer = setTimeout(() => {
+        hold.current = null;
+        navigator.vibrate?.(15); // a nudge that the hold registered
+        onDeleteObject(o);
+      }, LONG_PRESS_MS);
+      hold.current = { pid: e.pointerId, x: e.clientX, y: e.clientY, timer };
+    }
+    selectWidget(o, e);
+  };
+
+  const onMove = (e: React.PointerEvent) => {
+    if (gestures.move(e.pointerId, gestures.pos(e))) {
+      cancelHold();
+      e.stopPropagation(); // the pinch owns the gesture; no card drag
+      return;
+    }
+    const h = hold.current;
+    if (!h || h.pid !== e.pointerId) return;
+    const far =
+      Math.abs(e.clientX - h.x) + Math.abs(e.clientY - h.y) > LONG_PRESS_SLOP;
+    if (far) cancelHold(); // they're dragging the card, not holding it
+  };
+
+  // Never stopped, even mid-pinch: the card's own pointerup is how its drag
+  // listeners come off.
+  const onUp = (e: React.PointerEvent) => {
+    if (hold.current?.pid === e.pointerId) cancelHold();
+    gestures.up(e.pointerId);
   };
 
   // Mirrors BoardCanvas's onDblClick for canvas objects (select | pan tools).
@@ -96,7 +182,10 @@ export function WidgetLayer({ onEditObject }: WidgetLayerProps) {
               transform: "scale(" + camera.scale + ")",
               transformOrigin: "0 0",
             }}
-            onPointerDownCapture={(e) => selectWidget(o, e)}
+            onPointerDownCapture={(e) => onDown(o, e)}
+            onPointerMoveCapture={onMove}
+            onPointerUpCapture={onUp}
+            onPointerCancelCapture={onUp}
             onDoubleClick={(e) => editWidget(o, e)}
           >
             <Component

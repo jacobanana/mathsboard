@@ -12,7 +12,7 @@ import { LangSentence } from "@/tools/langsentence/LangSentence";
 import { LangSentenceDialog } from "@/tools/langsentence/Dialog";
 import {
   DEFAULT_ROUNDS,
-  resetSessionPatch,
+  newDeckPatch,
   type SentenceObj,
 } from "@/tools/langsentence/builder";
 
@@ -58,7 +58,7 @@ const langSentenceTool = defineWidgetTool<LangSentenceParams>({
   freeAspect: true,
   Component: LangSentence,
   Dialog: LangSentenceDialog,
-  resetOnEdit: (obj) => resetSessionPatch(obj as unknown as SentenceObj),
+  resetOnEdit: (obj) => newDeckPatch(obj as unknown as SentenceObj),
 });
 
 export default langSentenceTool;
