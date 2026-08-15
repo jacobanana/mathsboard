@@ -13,8 +13,7 @@ import { setStoredName } from "@/collab/profile";
 import { IS_LANGUAGE } from "@/subject";
 import { LangNewBoard } from "@/lang/LangNewBoard";
 import { LangWelcome } from "@/lang/LangWelcome";
-import { ContentStudio } from "@/lang/ContentStudio";
-import { ContentLibrary } from "@/lang/ContentLibrary";
+import { ContentManager } from "@/lang/ContentManager";
 import { VoiceSettings } from "@/lang/VoiceSettings";
 import { WelcomeModal } from "@/ui/WelcomeModal";
 import { InsertGallery } from "@/ui/InsertGallery";
@@ -63,6 +62,7 @@ const welcomeModal = defineModal("welcome", {
         onNew={() => api.open({ kind: "langNew" })}
         onOpen={() => api.open({ kind: "boards" })}
         onVoices={() => api.open({ kind: "voices" })}
+        onContent={() => api.open({ kind: "content", tab: "library" })}
       />
     ) : (
       <WelcomeModal
@@ -78,11 +78,12 @@ const welcomeModal = defineModal("welcome", {
 const langNewModal = defineModal("langNew", {
   render: (_s, api) => (
     <LangNewBoard
-      onStart={() => {
-        void useBoardStore.getState().newBoard();
+      onStart={(setup) => {
+        void useBoardStore.getState().newBoard(setup);
         api.close();
       }}
       onCancel={() => api.open({ kind: "welcome" })}
+      onManageContent={() => api.open({ kind: "content", tab: "library" })}
     />
   ),
 });
@@ -122,19 +123,10 @@ const aboutModal = defineModal("about", {
   render: () => <About />,
 });
 
-// Language board only: create your own content pack (help + prompt builder).
+// Language board only: THE content manager — one screen for what this board
+// teaches, the packs on this device, and creating your own.
 const contentModal = defineModal("content", {
-  render: (_s, api) => (
-    <ContentStudio onOpenLibrary={() => api.open({ kind: "library" })} />
-  ),
-});
-
-// Language board only: the Contents page — every pack this device can teach
-// from (built-in, loaded, and the open board's own), with load/download/delete.
-const libraryModal = defineModal("library", {
-  render: (_s, api) => (
-    <ContentLibrary onCreate={() => api.open({ kind: "content" })} />
-  ),
+  render: (state) => <ContentManager initialTab={state.tab} />,
 });
 
 // Language board only: choose which voice reads each language aloud.
@@ -176,6 +168,9 @@ const boardsModal = defineModal("boards", {
   render: (_s, api) => (
     <BoardsManager
       onClose={api.close}
+      // Language board: the "teaches …" line on the open board opens the
+      // content manager on the tab that changes it.
+      onContent={IS_LANGUAGE ? () => api.open({ kind: "content", tab: "board" }) : undefined}
       // Language board: New board asks languages first (langNew) instead of
       // creating a blank board straight away.
       onNewBoard={IS_LANGUAGE ? () => api.open({ kind: "langNew" }) : undefined}
@@ -234,7 +229,6 @@ export const MODALS: ModalDef[] = [
   joinNameModal,
   aboutModal,
   contentModal,
-  libraryModal,
   voicesModal,
 ];
 

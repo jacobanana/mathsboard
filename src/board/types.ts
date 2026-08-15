@@ -104,6 +104,60 @@ export interface BoardDocument {
    * unchanged.
    */
   contentPacks?: ContentPack[];
+  /**
+   * WHAT THIS BOARD TEACHES (language board) — its languages and the content
+   * packs chosen for it, as declared when the board was created and whenever it
+   * was changed since.
+   *
+   * `contentPacks` above is the DATA that travels; this is the CHOICE. Keeping
+   * it is what lets a saved board say "🇬🇧→🇫🇷 · Base + Kitchen" in the boards
+   * list, reopen teaching exactly what it taught before, and combine several
+   * packs of the same languages. Without it a board could only be read back
+   * through the packs its widgets happen to reference, so an empty board — or
+   * one whose pack merely adds words to a built-in theme — came back on
+   * whatever content the device last happened to have switched on.
+   *
+   * Absent on maths boards and on language boards saved before this existed;
+   * those fall back to reading the choice off the document (see
+   * lang/content/boardContent.ts).
+   */
+  contentSetup?: BoardContentSetup;
+}
+
+/**
+ * A board's declared content choice: which way round the languages go, and
+ * which packs feed it. Pack ids, not pack data — "base" is the built-in pack,
+ * every other id resolves against the device library or the packs the board
+ * carries in `contentPacks`. An id that resolves to neither is content this
+ * device doesn't have; the UI says so rather than pretending.
+ */
+export interface BoardContentSetup {
+  /** The language the learner already speaks. */
+  known: string;
+  /** The language the board teaches. */
+  learning: string;
+  /** Ids of the packs this board teaches from — at least one. */
+  packIds: string[];
+}
+
+/**
+ * Whether a value read off a document (localStorage, a shared doc's meta) is a
+ * usable content setup. Lives here, next to the type and free of any language
+ * imports, so the document layer can gate what it reads without pulling the
+ * content registry into every board.
+ */
+export function isContentSetup(value: unknown): value is BoardContentSetup {
+  if (!value || typeof value !== "object") return false;
+  const s = value as Record<string, unknown>;
+  const str = (v: unknown): v is string => typeof v === "string" && v.trim() !== "";
+  return (
+    str(s.known) &&
+    str(s.learning) &&
+    s.known !== s.learning &&
+    Array.isArray(s.packIds) &&
+    s.packIds.length > 0 &&
+    s.packIds.every(str)
+  );
 }
 
 /** Lightweight listing entry (no objects/strokes), for the boards gallery. */
@@ -117,6 +171,13 @@ export interface BoardSummary {
    * Absent/false for an ordinary local library board.
    */
   remote?: boolean;
+  /**
+   * What a LOCAL language board teaches, so the boards list can show it without
+   * loading every document twice (see LocalBoardRepository.list). Absent for
+   * maths boards and for remote boards, whose content lives online behind a
+   * pointer.
+   */
+  content?: BoardContentSetup;
 }
 
 /**
@@ -168,6 +229,8 @@ export const UNTITLED_NAME = "Untitled board";
 export function newBoardDocument(
   name: string = UNTITLED_NAME,
   background: Background = PROFILE.defaultBackground,
+  /** The language board's content choice, made in the new-board flow. */
+  contentSetup?: BoardContentSetup,
 ): BoardDocument {
   const now = Date.now();
   return {
@@ -179,5 +242,6 @@ export function newBoardDocument(
     strokes: [],
     createdAt: now,
     updatedAt: now,
+    ...(contentSetup ? { contentSetup } : {}),
   };
 }

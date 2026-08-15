@@ -1,11 +1,13 @@
 // The "new board" flow (language board only). Creating a board ALWAYS runs the
 // same two steps: first WHICH LANGUAGE it teaches (and the direction), then
-// WHICH CONTENT to load for it — only the packs covering the chosen languages
-// are offered. The choice is applied to the content registry's active packs
-// and the persisted language pair that new widgets seed from — so nothing is
-// committed if the learner cancels at either step.
+// WHICH CONTENT it teaches from — only the packs covering the chosen languages
+// are offered, several can be combined, and more can be loaded without leaving
+// the flow. The choice becomes the board's own content setup (stamped onto the
+// document by store.newBoard), so nothing is committed if the learner cancels
+// at either step and the board keeps teaching it after a save or a share.
 
 import { useState } from "react";
+import type { BoardContentSetup } from "@/board/types";
 import {
   PackLanguageStep,
   PackContentStep,
@@ -13,12 +15,19 @@ import {
 } from "@/lang/PackDirectionPicker";
 
 interface LangNewBoardProps {
-  /** Create the new board (host wires this to store.newBoard) and close. */
-  onStart: () => void;
+  /** Open the content manager (load, create, delete) from the content step. */
+  onManageContent?: () => void;
+  /** Create the new board with the chosen content (host wires this to
+   *  store.newBoard, which stamps the setup onto the document) and close. */
+  onStart: (setup: BoardContentSetup) => void;
   onCancel: () => void;
 }
 
-export function LangNewBoard({ onStart, onCancel }: LangNewBoardProps): JSX.Element {
+export function LangNewBoard({
+  onStart,
+  onCancel,
+  onManageContent,
+}: LangNewBoardProps): JSX.Element {
   const dir = usePackDirection();
   const [step, setStep] = useState<"language" | "content">("language");
 
@@ -51,7 +60,7 @@ export function LangNewBoard({ onStart, onCancel }: LangNewBoardProps): JSX.Elem
       <h2>New board</h2>
       <p className="hint">Choose the content this board teaches from.</p>
 
-      <PackContentStep dir={dir} />
+      <PackContentStep dir={dir} onManage={onManageContent} />
 
       <div className="card-actions">
         <button className="btn" onClick={() => setStep("language")}>
@@ -60,10 +69,7 @@ export function LangNewBoard({ onStart, onCancel }: LangNewBoardProps): JSX.Elem
         <button
           className="btn primary"
           disabled={!dir.canStart}
-          onClick={() => {
-            dir.apply();
-            onStart();
-          }}
+          onClick={() => onStart(dir.setup())}
         >
           Start
         </button>

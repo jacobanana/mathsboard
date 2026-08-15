@@ -11,22 +11,21 @@
 // coherent (every combined pack can pair the same two languages) instead of
 // silently mixing, say, an English↔French pack with an English↔Spanish one.
 //
-// This module is the pure logic (grouping, defaults, apply); PackDirectionPicker
-// is the view. Applying a choice writes through the SAME levers the rest of the
-// app already uses — the content registry's active-pack flags and the language
-// pair store — so nothing downstream needs to know packs are now the entry point.
+// This module is the pure logic (grouping, defaults, the resulting setup);
+// PackDirectionPicker is the view. A choice becomes a BoardContentSetup that is
+// stamped onto the board, and boardContent.ts is the single place that turns a
+// setup into live content — so "start a board teaching X" and "reopen a board
+// that teaches X" are the same code path.
 
 import {
   importedPacks,
   isBaseActive,
   isPackActive,
-  setBaseActive,
-  setPackActive,
   BASE_PACK,
 } from "@/lang/content/registry";
 import type { PackLanguage } from "@/lang/content/schema";
-import { useLangStore } from "@/lang/store";
-import { defaultPair, isValidPair, type LangPair } from "@/lang/pairs";
+import { defaultPair, type LangPair } from "@/lang/pairs";
+import type { BoardContentSetup } from "@/board/types";
 
 /** A pack the learner can pick when starting a board — the built-in base pack
  *  and every pack imported into this device's library. */
@@ -155,14 +154,15 @@ export function initialChoice(groups: PackGroup[]): {
 }
 
 /**
- * Commit a choice: switch the content registry's active packs to exactly the
- * selection, then set the language pair. Packs are toggled BEFORE the pair so
- * the chosen languages are in the merged catalogue when the pair is validated,
- * and imported packs are toggled before base so base can be switched off without
- * tripping the "never leave the catalogue empty" guard.
+ * Turn a picked selection into the CONTENT SETUP a board carries: the direction
+ * plus the ids of the packs it teaches from. Nothing is switched on here — the
+ * setup is stamped onto the board (see BoardDocument.contentSetup) and applied
+ * by the one place that owns "make the app teach this", content/boardContent.ts.
+ * That way choosing content for a board and re-opening that board later run
+ * through exactly the same code.
  */
-export function applyChoice(selectedIds: Set<string>, pair: LangPair): void {
-  for (const p of importedPacks()) setPackActive(p.id, selectedIds.has(p.id));
-  setBaseActive(selectedIds.has("base"));
-  if (isValidPair(pair)) useLangStore.getState().setPair(pair);
+export function setupFrom(selectedIds: Set<string>, pair: LangPair): BoardContentSetup {
+  const order = ["base", ...importedPacks().map((p) => p.id)];
+  const packIds = order.filter((id) => selectedIds.has(id));
+  return { known: pair.known, learning: pair.learning, packIds };
 }

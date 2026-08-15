@@ -6,13 +6,19 @@
 // packs are kept in localStorage (per-device, like the language-pair choice).
 //
 // Each imported pack can be switched ON or OFF: only the ACTIVE packs feed the
-// catalogue, so a teacher can focus a lesson on a single pack or combine a few.
-// The base pack is on by default and the open board's own packs are always
-// active. Base can additionally be switched OFF to teach purely from imported /
-// board packs — but only while some other pack is active, so the catalogue is
-// never left empty. Loading a new pack selects just that one by default (see
-// importPackJson). The active selection is persisted per-device alongside the
-// packs themselves.
+// catalogue, so a teacher can focus a lesson on a single pack or combine a few
+// that cover the same languages. The base pack is on by default and the open
+// board's own packs are always active. Base can additionally be switched OFF to
+// teach purely from imported / board packs — but only while some other pack is
+// active, so the catalogue is never left empty.
+//
+// WHO DECIDES what is active: the OPEN BOARD does. A board declares the packs it
+// teaches from (BoardDocument.contentSetup) and board/store.ts applies that
+// choice through the switches below whenever a board arrives or its choice
+// changes — see lang/content/boardContent.ts. Loading a pack merely adds it to
+// the library; it never rewrites the live selection behind the board's back.
+// The selection is still persisted per-device so a reload before any board
+// arrives shows the same catalogue.
 //
 // data.ts and conjugation.ts don't hold arrays of their own any more — they
 // register a consumer here and mirror the merged catalogue in place, so the
@@ -21,6 +27,7 @@
 
 import baseJson from "@/lang/content/base.json";
 import {
+  normalizePack,
   validatePack,
   type ContentPack,
   type MergedContent,
@@ -29,7 +36,7 @@ import { bumpGalleryVersion } from "@/tools/registry";
 
 /** The built-in pack. Authored in the pack format and trusted (it is generated
  *  from the tested catalogue), so it is not re-validated at load. */
-export const BASE_PACK = baseJson as unknown as ContentPack;
+export const BASE_PACK = normalizePack(baseJson);
 
 // A pack's LANGUAGE SIGNATURE: its language codes, sorted and joined. Two packs
 // may only be combined (active together) when their signatures match — an
@@ -113,8 +120,15 @@ function loadImported(): ContentPack[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // Re-validate on load so a hand-edited / stale entry can't crash the app.
-    return parsed.filter((p): p is ContentPack => validatePack(p).ok);
+    // Re-validate on load so a hand-edited / stale entry can't crash the app,
+    // and keep the NORMALISED result: a pack stored before it round-tripped
+    // through validatePack may be missing the optional sections consumers read.
+    const out: ContentPack[] = [];
+    for (const p of parsed) {
+      const r = validatePack(p);
+      if (r.ok) out.push(r.pack);
+    }
+    return out;
   } catch {
     return [];
   }
@@ -233,6 +247,16 @@ export function subscribeContent(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
+// Bumped on every rebuild, so React views can subscribe with a cheap, always-
+// stable snapshot (useSyncExternalStore rejects a fresh object each read).
+let version = 0;
+
+/** How many times the catalogue has changed. The snapshot for React views that
+ *  just need to re-render when content is loaded, removed or switched. */
+export function contentVersion(): number {
+  return version;
+}
+
 function rebuild(): void {
   // Base can only stay OFF while another pack is active; if the last one goes
   // away, restore base so the catalogue is never empty (and the checkbox
@@ -242,6 +266,7 @@ function rebuild(): void {
     persistBase();
   }
   merged = computeMerged();
+  version += 1;
   for (const consume of consumers) consume(merged);
   for (const listener of listeners) listener();
   // Imported/removed content can add or drop gendered nouns / prepositions —
@@ -290,21 +315,36 @@ export function importPackJson(text: string): ImportResult {
   else imported.push(pack);
   // The library copy supersedes the open board's carried copy (same invariant
   // as setBoardPacks) — saving a board's pack also clears it from "in this
-  // board but not in your library".
+  // board but not in your library". A board's own packs always teach, so a pack
+  // that was teaching from that layer is switched ON as it moves into the
+  // library: saving content you are using must not take it away.
+  const wasTeaching = boardPacks.some((p) => p.id === pack.id);
   boardPacks = boardPacks.filter((p) => p.id !== pack.id);
-  // Loading a pack makes it the sole active one — a lesson usually wants a
-  // single pack's content, not everything merged. The user can re-enable other
-  // SAME-LANGUAGE packs with their checkboxes to combine several again.
-  activeIds = new Set([pack.id]);
-  // Only same-language packs combine: a pack teaching a different language set
-  // than the built-in English↔French base switches base off so the two aren't
-  // mixed (base stays on for a same-language import — they can be combined).
-  if (sigOf(pack) !== BASE_SIG) baseEnabled = false;
+  if (wasTeaching) {
+    activeIds.add(pack.id);
+    persistActive();
+  }
+  // Loading a pack only ADDS IT TO THE LIBRARY. It does NOT change what the
+  // open board teaches: that is the board's own declared choice (see
+  // BoardDocument.contentSetup), and silently switching it here is how loading
+  // a second pack for the same languages used to drop the first. The content
+  // manager / new-board picker decide when a newly loaded pack joins a board.
   persist();
-  persistActive();
-  persistBase();
   rebuild();
   return { ok: true, pack, replaced };
+}
+
+/** The packs of an arriving board that may join the catalogue: valid ones only,
+ *  normalised (a board's packs come straight off a document, so they have not
+ *  been through the import gate), and never a stand-in for the built-in "base". */
+function validPacks(packs: ContentPack[]): ContentPack[] {
+  const out: ContentPack[] = [];
+  for (const p of packs) {
+    if (p?.id === "base") continue;
+    const r = validatePack(p);
+    if (r.ok) out.push(r.pack);
+  }
+  return out;
 }
 
 /**
@@ -316,7 +356,7 @@ export function importPackJson(text: string): ImportResult {
  */
 export function setBoardPacks(packs: ContentPack[]): void {
   const have = new Set(imported.map((p) => p.id));
-  const next = packs.filter((p) => p.id !== "base" && !have.has(p.id) && validatePack(p).ok);
+  const next = validPacks(packs).filter((p) => !have.has(p.id));
   if (idsSig(next) === idsSig(boardPacks)) return; // unchanged — skip the rebuild
   boardPacks = next;
   rebuild();
@@ -325,44 +365,6 @@ export function setBoardPacks(packs: ContentPack[]): void {
 /** The packs embedded in the currently-open board (for inspection / UI). */
 export function boardPacksNow(): ContentPack[] {
   return boardPacks;
-}
-
-/**
- * Load the OPEN BOARD's embedded packs as the ACTIVE teaching content — the
- * "a board arrives with its content" path (open a saved board, join a shared
- * one, follow a share link). setBoardPacks only registers the packs into the
- * catalogue; this additionally activates them the way choosing them at board
- * creation would, so the board teaches from its own content with no trip to
- * the contents page:
- *   • the user's own imported copy of a board pack is switched ON (a pack you
- *     imported but left inactive must still teach when its board opens — the
- *     board's copy is dropped in favour of yours, exactly like setBoardPacks);
- *   • base and any import of a DIFFERENT language set are switched off, so the
- *     board's languages are never silently mixed with unrelated content;
- *   • with no embedded packs and `restoreBase`, base comes back on and foreign
- *     imports are switched off — a board built purely on built-in content must
- *     not open against a leftover foreign catalogue.
- */
-export function adoptBoardContent(packs: ContentPack[], restoreBase = false): void {
-  const valid = packs.filter((p) => p.id !== "base" && validatePack(p).ok);
-  const have = new Set(imported.map((p) => p.id));
-  boardPacks = valid.filter((p) => !have.has(p.id));
-  if (valid.length > 0) {
-    const sig = sigOf(valid[0]);
-    for (const p of imported) {
-      if (valid.some((v) => v.id === p.id)) activeIds.add(p.id);
-      else if (activeIds.has(p.id) && sigOf(p) !== sig) activeIds.delete(p.id);
-    }
-    if (sig !== BASE_SIG) baseEnabled = false;
-  } else if (restoreBase) {
-    baseEnabled = true;
-    for (const p of imported) {
-      if (activeIds.has(p.id) && sigOf(p) !== BASE_SIG) activeIds.delete(p.id);
-    }
-  }
-  persistActive();
-  persistBase();
-  rebuild();
 }
 
 /** Remove an imported pack by id. Returns true if one was removed. */

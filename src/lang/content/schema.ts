@@ -522,5 +522,40 @@ export function validatePack(value: unknown): ValidationResult {
   }
 
   if (errors.length) return { ok: false, errors };
-  return { ok: true, pack: value as unknown as ContentPack };
+  return { ok: true, pack: normalizePack(value) };
+}
+
+/**
+ * Fill in the sections a pack is allowed to leave out.
+ *
+ * The FORMAT makes `sentences`, `verbs`, `prepositions` and `pronouns`
+ * optional — a vocabulary-only pack is perfectly valid, and the ones an LLM
+ * writes usually are. The TYPE, and every consumer that counts or scans a pack
+ * (`pack.verbs.some(…)`, "18 verbs"), expects them to be there. Normalising
+ * once, at the single gate every pack passes through (validatePack), is what
+ * keeps those consumers from throwing on a valid file.
+ *
+ * Returns the SAME object when nothing is missing, so an already-complete pack
+ * (the built-in one, every pack in the tests) costs nothing and keeps its
+ * identity.
+ */
+export function normalizePack(value: unknown): ContentPack {
+  const p = value as Record<string, unknown>;
+  const missing =
+    !Array.isArray(p.vocab) ||
+    !Array.isArray(p.sentences) ||
+    !Array.isArray(p.verbs) ||
+    !Array.isArray(p.prepositions) ||
+    !isObj(p.pronouns);
+  if (!missing) return value as unknown as ContentPack;
+  return {
+    ...(p as unknown as ContentPack),
+    pronouns: isObj(p.pronouns) ? (p.pronouns as Record<string, string[]>) : {},
+    vocab: Array.isArray(p.vocab) ? (p.vocab as ContentPack["vocab"]) : [],
+    sentences: Array.isArray(p.sentences) ? (p.sentences as ContentPack["sentences"]) : [],
+    verbs: Array.isArray(p.verbs) ? (p.verbs as ContentPack["verbs"]) : [],
+    prepositions: Array.isArray(p.prepositions)
+      ? (p.prepositions as ContentPack["prepositions"])
+      : [],
+  };
 }

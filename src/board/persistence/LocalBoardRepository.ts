@@ -17,7 +17,7 @@ import type {
   DraftEnvelope,
   RemoteBoardRef,
 } from "@/board/types";
-import { newBoardDocument, subjectOf } from "@/board/types";
+import { isContentSetup, newBoardDocument, subjectOf } from "@/board/types";
 import { SUBJECT, SUBJECTS, type Subject } from "@/subject";
 
 const PREFIX = "mathsboard:";
@@ -97,7 +97,16 @@ export class LocalBoardRepository implements BoardRepository {
         const doc = JSON.parse(raw) as BoardDocument;
         // A board belongs to exactly one subject; show only this flavour's.
         if (subjectOf(doc) !== this.subject) continue;
-        out.push({ id: doc.id, name: doc.name, updatedAt: doc.updatedAt });
+        out.push({
+          id: doc.id,
+          name: doc.name,
+          updatedAt: doc.updatedAt,
+          // What a language board teaches, so the boards list can say so
+          // without loading every document a second time. Read straight off the
+          // document (isContentSetup gates it) — deriving it for a board that
+          // predates the field is the language layer's job, not storage's.
+          ...(isContentSetup(doc.contentSetup) ? { content: doc.contentSetup } : {}),
+        });
       } catch {
         // Ignore corrupt entries.
       }
