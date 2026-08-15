@@ -32,7 +32,8 @@ export const fdpTool = defineCanvasTool<FDPParams>({
     ctx.textBaseline = "alphabetic";
     ctx.textAlign = "left";
     ctx.font = "700 18px " + font;
-    ctx.fillText("Fraction → decimal → percentage", o.x + 16, o.y + 26);
+    // Short "%": the full word overflows the 340px panel at 18px.
+    ctx.fillText("Fraction → decimal → %", o.x + 16, o.y + 26);
     const bx = o.x + 16,
       bw = o.w - 32,
       by = o.y + 42,

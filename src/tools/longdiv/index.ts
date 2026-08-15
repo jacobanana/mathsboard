@@ -89,10 +89,11 @@ export const longDivTool = defineCanvasTool<LongDivParams>({
     for (let i = 0; i < dd.length; i++)
       ctx.fillText(dd[i], ddX0 + i * DW + DW / 2, ddY);
     const info = longDivSteps(o.dividend, o.divisor);
-    info.q.forEach((qd) => {
-      if (qd.draw) ctx.fillText(String(qd.d), ddX0 + qd.col * DW + DW / 2, qY);
-    });
     if (o.revealed) {
+      // The quotient IS the answer — like bustop, it only shows once revealed.
+      info.q.forEach((qd) => {
+        if (qd.draw) ctx.fillText(String(qd.d), ddX0 + qd.col * DW + DW / 2, qY);
+      });
       let y = ddY + RH;
       info.steps.forEach((st) => {
         const rightX = ddX0 + (st.col + 1) * DW;

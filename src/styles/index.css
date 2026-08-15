@@ -284,7 +284,10 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
   #dock{bottom:calc(10px + env(safe-area-inset-bottom));max-width:calc(100vw - 12px);}
   .dock-inner{gap:1px;}
   #options{left:8px;right:auto;transform:none;bottom:calc(68px + env(safe-area-inset-bottom));animation-name:rise-left;}
-  #zoomCluster{right:8px;bottom:calc(68px + env(safe-area-inset-bottom));padding:3px;}
+  /* Ride above the options pill (its live height is --options-lift, set by
+     OptionsStrip) — a wide pill, e.g. the draw tool's, otherwise covers the
+     cluster and makes zoom unclickable. 0 when no pill is shown. */
+  #zoomCluster{right:8px;bottom:calc(68px + env(safe-area-inset-bottom) + var(--options-lift, 0px));padding:3px;}
   #zoomCluster button{min-width:32px;height:32px;font-size:15px;border-radius:9px;}
   #zoomReset{min-width:42px;font-size:12px;}
 }
