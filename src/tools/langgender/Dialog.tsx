@@ -1,4 +1,4 @@
-// Settings dialog for "le or la?". Pick the THEME(S) + LEVEL (shared picker,
+// Settings dialog for "Gender sort". Pick the THEME(S) + LEVEL (shared picker,
 // scoped to gendered nouns) and how many words; the languages come from the
 // learner's current pair (read-only).
 
@@ -50,9 +50,9 @@ export function LangGenderDialog({
 
   return (
     <>
-      <h2>Le or la?</h2>
+      <h2>Gender sort</h2>
       <p className="hint">
-        Sort each <b>{learningName}</b> word into the right basket by its article.
+        Sort each <b>{learningName}</b> word into the right basket by its gender.
       </p>
 
       <CategoryLevelPicker picker={picker} />

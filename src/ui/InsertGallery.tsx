@@ -5,7 +5,7 @@
 // Layout mirrors the prototype: a 2-col .gallery with a full-width .gsub
 // heading per category (in CATEGORY_ORDER), then a .tile per tool
 // (listByCategory already filters inGallery !== false AND content-gated tools
-// whose `available()` is false right now — e.g. "le or la?" only shows on a
+// whose `available()` is false right now — e.g. "gender sort" only shows on a
 // board whose language has gendered nouns). Empty categories are skipped.
 // Clicking a tile delegates to the host via onPick(type); the host (App) opens
 // that tool's Dialog in CREATE mode (or, for a gallery tool with no Dialog,

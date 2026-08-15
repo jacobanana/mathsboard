@@ -1,14 +1,16 @@
 // WIDGET COMPONENT — the .igender overlay: sort each noun into its gender basket.
 //
-// A pile of nouns sits above two-or-more baskets, one per definite article the
-// learning language uses (le / la, der / die / das). The learner taps a word to
-// pick it up, then taps a basket to drop it in: a right drop LOCKS green, a wrong
-// one turns red and can be tapped to send the word back to the pile. Placements
-// are live widget-state (`gb:<i>` = the basket index, via updateWidgetState —
+// A pile of nouns sits above two-or-more baskets, one per article the learning
+// language uses (un / une, der / die / das). The learner taps a word to pick it
+// up, then taps a basket to drop it in: a right drop LOCKS green, a wrong one
+// turns red and can be tapped to send the word back to the pile. Placements are
+// live widget-state (`gb:<i>` = the basket index, via updateWidgetState —
 // synced, persisted, undo-invisible); correctness is derived, so it can't drift.
 // Pile words are spoken WITHOUT their article (that's the puzzle); once sorted
-// correctly a word is spoken WITH it ("le chien"). The card body is the drag
-// handle. See gender.ts for the pure engine.
+// correctly a word is spoken WITH it ("un chien"). Baskets show `round.labels`,
+// never the raw bucket — the indefinite article never elides, so a vowel-initial
+// noun reads "une assiette" and not the gender-hiding "l'assiette". The card body
+// is the drag handle. See gender.ts for the pure engine.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetProps } from "@/tools/registry";
@@ -163,13 +165,13 @@ export function LangGender({ obj }: WidgetProps<LangGenderParams>) {
 
           {/* the baskets, one per article */}
           <div className="gd-baskets">
-            {round.buckets.map((article, b) => (
+            {round.labels.map((label, b) => (
               <div
                 key={b}
                 className={"gd-basket" + (place.active ? " active" : "")}
                 {...place.targetProps(String(b))}
               >
-                <span className="gd-basket-head">{article}</span>
+                <span className="gd-basket-head">{label}</span>
                 <span className="gd-basket-cards">
                   {cardsInBucket(round, mo, b).map((i) => {
                     const n = round.items[i];
@@ -185,9 +187,9 @@ export function LangGender({ obj }: WidgetProps<LangGenderParams>) {
                         }}
                       >
                         {n.emoji && <span className="gd-chip-emoji">{n.emoji}</span>}
-                        <span className="gd-chip-w">{ok ? `${article} ${n.learning}` : n.learning}</span>
+                        <span className="gd-chip-w">{ok ? `${label} ${n.learning}` : n.learning}</span>
                         {ok && (
-                          <SpeakButton as="span" text={`${article} ${n.learning}`} code={obj.learning} />
+                          <SpeakButton as="span" text={`${label} ${n.learning}`} code={obj.learning} />
                         )}
                       </span>
                     );

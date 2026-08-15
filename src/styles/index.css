@@ -1204,7 +1204,7 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
   .igaps.happy,.igaps.shake,.gp-scene,.icj.done{animation-duration:.01ms;animation-iteration-count:1;}
 }
 
-/* --- Le or la? (.igender): sort each noun into its gender basket --- */
+/* --- Gender sort (.igender): sort each noun into its gender basket --- */
 .igender{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
 .igender:active{cursor:grabbing;}
 .igender.happy,.igender.done{animation:ifBounce .6s ease;}

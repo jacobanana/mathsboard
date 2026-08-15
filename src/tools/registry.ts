@@ -98,7 +98,7 @@ export interface ToolMeta {
    * Optional CONTENT GATE: hide this gallery tool unless the currently loaded
    * content supports it. Read live state itself (the language pair, the merged
    * catalogue) and return false to hide the tile. The gallery re-checks this on
-   * every pair/content change. Used by the grammar widgets — "le or la?" only
+   * every pair/content change. Used by the grammar widgets — "gender sort" only
    * appears when the learning language has gendered nouns, the preposition game
    * only when prepositions are loaded — so a French board shows them and an
    * English one doesn't. Omit for tools that always apply.

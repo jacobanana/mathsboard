@@ -1,10 +1,11 @@
 // The gender-sort engine: rounds are deterministic, baskets are the distinct
 // articles present, placements validate against the word's real article, and the
 // session patches place / reset as expected. Drives the built-in English→French
-// content (loaded into VOCAB at import), where nouns carry le / la.
+// content (loaded into VOCAB at import), where nouns carry le / la — and are
+// shown as un / une, the forms that don't elide.
 
 import { describe, expect, it } from "vitest";
-import { articlesForLearning } from "@/lang/pairs";
+import { articlesForLearning, indefiniteArticle } from "@/lang/pairs";
 import {
   DEFAULT_COUNT,
   MAX_COUNT,
@@ -64,6 +65,23 @@ describe("deriveRound", () => {
   it("French nouns split into le and la — a real two-basket game", () => {
     const r = deriveRound(obj({ count: MAX_COUNT }));
     expect(r.buckets).toEqual(expect.arrayContaining(["le", "la"]));
+  });
+
+  it("baskets are LABELLED with the indefinite article — un / une, never le / la", () => {
+    const r = deriveRound(obj({ count: MAX_COUNT }));
+    expect(r.labels).toHaveLength(r.buckets.length);
+    expect(r.labels).toEqual(r.buckets.map((a) => (a === "le" ? "un" : "une")));
+  });
+
+  it("a label never collapses two baskets into one", () => {
+    const r = deriveRound(obj({ count: MAX_COUNT }));
+    expect(new Set(r.labels).size).toBe(r.buckets.length);
+  });
+
+  it("labels leave an unmapped language's articles alone", () => {
+    // Nothing in the base pack teaches Klingon, so the round is empty — what
+    // matters is that the mapping is a lookup, not a guess.
+    expect(indefiniteArticle("der", "tlh")).toBe("der");
   });
 
   it("count is bounded by MIN/MAX and the topic size", () => {

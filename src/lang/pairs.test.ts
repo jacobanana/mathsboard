@@ -11,6 +11,7 @@ import {
   categoriesFromObj,
   categoriesLabel,
   defaultPair,
+  indefiniteArticle,
   isValidPair,
   levelsForVocabCategories,
   levelsForVocabCategory,
@@ -230,6 +231,38 @@ describe("phonetics threading", () => {
     );
     expect(rev?.knownPhonetic).toBe("konnichiwa");
     expect(rev?.learningPhonetic).toBeUndefined();
+  });
+});
+
+describe("indefiniteArticle", () => {
+  it("maps the definite article a learner would elide to the one they wouldn't", () => {
+    expect(indefiniteArticle("le", "fr")).toBe("un");
+    expect(indefiniteArticle("la", "fr")).toBe("une");
+    expect(indefiniteArticle("el", "es")).toBe("un");
+    expect(indefiniteArticle("la", "es")).toBe("una");
+  });
+
+  it("keeps German definite: ein/eine/ein would merge der and das", () => {
+    expect(indefiniteArticle("der", "de")).toBe("der");
+    expect(indefiniteArticle("die", "de")).toBe("die");
+    expect(indefiniteArticle("das", "de")).toBe("das");
+  });
+
+  it("passes through an unknown language or article untouched", () => {
+    expect(indefiniteArticle("the", "en")).toBe("the");
+    expect(indefiniteArticle("les", "fr")).toBe("les");
+  });
+
+  it("is tolerant of casing and stray whitespace in a pack", () => {
+    expect(indefiniteArticle("La", "fr")).toBe("une");
+    expect(indefiniteArticle(" le ", "fr")).toBe("un");
+  });
+
+  it("never maps two of a language's articles onto the same basket", () => {
+    expect(new Set(["le", "la"].map((a) => indefiniteArticle(a, "fr"))).size).toBe(2);
+    expect(new Set(["el", "la"].map((a) => indefiniteArticle(a, "es"))).size).toBe(2);
+    expect(new Set(["il", "lo", "la"].map((a) => indefiniteArticle(a, "it"))).size).toBe(3);
+    expect(new Set(["o", "a"].map((a) => indefiniteArticle(a, "pt"))).size).toBe(2);
   });
 });
 
