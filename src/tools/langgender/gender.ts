@@ -1,7 +1,7 @@
 // The gender-sort engine — pure, deterministic, no React.
 //
-// A widget shows a pile of nouns and two-or-more baskets, one per definite
-// article the learning language uses (French le / la, German der / die / das).
+// A widget shows a pile of nouns and two-or-more baskets, one per article the
+// learning language uses (French un / une, German der / die / das).
 // The learner taps a word, then taps the basket it belongs in. A right drop
 // locks green; a wrong one turns red and can be tapped to send the word back to
 // the pile and try again. Like the other language widgets the round is
@@ -16,6 +16,7 @@ import {
   articlesForLearning,
   categoriesFromObj,
   categoriesLabel,
+  indefiniteArticle,
   type ArticleNoun,
   type LangPair,
   type LevelFilter,
@@ -41,8 +42,13 @@ export interface GenderObj {
 /** A resolved round: the words to sort (pile order) and the baskets (articles). */
 export interface GenderRound {
   items: ArticleNoun[];
-  /** The distinct articles, in a stable order — one basket each. */
+  /** The distinct articles, in a stable order — one basket each. Correctness is
+   *  always compared against these, never against what's on screen. */
   buckets: string[];
+  /** What each basket SHOWS: the indefinite article where the language has one
+   *  ("un" / "une" for French le / la), else the bucket itself. Same length and
+   *  order as `buckets`. */
+  labels: string[];
 }
 
 export const MIN_COUNT = 4;
@@ -75,7 +81,15 @@ export function deriveRound(obj: GenderObj): GenderRound {
   // Any article not in the language-wide list (an unusual pack) still gets a
   // basket, appended in first-appearance order.
   for (const n of items) if (!buckets.includes(n.article)) buckets.push(n.article);
-  return { items, buckets };
+  return { items, buckets, labels: bucketLabels(buckets, pair) };
+}
+
+/** Basket captions: the indefinite article per bucket. If a language's mapping
+ *  would ever make two baskets read the same, the round shows the stored
+ *  articles instead — an unplayable board beats a prettier one. */
+function bucketLabels(buckets: string[], pair: LangPair): string[] {
+  const labels = buckets.map((a) => indefiniteArticle(a, pair.learning));
+  return new Set(labels).size === buckets.length ? labels : [...buckets];
 }
 
 export const roundSize = (obj: GenderObj): number => deriveRound(obj).items.length;

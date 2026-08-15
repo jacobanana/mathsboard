@@ -65,13 +65,15 @@ export interface PackVocab {
    *  "konnichiwa" } beside こんにちは). Only add entries where they help. */
   phonetics?: Record<string, string>;
   /** Optional DEFINITE ARTICLE per language code, for nouns that carry
-   *  grammatical gender — the surface word the learner sorts by in the gender
+   *  grammatical gender — the gender key the learner sorts by in the gender
    *  game: { "fr": "le" } / { "fr": "la" }, { "de": "der" | "die" | "das" }.
    *  Store the gender-carrying form ("le"/"la"), never the elided one ("l'"),
-   *  so the bucket is unambiguous. The game is offered for a language only when
-   *  its loaded content has at least TWO distinct articles — so English (only
-   *  "the") never shows it, French and German do. Omit for genderless nouns and
-   *  for languages without article gender. */
+   *  so the bucket is unambiguous; the game itself shows the indefinite article
+   *  where the language has one ("un"/"une"), which is why a vowel-initial noun
+   *  like "assiette" is perfectly fine here. The game is offered for a language
+   *  only when its loaded content has at least TWO distinct articles — so
+   *  English (only "the") never shows it, French and German do. Omit for
+   *  genderless nouns and for languages without article gender. */
   article?: Record<string, string>;
 }
 
@@ -257,7 +259,7 @@ export const CONTENT_SCHEMA = {
           article: {
             type: "object",
             description:
-              "Optional definite article per language code for nouns with grammatical gender (e.g. { \"fr\": \"le\" }, { \"de\": \"der\" }). Powers the gender sort game. Store the gender-carrying form (\"le\"/\"la\"), NOT the elided \"l'\". The game only appears for a language once its content has 2+ distinct articles, so English (\"the\" only) never shows it. Omit for genderless nouns.",
+              "Optional definite article per language code for nouns with grammatical gender (e.g. { \"fr\": \"le\" }, { \"de\": \"der\" }). Powers the gender sort game. Store the gender-carrying form (\"le\"/\"la\"), NOT the elided \"l'\" — the game displays the indefinite article (\"un\"/\"une\") anyway, so vowel-initial nouns are fine. The game only appears for a language once its content has 2+ distinct articles, so English (\"the\" only) never shows it. Omit for genderless nouns.",
             additionalProperties: { type: "string" },
           },
         },

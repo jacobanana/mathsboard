@@ -1,4 +1,4 @@
-// WIDGET TOOL — "Le or la?": sort each noun into its gender basket. Languages
+// WIDGET TOOL — "Gender sort": sort each noun into its gender basket. Languages
 // are baked in at creation (from the learner's current pair). The engine lives
 // in ./gender.ts.
 //
@@ -49,7 +49,9 @@ export function defaultLangGenderParams(): LangGenderParams {
 const langGenderTool = defineWidgetTool<LangGenderParams>({
   kind: "widget",
   type: "langgender",
-  name: "Le or la?",
+  name: "Gender sort",
+  // Deliberately language-neutral: the baskets are un/une in French but
+  // der/die/das in German, so the blurb names the idea, not the articles.
   blurb: "sort words by gender",
   category: "lang-practice",
   // Only worth offering when the learning language marks gender with 2+ articles.
