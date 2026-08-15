@@ -150,16 +150,25 @@ async function newClient(browser, opts, width) {
 /**
  * Load the app and get past the welcome modal, the way a person does.
  *
- * Continue stays disabled until the board store has swapped out its "pending"
- * placeholder document, so this waits for a real board rather than for a
- * timeout — a screenshot taken over the placeholder shows an empty board that
- * has nothing to do with the change under test.
+ * The two boards front the page with DIFFERENT launchers, and they disagree on
+ * exactly the button this used to reach for: the maths welcome always offers
+ * Continue, while the language one only shows it when there is a draft to
+ * resume — and a screenshot run is a fresh browser profile, so there never is.
+ * Escape is the affordance both share (the welcome is a launcher, not a gate:
+ * closing it any way resumes the draft loading behind it).
+ *
+ * Either way the wait is for a REAL board rather than for a timeout: the store
+ * starts on a "pending" placeholder, and a screenshot taken over that is an
+ * empty board with nothing to do with the change under test.
  */
 async function openApp(page, opts, appPath) {
   await page.goto(`${opts.base}${appPath}`, { waitUntil: 'domcontentloaded' });
   await page.locator('#toolbar').waitFor({ timeout: 30_000 });
   if (opts.welcome) return;
-  await page.locator('#welcomeContinue').click();
+  const resume = page.locator('#welcomeContinue');
+  if (await resume.isVisible().catch(() => false)) await resume.click();
+  else await page.keyboard.press('Escape');
+  await page.locator('#scrim').waitFor({ state: 'detached', timeout: 15_000 });
   await page.waitForFunction(() => window.__mathsboard?.board().id !== 'pending');
 }
 
