@@ -28,10 +28,20 @@ the raw command shown in each section, so `make` is optional.
 Path alias: `@/` -> `src/`.
 
 The app is fully usable solo with no backend (boards live in localStorage).
-Sharing a board (the **Share** button in the top bar) needs the backend running — for
-local development, start the
-local stack (`docker compose -f docker-compose.yml -f docker-compose.local.yml
-up --build`); the Vite dev server proxies `/api` and `/ys` to it.
+Sharing a board (the **Share** button in the top bar) needs the backend running.
+There are two ways to get one:
+
+```bash
+bash scripts/start_app.sh          # no Docker: y-sweet + the token API + Vite, on :5173
+bash scripts/start_app.sh --stack  # the full compose topology, on :8080
+```
+
+The first runs the sync server (the npm build of the same y-sweet the container
+runs) and `server/index.js` as plain processes and points the Vite dev server's
+`/api` and `/ys` proxies at them — real sharing, presence and sync, with hot
+reload and no Docker daemon. The one thing it cannot do is image upload, which
+needs the S3 stand-in from the compose stack. `bash scripts/stop_app.sh` stops
+either.
 
 ## Architecture
 
@@ -215,6 +225,7 @@ The behavioural suite in `src/**/*.test.ts` runs headlessly with
 ```bash
 npm test              # run once           (make test)
 npm run test:watch    # re-run on change   (make test-watch)
+bash scripts/checks.sh   # typecheck + unit tests together — the commit gate
 ```
 
 The tests drive the same seams the real UI drives (store actions, interaction
@@ -265,9 +276,19 @@ join-by-code, live stroke sync both ways, concurrent-edit merging, presence
 collaborator selects/edits/deletes them; typed answers and marks sync).
 
 ```bash
+bash scripts/e2e.sh               # brings a stack up itself and runs the suite
+bash scripts/e2e.sh --stack       # ... on the compose topology specifically
+bash scripts/e2e.sh e2e/sync.spec.ts --headed    # any playwright args pass through
+
 npx playwright install chromium   # once      (make e2e-install)
-npm run test:e2e                  # boots the compose stack itself if not running (make e2e)
+npm run test:e2e                  # raw playwright: boots the compose stack itself (make e2e)
 ```
+
+`scripts/e2e.sh` is the one to reach for: it waits for dependencies, starts the
+local stack when there is no Docker daemon, and finds a usable Chromium when the
+pinned build is not installed. On the local stack it skips `e2e/image.spec.ts` —
+upload needs the S3 stand-in — and says so; CI runs the whole suite on the
+compose topology.
 
 If you already have the stack up, the tests reuse it — but remember the web
 image bakes the frontend in, so rebuild (`up --build`) after changing `src/`.

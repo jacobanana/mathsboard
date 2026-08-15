@@ -11,3 +11,6 @@ playwright-report
 # Private keys / certificates — never commit
 *.pem
 *.key
+
+# Local dev state: logs, pids, the sync store, screenshots
+.dev

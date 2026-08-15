@@ -2,6 +2,24 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { CONTENT_SCHEMA, CONTENT_SCHEMA_PATH } from "./src/lang/content/schema";
 
+// Minimal local shim, in the same spirit as fileURLToPath below: reading two
+// env vars is not worth pulling @types/node into this project's compile.
+declare const process: { env: Record<string, string | undefined> };
+
+// Where the dev server sends the collaboration backend routes. Two shapes:
+//
+//   compose stack   Caddy fronts everything on :8080 and strips /ys itself
+//                   before proxying to the y-sweet container. The default,
+//                   and what docker-compose.local.yml documents.
+//   local stack     scripts/start_app.sh runs the token API and y-sweet as
+//                   plain processes (no Docker, which a cloud dev container
+//                   has no daemon for). It exports MB_API_TARGET/MB_YS_TARGET
+//                   to point here — and a bare y-sweet serves at its ROOT, so
+//                   this side has to strip the /ys prefix Caddy would have.
+const STACK_ORIGIN = "http://localhost:8080";
+const apiTarget = process.env.MB_API_TARGET ?? STACK_ORIGIN;
+const ysTarget = process.env.MB_YS_TARGET;
+
 export default defineConfig({
   // Served from https://jacobanana.github.io/mathsboard/ on GitHub Pages.
   // Use a relative base so built asset URLs work under the repo subpath.
@@ -27,13 +45,25 @@ export default defineConfig({
     },
   },
   server: {
-    // Dev-time collaboration: proxy the backend routes to the local compose
-    // stack (docker compose -f docker-compose.yml -f docker-compose.local.yml
-    // up), which serves them on :8080. Without that stack running the app
-    // works exactly as before - these only matter once you press Share.
+    // Dev-time collaboration: proxy the backend routes to whichever backend is
+    // running (see STACK_ORIGIN above). Without one the app works exactly as
+    // before - these only matter once you press Share or insert a picture.
     proxy: {
-      "/api": "http://localhost:8080",
-      "/ys": { target: "http://localhost:8080", ws: true },
+      // xfwd adds the X-Forwarded-* headers Caddy would have. The token
+      // endpoint reads them to decide which origin to put inside a minted
+      // token: without them it sees only its own host and hands the browser a
+      // websocket URL on the API's port, which nothing is listening for.
+      "/api": { target: apiTarget, xfwd: true },
+      "/ys": ysTarget
+        ? {
+            target: ysTarget,
+            ws: true,
+            xfwd: true,
+            // A bare y-sweet serves at its root; Caddy's /ys route strips the
+            // prefix itself, so this side only strips when there is no Caddy.
+            rewrite: (p) => p.replace(/^\/ys/, ""),
+          }
+        : { target: STACK_ORIGIN, ws: true, xfwd: true },
     },
   },
 });
