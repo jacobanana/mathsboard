@@ -1,19 +1,16 @@
-// THE CONTENTS SETTINGS PAGE (language board only, burger menu → "Contents").
-// The one place to see everything this device can teach from and manage it:
+// "LIBRARY" — everything this device can teach from, as a list you can manage.
 //
-//   • Content carried by the OPEN BOARD that isn't in your library yet leads,
-//     in its own highlighted section — it already teaches on this board, and
-//     one click saves it for your own boards.
-//   • Your library below: the built-in pack and every pack you've loaded, each
-//     with what it contains, whether it's teaching on this board, and View /
-//     Download / Delete actions.
-//   • "Load content…" imports pack files (validated by the registry).
+// One row per pack: the built-in one, everything you've loaded, and anything the
+// OPEN BOARD brought with it that isn't in your library yet (those lead, in
+// their own highlighted section, because they teach here already and are one
+// click from being yours). Each row says what the pack holds, whether it is on
+// the open board, and offers View / Download / Delete.
 //
-// Creating NEW content lives on its own page (ContentStudio); this page links
-// to it. Copy never mentions the file format — teachers load "content", not
-// JSON.
+// Loading content and creating it live on the other tabs of the same manager
+// (ContentManager); this tab is the inventory. Copy never mentions the file
+// format — teachers load "content", not JSON.
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import {
   BASE_PACK,
   boardPacksNow,
@@ -24,25 +21,13 @@ import {
   removeImportedPack,
   subscribeContent,
 } from "@/lang/content/registry";
-import { downloadPack, importPackFiles } from "@/lang/content/files";
+import { downloadPack } from "@/lang/content/files";
+import { packSummary } from "@/lang/content/boardContent";
 import type { ContentPack } from "@/lang/content/schema";
-import { ContentReview, type ReviewSource } from "@/lang/ContentReview";
-
-/** What a pack holds, in words a teacher scans: "240 words · 60 sentences · 18 verbs". */
-function packSummary(p: ContentPack): string {
-  const n = (count: number, word: string): string =>
-    `${count} ${word}${count === 1 ? "" : "s"}`;
-  return `${n(p.vocab.length, "word")} · ${n(p.sentences.length, "sentence")} · ${n(p.verbs.length, "verb")}`;
-}
-
-type Feedback =
-  | { kind: "ok"; message: string }
-  | { kind: "error"; messages: string[] }
-  | null;
 
 interface PackRowProps {
   pack: ContentPack;
-  /** Small status badges after the name ("built-in", "teaching on this board"). */
+  /** Small status badges after the name ("built-in", "on this board"). */
   badges: string[];
   onView(): void;
   actions: JSX.Element;
@@ -76,13 +61,21 @@ function PackRow({ pack, badges, onView, actions }: PackRowProps): JSX.Element {
 }
 
 export interface ContentLibraryProps {
-  /** Open the content-creation page (make your own pack). */
-  onCreate?: () => void;
+  /** Open a pack's contents (the shared review view). */
+  onReview(pack: ContentPack): void;
+  /** Report the outcome of an action through the manager's shared banner. */
+  onMessage(message: string): void;
+  /** Errors from an action, same banner. */
+  onErrors(messages: string[]): void;
 }
 
-export function ContentLibrary({ onCreate }: ContentLibraryProps): JSX.Element {
-  // Re-render on any registry change — imports, removals, toggles, and the
-  // open board's own packs — so the lists and badges stay live.
+export function ContentLibrary({
+  onReview,
+  onMessage,
+  onErrors,
+}: ContentLibraryProps): JSX.Element {
+  // Re-render on any registry change — loads, deletions, and the open board's
+  // own packs — so the lists and badges stay live.
   useSyncExternalStore(subscribeContent, () =>
     [
       `base:${isBaseActive() ? 1 : 0}`,
@@ -91,81 +84,18 @@ export function ContentLibrary({ onCreate }: ContentLibraryProps): JSX.Element {
     ].join(","),
   );
 
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [feedback, setFeedback] = useState<Feedback>(null);
-  const [review, setReview] = useState<{ source: ReviewSource; title: string } | null>(null);
-
   const packs = importedPacks();
   // Packs the open board carries that aren't in this device's library yet.
   const fromBoard = boardPacksNow();
 
-  if (review) {
-    return (
-      <ContentReview
-        source={review.source}
-        title={review.title}
-        onBack={() => setReview(null)}
-      />
-    );
-  }
-
-  async function handleFiles(files: FileList | null): Promise<void> {
-    if (!files || files.length === 0) return;
-    const { added, errors } = await importPackFiles(files);
-    if (errors.length) setFeedback({ kind: "error", messages: errors });
-    else
-      setFeedback({
-        kind: "ok",
-        message: `Loaded ${added} pack${added === 1 ? "" : "s"} — ready to use on your boards.`,
-      });
-    if (fileRef.current) fileRef.current.value = "";
-  }
-
   function saveFromBoard(pack: ContentPack): void {
     const r = importPackJson(JSON.stringify(pack));
-    setFeedback(
-      r.ok
-        ? { kind: "ok", message: `Saved "${pack.name}" to your library.` }
-        : { kind: "error", messages: r.errors },
-    );
+    if (r.ok) onMessage(`Saved “${pack.name}” to your library.`);
+    else onErrors(r.errors);
   }
 
   return (
-    <div className="about content-library">
-      <div className="cl-head">
-        <div>
-          <h1>Contents</h1>
-          <p className="hint">
-            Every pack this device can teach from. Load new content, see what's
-            inside, download a pack to share it, and delete the ones you no
-            longer need.
-          </p>
-        </div>
-        <button className="btn primary cl-load" onClick={() => fileRef.current?.click()}>
-          Load content…
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          multiple
-          hidden
-          onChange={(e) => void handleFiles(e.target.files)}
-        />
-      </div>
-
-      {feedback?.kind === "ok" && <p className="cs-ok">{feedback.message}</p>}
-      {feedback?.kind === "error" && (
-        <div className="cs-errors">
-          <strong>Couldn't load:</strong>
-          <ul>
-            {feedback.messages.map((m, i) => (
-              <li key={i}>{m}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
+    <>
       {fromBoard.length > 0 && (
         <div className="cl-board-section">
           <h2>
@@ -180,8 +110,8 @@ export function ContentLibrary({ onCreate }: ContentLibraryProps): JSX.Element {
               <PackRow
                 key={p.id}
                 pack={p}
-                badges={["teaching on this board"]}
-                onView={() => setReview({ source: p, title: p.name })}
+                badges={["on this board"]}
+                onView={() => onReview(p)}
                 actions={
                   <button className="btn small" onClick={() => saveFromBoard(p)}>
                     Save to my library
@@ -197,8 +127,8 @@ export function ContentLibrary({ onCreate }: ContentLibraryProps): JSX.Element {
       <ul className="cs-packs">
         <PackRow
           pack={BASE_PACK}
-          badges={["built-in", ...(isBaseActive() ? ["teaching on this board"] : [])]}
-          onView={() => setReview({ source: BASE_PACK, title: BASE_PACK.name })}
+          badges={["built-in", ...(isBaseActive() ? ["on this board"] : [])]}
+          onView={() => onReview(BASE_PACK)}
           actions={
             <button className="btn small" onClick={() => downloadPack(BASE_PACK)}>
               Download
@@ -209,8 +139,8 @@ export function ContentLibrary({ onCreate }: ContentLibraryProps): JSX.Element {
           <PackRow
             key={p.id}
             pack={p}
-            badges={isPackActive(p.id) ? ["teaching on this board"] : []}
-            onView={() => setReview({ source: p, title: p.name })}
+            badges={isPackActive(p.id) ? ["on this board"] : []}
+            onView={() => onReview(p)}
             actions={
               <>
                 <button className="btn small" onClick={() => downloadPack(p)}>
@@ -220,10 +150,9 @@ export function ContentLibrary({ onCreate }: ContentLibraryProps): JSX.Element {
                   className="btn small cs-remove"
                   onClick={() => {
                     removeImportedPack(p.id);
-                    setFeedback({
-                      kind: "ok",
-                      message: `Deleted "${p.name}". Loading its file again brings it back.`,
-                    });
+                    onMessage(
+                      `Deleted “${p.name}”. Loading its file again brings it back.`,
+                    );
                   }}
                 >
                   Delete
@@ -234,17 +163,10 @@ export function ContentLibrary({ onCreate }: ContentLibraryProps): JSX.Element {
         ))}
       </ul>
       <p className="hint">
-        The built-in content can't be deleted. Content carried by a board stays
-        with that board even if it isn't in your library.
+        The built-in content can&rsquo;t be deleted. Content carried by a board
+        stays with that board even if it isn&rsquo;t in your library. Choose what
+        the open board teaches from on the <b>This board</b> tab.
       </p>
-
-      {onCreate && (
-        <p>
-          <button className="btn cl-create-link" onClick={onCreate}>
-            Create your own content →
-          </button>
-        </p>
-      )}
-    </div>
+    </>
   );
 }

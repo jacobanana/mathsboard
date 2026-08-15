@@ -4,7 +4,12 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { CATEGORIES, LANGUAGES, LEVELS, SENTENCES, VOCAB } from "@/lang/data";
-import { importPackJson, removeImportedPack, setBaseActive } from "@/lang/content/registry";
+import {
+  importPackJson,
+  removeImportedPack,
+  setBaseActive,
+  setPackActive,
+} from "@/lang/content/registry";
 import {
   categoriesForSentences,
   categoriesForVocab,
@@ -210,8 +215,16 @@ describe("phonetics threading", () => {
     setBaseActive(true);
   });
 
-  it("carries the reading onto the resolved learning side, and leaves it undefined where absent", () => {
+  /** Load the pack into the library AND switch it on — loading alone only adds
+   *  it (what a board teaches from is the board's own choice, see
+   *  content/boardContent.ts). */
+  const loadJa = (): void => {
     expect(importPackJson(JSON.stringify(jaPack)).ok).toBe(true);
+    setPackActive(jaPack.id, true);
+  };
+
+  it("carries the reading onto the resolved learning side, and leaves it undefined where absent", () => {
+    loadJa();
     const pair = { known: "en", learning: "ja" };
 
     const hello = vocabFor("greetings", "mixed", pair).find((v) => v.learning === "こんにちは");
@@ -225,7 +238,7 @@ describe("phonetics threading", () => {
   });
 
   it("orients the reading with the pair (reading follows Japanese when it is the known side)", () => {
-    expect(importPackJson(JSON.stringify(jaPack)).ok).toBe(true);
+    loadJa();
     const rev = vocabFor("greetings", "mixed", { known: "ja", learning: "en" }).find(
       (v) => v.known === "こんにちは",
     );

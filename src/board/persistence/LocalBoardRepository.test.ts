@@ -66,6 +66,35 @@ describe("list() is scoped to the repository's subject", () => {
   });
 });
 
+// The boards list has to say what a language board teaches without loading
+// every document twice, so a summary carries the board's declared content.
+describe("list() carries a language board's content choice", () => {
+  it("reports what the board declares", async () => {
+    await language.save(
+      aDoc({
+        name: "Spanish lesson",
+        subject: "language",
+        contentSetup: { known: "en", learning: "es", packIds: ["base", "es-pack"] },
+      }),
+    );
+    const [summary] = await language.list();
+    expect(summary.content).toEqual({
+      known: "en",
+      learning: "es",
+      packIds: ["base", "es-pack"],
+    });
+  });
+
+  it("says nothing for a board that declares nothing, or declares nonsense", async () => {
+    await language.save(aDoc({ name: "Plain", subject: "language" }));
+    const bad = aDoc({ name: "Broken", subject: "language" });
+    (bad as { contentSetup?: unknown }).contentSetup = { known: "en", packIds: [] };
+    localStorage.setItem("mathsboard:" + bad.id, JSON.stringify(bad));
+
+    for (const summary of await language.list()) expect(summary.content).toBeUndefined();
+  });
+});
+
 describe("the working draft is per-subject", () => {
   it("keeps maths and language drafts independent", async () => {
     await maths.saveDraft({

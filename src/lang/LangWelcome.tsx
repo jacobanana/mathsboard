@@ -31,6 +31,8 @@ interface LangWelcomeProps {
   onOpen: () => void;
   /** Open the reading-voices settings. */
   onVoices?: () => void;
+  /** Open the content manager (load / create / manage packs). */
+  onContent?: () => void;
 }
 
 export function LangWelcome({
@@ -38,6 +40,7 @@ export function LangWelcome({
   onNew,
   onOpen,
   onVoices,
+  onContent,
 }: LangWelcomeProps): JSX.Element {
   const board = useBoardStore((s) => s.board);
   const sourceId = useBoardStore((s) => s.sourceId);
@@ -161,11 +164,18 @@ export function LangWelcome({
         )}
       </div>
 
-      {onVoices && (
-        <button type="button" className="welcome-voices-link" onClick={onVoices}>
-          🔊 Choose reading voices
-        </button>
-      )}
+      <div className="lw-links">
+        {onContent && (
+          <button type="button" className="welcome-voices-link" onClick={onContent}>
+            📚 Manage content
+          </button>
+        )}
+        {onVoices && (
+          <button type="button" className="welcome-voices-link" onClick={onVoices}>
+            🔊 Choose reading voices
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -6,18 +6,17 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   importPackJson,
   importedPacks,
-  isBaseActive,
-  isPackActive,
   removeImportedPack,
   setBaseActive,
+  setPackActive,
 } from "@/lang/content/registry";
 import {
-  applyChoice,
   directionFor,
   groupPacks,
   initialChoice,
   packGroups,
   selectablePacks,
+  setupFrom,
   signatureOf,
 } from "@/lang/packDirectory";
 import type { ContentPack } from "@/lang/content/schema";
@@ -119,31 +118,34 @@ describe("initialChoice", () => {
   });
 
   it("prefers the group with more active packs", () => {
-    importPackJson(JSON.stringify(spanishPack())); // importing selects only it
+    importPackJson(JSON.stringify(spanishPack()));
+    setPackActive("es-extra", true); // teaching from it — the picker opens there
     const { group, selected } = initialChoice(packGroups());
     expect(group?.signature).toBe("en,es");
     expect([...selected]).toEqual(["es-extra"]);
   });
 });
 
-describe("applyChoice", () => {
-  it("switches active packs to exactly the selection and sets the pair", () => {
+describe("setupFrom", () => {
+  it("records the direction and the chosen packs, base first", () => {
     importPackJson(JSON.stringify(frenchPack()));
-    applyChoice(new Set(["base", "fr-extra"]), { known: "fr", learning: "en" });
-    expect(isBaseActive()).toBe(true);
-    expect(isPackActive("fr-extra")).toBe(true);
-    expect(useLangStore.getState().pair).toEqual({ known: "fr", learning: "en" });
+    expect(setupFrom(new Set(["fr-extra", "base"]), { known: "fr", learning: "en" })).toEqual({
+      known: "fr",
+      learning: "en",
+      packIds: ["base", "fr-extra"],
+    });
   });
 
-  it("can drop the base pack when another pack carries the board", () => {
+  it("can leave the built-in pack out when another pack carries the board", () => {
     importPackJson(JSON.stringify(frenchPack()));
-    applyChoice(new Set(["fr-extra"]), { known: "en", learning: "fr" });
-    expect(isBaseActive()).toBe(false);
-    expect(isPackActive("fr-extra")).toBe(true);
+    expect(setupFrom(new Set(["fr-extra"]), { known: "en", learning: "fr" }).packIds).toEqual([
+      "fr-extra",
+    ]);
   });
 
-  it("ignores an invalid pair rather than corrupting the store", () => {
-    applyChoice(new Set(["base"]), { known: "en", learning: "en" });
-    expect(useLangStore.getState().pair).toEqual({ known: "en", learning: "fr" });
+  it("ignores ids that are not pickable packs", () => {
+    expect(setupFrom(new Set(["base", "ghost"]), { known: "en", learning: "fr" }).packIds).toEqual([
+      "base",
+    ]);
   });
 });

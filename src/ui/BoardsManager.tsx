@@ -17,9 +17,14 @@ import { useCollabStore } from "@/collab/collabStore";
 import { formatBoardCode, isShortCode } from "@/collab/session";
 import type { BoardSummary } from "@/board/types";
 import { NamePrompt } from "@/ui/NamePrompt";
+import { IS_LANGUAGE } from "@/subject";
+import { describeSetup, setupOf } from "@/lang/content/boardContent";
 
 interface BoardsManagerProps {
   onClose: () => void;
+  /** Open the content manager for the board that is open right now (language
+   *  board only) — "this board teaches X" is a link to changing X. */
+  onContent?: () => void;
   /**
    * Override the "New board" action. The language board passes this to ask for
    * the languages first (langNew modal); when absent, New creates a blank board
@@ -57,7 +62,11 @@ function lastSaved(ts: number): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function BoardsManager({ onClose, onNewBoard }: BoardsManagerProps): JSX.Element {
+export function BoardsManager({
+  onClose,
+  onContent,
+  onNewBoard,
+}: BoardsManagerProps): JSX.Element {
   const board = useBoardStore((s) => s.board);
   const sourceId = useBoardStore((s) => s.sourceId);
   const dirty = useBoardStore((s) => s.dirty);
@@ -227,6 +236,9 @@ export function BoardsManager({ onClose, onNewBoard }: BoardsManagerProps): JSX.
     );
   }
 
+  // What the OPEN board teaches (language board): its declared languages and
+  // content packs, read the same way the store reads them when it opens one.
+  const teaches = IS_LANGUAGE ? describeSetup(setupOf(board)) : "";
   const displayName = isSavedBoard(sourceId, shared) ? board.name : "Untitled draft";
   const statusText = shared
     ? "Shared online — everyone edits together"
@@ -252,6 +264,17 @@ export function BoardsManager({ onClose, onNewBoard }: BoardsManagerProps): JSX.
             {dirty && <span className="bm-dot" title="Unsaved changes" />}
           </div>
           <div className="bm-current-status">{statusText}</div>
+          {IS_LANGUAGE && teaches && (
+            <button
+              type="button"
+              className="bm-teaches bm-teaches-link"
+              title="Change what this board teaches"
+              onClick={onContent}
+              disabled={!onContent}
+            >
+              {teaches}
+            </button>
+          )}
         </div>
         <div className="bm-current-actions">
           {shared ? (
@@ -307,6 +330,13 @@ export function BoardsManager({ onClose, onNewBoard }: BoardsManagerProps): JSX.
                     {lastSaved(b.updatedAt)}
                     {code ? " · " + code : ""}
                   </div>
+                  {/* What this saved board teaches, so a language is picked from
+                      the list rather than discovered after opening. Shared
+                      boards keep their content online behind a pointer, so
+                      there is nothing to show for them until they are joined. */}
+                  {IS_LANGUAGE && b.content && (
+                    <div className="bm-teaches">{describeSetup(b.content)}</div>
+                  )}
                 </div>
                 <div className="bm-row-actions">
                   <button

@@ -171,7 +171,7 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .about blockquote{margin:0 0 12px;padding:9px 13px;background:#F4F6F5;border-left:3px solid var(--accent);border-radius:0 8px 8px 0;color:var(--muted);font-size:13px;}
 .about blockquote p:last-child{margin:0;}
 /* --- content-creation help page (language board) --- */
-.card:has(.content-studio){width:min(620px,94vw);}
+.card:has(.content-manager){width:min(700px,94vw);}
 .content-studio strong{font-weight:700;}
 .cs-buttons{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;}
 .cs-buttons .btn{color:var(--ink);background:#EEF1F0;min-height:40px;padding:0 14px;}
@@ -690,6 +690,11 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .bm-row-name{display:flex;align-items:center;gap:6px;font-weight:600;font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .bm-tag{flex:0 0 auto;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:2px 6px;}
 .bm-row-time{font-size:12px;color:var(--muted);margin-top:1px;}
+/* What a language board teaches: its direction + content packs. */
+.bm-teaches{font-size:12px;font-weight:600;color:var(--ink);margin-top:3px;}
+button.bm-teaches-link{font-family:inherit;text-align:left;padding:0;border:none;background:none;cursor:pointer;text-decoration:underline;text-decoration-color:#D8DEDC;text-underline-offset:3px;}
+button.bm-teaches-link:hover:not(:disabled){text-decoration-color:var(--accent);}
+button.bm-teaches-link:disabled{cursor:default;text-decoration:none;}
 .bm-row-actions{display:flex;gap:6px;flex:0 0 auto;}
 .bm-empty{color:var(--muted);font-size:14px;text-align:center;padding:16px 0;}
 /* Manager buttons sit on the light card, so override the dark-toolbar .btn look. */
@@ -776,7 +781,8 @@ kbd{font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(-
 .lw-option.open:hover .lw-arrow{transform:none;}
 /* The Join code form, revealed inline under its choice row. */
 .lw-join{padding:2px 2px 4px;animation:rise-left .16s cubic-bezier(.34,1.4,.64,1);}
-.lang-welcome .welcome-voices-link{margin-top:12px;}
+.lang-welcome .lw-links{display:flex;flex-wrap:wrap;gap:4px;margin-top:12px;}
+.lang-welcome .lw-links .welcome-voices-link{margin:0;}
 .share-linkrow{display:flex;gap:8px;margin:12px 0 4px;}
 .share-linkrow input{flex:1;min-width:0;font-family:inherit;font-size:13.5px;font-weight:600;border:2px solid #E0E4E2;border-radius:10px;padding:9px 11px;color:var(--ink);background:#F7F9F8;}
 .share-linkrow input:focus{outline:none;border-color:var(--accent);}
@@ -1058,6 +1064,9 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 .pack-list label.pack-name input[type=checkbox]:disabled{cursor:default;}
 .pack-badge{font-size:11px;font-weight:700;color:var(--muted);background:#EEF1F0;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px;margin-left:7px;}
 .pack-combine-hint{margin:0;}
+.pack-load-row{display:flex;flex-wrap:wrap;gap:8px;}
+.pack-load-row .btn.small{background:#EEF1F0;color:var(--ink);padding:7px 13px;min-height:0;}
+.pack-load-row .btn.small:hover{background:#E3E8E6;}
 .pack-name-main{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .pack-counts{font-size:12px;font-weight:500;color:var(--muted);}
 
@@ -1078,8 +1087,17 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 .board-notice .btn.small:hover{background:#E3E8E6;}
 .board-notice .board-notice-dismiss{background:transparent;}
 
-/* The Contents page (settings: every loaded pack). */
-.card:has(.content-library){width:min(680px,94vw);}
+/* The content manager (one screen: this board / library / create). */
+.cm-tabs{display:flex;gap:6px;margin:14px 0 12px;padding:4px;border-radius:999px;background:#EEF1F0;}
+.cm-tab{flex:1;font-family:inherit;font-size:13.5px;font-weight:700;color:var(--muted);padding:8px 10px;border:none;border-radius:999px;background:transparent;cursor:pointer;}
+.cm-tab:hover{color:var(--ink);}
+.cm-tab.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.10);}
+.cm-board .pack-list{margin-bottom:12px;}
+.cm-board .pack-list .btn.small{background:#EEF1F0;color:var(--ink);padding:6px 12px;min-height:0;flex-shrink:0;}
+.cm-board .pack-list .btn.small:hover{background:#E3E8E6;}
+.cm-langtoggle{margin:12px 0;}
+.cm-missing{margin:0 0 10px;padding:10px 13px;background:#FFF6E5;border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-size:13px;color:var(--ink);}
+/* The library tab's pack rows. */
 .cl-head{display:flex;align-items:flex-start;gap:12px;}
 .cl-head>div{flex:1;min-width:0;}
 .cl-head .cl-load{flex-shrink:0;background:var(--bar);color:#fff;min-height:40px;padding:0 14px;margin-top:4px;}
@@ -1089,9 +1107,7 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 .cl-board-section .cs-packs li{border-bottom-color:#E1EAE8;}
 .cl-pack-main{display:flex;flex-direction:column;gap:2px;min-width:0;align-items:flex-start;}
 .cl-pack-counts{font-size:12px;font-weight:500;color:var(--muted);}
-.content-library .cs-badge{margin-left:4px;}
-.cl-create-link{background:#EEF1F0;color:var(--ink);min-height:40px;padding:0 14px;}
-.cl-create-link:hover{background:#E3E8E6;}
+.content-manager .cs-badge{margin-left:4px;}
 
 @media (prefers-reduced-motion:reduce){
   .lang-dir-swap:hover{transform:none;}

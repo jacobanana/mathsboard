@@ -556,6 +556,20 @@ export function setContentPacks(packs: BoardDocument["contentPacks"]): void {
   }, SEED_ORIGIN);
 }
 
+/**
+ * Set the board's CONTENT CHOICE — which languages it teaches and from which
+ * packs (see BoardDocument.contentSetup). Same contract as setContentPacks:
+ * SEED_ORIGIN, so choosing content for a board syncs to collaborators without
+ * landing on the undo stack.
+ */
+export function setContentSetup(setup: BoardDocument["contentSetup"]): void {
+  const s = must();
+  s.h.doc.transact(() => {
+    if (setup) s.h.meta.set("contentSetup", setup);
+    else if (s.h.meta.has("contentSetup")) s.h.meta.delete("contentSetup");
+  }, SEED_ORIGIN);
+}
+
 // --- board id <-> URL ----------------------------------------------------------
 
 const BOARD_ID_RE = /^[A-Za-z0-9_-]{6,64}$/;

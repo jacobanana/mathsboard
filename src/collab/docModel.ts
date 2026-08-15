@@ -28,7 +28,7 @@
 
 import * as Y from "yjs";
 import type { AnyBoardObject, BoardDocument, Stroke } from "@/board/types";
-import { UNTITLED_NAME } from "@/board/types";
+import { UNTITLED_NAME, isContentSetup } from "@/board/types";
 import { migrateDocument } from "@/board/migrations";
 
 /**
@@ -107,6 +107,10 @@ export function seedDoc(h: DocHandles, board: BoardDocument): void {
     if (board.contentPacks && board.contentPacks.length > 0) {
       h.meta.set("contentPacks", board.contentPacks);
     }
+    // The board's content CHOICE travels the same way (see contentSetup): one
+    // small last-writer-wins value, so a collaborator opening the board teaches
+    // the same languages from the same packs.
+    if (board.contentSetup) h.meta.set("contentSetup", board.contentSetup);
     board.objects.forEach((o, i) => {
       h.objects.set(o.id, toYShape({ order: i, ...o }));
     });
@@ -175,6 +179,7 @@ export class DocMirror {
 
     const meta = this.h.meta;
     const contentPacks = meta.get("contentPacks") as BoardDocument["contentPacks"];
+    const contentSetup = meta.get("contentSetup") as BoardDocument["contentSetup"];
     const subject = meta.get("subject") as BoardDocument["subject"];
     return {
       id: (meta.get("id") as string) ?? fallbackId,
@@ -186,6 +191,7 @@ export class DocMirror {
       updatedAt: Date.now(),
       ...(subject ? { subject } : {}),
       ...(Array.isArray(contentPacks) && contentPacks.length > 0 ? { contentPacks } : {}),
+      ...(isContentSetup(contentSetup) ? { contentSetup } : {}),
     };
   }
 }

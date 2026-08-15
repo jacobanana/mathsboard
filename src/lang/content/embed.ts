@@ -45,11 +45,14 @@ export function packsUsedBy(
 
   if (langs.size === 0 && cats.size === 0 && verbs.size === 0) return [];
 
+  // `packs` can include a board's own embedded packs, which come straight off a
+  // document and have not been through validatePack's normalising gate — so a
+  // pack that legitimately omits a section is read defensively here.
   return packs.filter(
     (p) =>
-      p.languages.some((l) => langs.has(l.code)) ||
-      p.categories.some((c) => cats.has(c.id)) ||
-      p.verbs.some((v) => verbs.has(v.id)),
+      (p.languages ?? []).some((l) => langs.has(l.code)) ||
+      (p.categories ?? []).some((c) => cats.has(c.id)) ||
+      (p.verbs ?? []).some((v) => verbs.has(v.id)),
   );
 }
 

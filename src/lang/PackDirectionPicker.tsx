@@ -9,17 +9,25 @@
 // committed until apply() runs (on the modal's Start), so cancelling leaves the
 // learner's current packs and pair untouched.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
-  applyChoice,
   directionFor,
   initialChoice,
   packGroups,
+  setupFrom,
   type PackGroup,
 } from "@/lang/packDirectory";
-import { BASE_PACK, importedPacks } from "@/lang/content/registry";
+import {
+  BASE_PACK,
+  contentVersion,
+  importedPacks,
+  subscribeContent,
+} from "@/lang/content/registry";
 import { DirectionSwap } from "@/lang/DirectionSwap";
+import { packSummary } from "@/lang/content/boardContent";
+import { importPackFiles } from "@/lang/content/files";
 import type { LangPair } from "@/lang/pairs";
+import type { BoardContentSetup } from "@/board/types";
 import { useLangStore } from "@/lang/store";
 
 /** The pick-state + handlers, owned by the host modal so its Start button can
@@ -35,24 +43,55 @@ export interface PackDirection {
   setLearning(code: string): void;
   swap(): void;
   canStart: boolean;
-  apply(): void;
+  /** The choice, as the content setup a new board is stamped with. */
+  setup(): BoardContentSetup;
 }
 
 export function usePackDirection(): PackDirection {
-  const groups = useMemo(() => packGroups(), []);
-  const init = useMemo(() => initialChoice(groups), [groups]);
+  // Content can be LOADED from inside this flow ("Load content…" on the content
+  // step), so the groups are read fresh on every catalogue change rather than
+  // memoised once at mount — otherwise the pack you just loaded wouldn't appear.
+  const version = useSyncExternalStore(subscribeContent, contentVersion);
+  const groups = useMemo(() => packGroups(), [version]);
+  const init = useMemo(() => initialChoice(packGroups()), []);
   // The learner's current pair seeds the direction, kept where the group allows.
   const startPair = useMemo(() => useLangStore.getState().pair, []);
 
-  const [group, setGroup] = useState<PackGroup | null>(init.group);
+  // The chosen group is held by SIGNATURE, not by object: `groups` is rebuilt
+  // whenever content changes, so a stored object would go stale.
+  const [signature, setSignature] = useState<string | null>(init.group?.signature ?? null);
   const [selected, setSelected] = useState<Set<string>>(init.selected);
   const [pair, setPair] = useState<LangPair>(() =>
     init.group ? directionFor(init.group, startPair) : startPair,
   );
 
+  const group = groups.find((g) => g.signature === signature) ?? groups[0] ?? null;
+
+  // A pack loaded from inside the flow is what the learner just asked for, so
+  // tick it: same languages as the group they're on → add it to the selection;
+  // different languages → move to its group with just it ticked.
+  const known = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const ids = new Set(groups.flatMap((g) => g.packs.map((p) => p.id)));
+    const before = known.current;
+    known.current = ids;
+    if (!before) return; // first run — nothing was "just loaded"
+    const fresh = [...ids].filter((id) => !before.has(id));
+    if (fresh.length === 0) return;
+    const landed = groups.find((g) => g.packs.some((p) => p.id === fresh[0]));
+    if (!landed) return;
+    if (landed.signature === signature) {
+      setSelected((prev) => new Set([...prev, ...fresh]));
+    } else {
+      setSignature(landed.signature);
+      setSelected(new Set(fresh));
+      setPair((p) => directionFor(landed, p));
+    }
+  }, [groups, signature]);
+
   function chooseGroup(next: PackGroup): void {
-    if (next.signature === group?.signature) return;
-    setGroup(next);
+    if (next.signature === signature) return;
+    setSignature(next.signature);
     // Switching languages can't keep the old selection (different signature):
     // start the new group from its built-in / first pack.
     const seed = next.packs.find((p) => p.isBase) ?? next.packs[0];
@@ -90,18 +129,23 @@ export function usePackDirection(): PackDirection {
     setPair((p) => ({ known: p.learning, learning: p.known }));
   }
 
+  // Only packs the CHOSEN group offers can be part of the choice — a stale tick
+  // from a group we've moved on from must never reach the board.
+  const inGroup = new Set(group?.packs.map((p) => p.id) ?? []);
+  const picked = new Set([...selected].filter((id) => inGroup.has(id)));
+
   // Validate the direction against the CHOSEN group, not the live catalogue: the
   // selected pack may add a language that isn't active yet (it's only committed on
   // apply), so isValidPair() against the current catalogue would wrongly reject it.
   const codes = group?.languages.map((l) => l.code) ?? [];
   const pairFits =
     pair.known !== pair.learning && codes.includes(pair.known) && codes.includes(pair.learning);
-  const canStart = group != null && selected.size > 0 && pairFits;
+  const canStart = group != null && picked.size > 0 && pairFits;
 
   return {
     groups,
     group,
-    selected,
+    selected: picked,
     pair,
     chooseGroup,
     togglePack,
@@ -109,7 +153,7 @@ export function usePackDirection(): PackDirection {
     setLearning,
     swap,
     canStart,
-    apply: () => applyChoice(selected, pair),
+    setup: () => setupFrom(picked, pair),
   };
 }
 
@@ -121,6 +165,11 @@ function langLabel(group: PackGroup, code: string): { flag: string; name: string
 
 interface Props {
   dir: PackDirection;
+}
+
+interface ContentStepProps extends Props {
+  /** Open the full content manager (create your own, delete, download). */
+  onManage?: () => void;
 }
 
 /** STEP 1 — the language: every language set content exists for, as pickable
@@ -213,20 +262,27 @@ export function PackLanguageStep({ dir }: Props): JSX.Element {
   );
 }
 
-/** What a pack holds, for the content step's row: "240 words · 60 sentences ·
- *  18 verbs". Resolved from the registry (base or the imported library). */
-function packSummary(id: string, isBase: boolean): string {
+/** What a pack holds, for the content step's row. Resolved from the registry
+ *  (base or the imported library) through the one shared wording. */
+function summaryOf(id: string, isBase: boolean): string {
   const p = isBase ? BASE_PACK : importedPacks().find((x) => x.id === id);
-  if (!p) return "";
-  const n = (count: number, word: string): string =>
-    `${count} ${word}${count === 1 ? "" : "s"}`;
-  return `${n(p.vocab.length, "word")} · ${n(p.sentences.length, "sentence")} · ${n(p.verbs.length, "verb")}`;
+  return p ? packSummary(p) : "";
 }
 
 /** STEP 2 — the content: the packs covering the chosen languages, each showing
- *  what it holds. Several combine; at least one stays ticked. */
-export function PackContentStep({ dir }: Props): JSX.Element {
+ *  what it holds. Several combine; at least one stays ticked. Content can be
+ *  loaded right here, without leaving the flow — a newly loaded pack is ticked
+ *  for you (see usePackDirection). */
+export function PackContentStep({ dir, onManage }: ContentStepProps): JSX.Element {
   const { group, selected } = dir;
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [errors, setErrors] = useState<string[]>([]);
+
+  async function handleFiles(files: FileList | null): Promise<void> {
+    if (!files || files.length === 0) return;
+    setErrors((await importPackFiles(files)).errors);
+    if (fileRef.current) fileRef.current.value = "";
+  }
 
   if (!group) {
     return <p className="hint">No language content is available.</p>;
@@ -253,7 +309,7 @@ export function PackContentStep({ dir }: Props): JSX.Element {
                     {p.name}
                     {p.isBase && <span className="pack-badge">built-in</span>}
                   </span>
-                  <span className="pack-counts">{packSummary(p.id, p.isBase)}</span>
+                  <span className="pack-counts">{summaryOf(p.id, p.isBase)}</span>
                 </span>
               </label>
             </li>
@@ -264,6 +320,36 @@ export function PackContentStep({ dir }: Props): JSX.Element {
       {group.packs.length > 1 && (
         <p className="hint pack-combine-hint">Tick several packs to combine them.</p>
       )}
+
+      {errors.length > 0 && (
+        <div className="cs-errors">
+          <strong>Couldn&rsquo;t load:</strong>
+          <ul>
+            {errors.map((m, i) => (
+              <li key={i}>{m}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="pack-load-row">
+        <button className="btn small" onClick={() => fileRef.current?.click()}>
+          Load content…
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          multiple
+          hidden
+          onChange={(e) => void handleFiles(e.target.files)}
+        />
+        {onManage && (
+          <button className="btn small" onClick={onManage}>
+            Manage content →
+          </button>
+        )}
+      </div>
     </div>
   );
 }

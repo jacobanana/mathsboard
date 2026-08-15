@@ -1,5 +1,5 @@
 // The toolbar burger ("☰") and its popover: the lesser-used actions that used
-// to crowd the toolbar — Join, Paper, Boards, Save image, Shortcuts. Owns its
+// to crowd the toolbar — Join, Paper, Boards, Save image, Content, Shortcuts. Owns its
 // own open state; closes on pick or any outside click (same pattern as
 // PaperMenu).
 //
@@ -23,7 +23,6 @@ import {
   KeyboardIcon,
   AboutIcon,
   ContentIcon,
-  PlusIcon,
   SpeakerIcon,
 } from "@/ui/icons";
 
@@ -36,10 +35,8 @@ export interface OverflowMenuProps {
   onHelp: () => void;
   /** Open the About & credits sheet (open source, privacy, licence). */
   onAbout: () => void;
-  /** Open the content-creation help page (language board only). */
+  /** Open the content manager (language board only). */
   onContent: () => void;
-  /** Open the Contents page — loaded packs (language board only). */
-  onLibrary: () => void;
   /** Open the text-to-speech voices settings (language board only). */
   onVoices: () => void;
 }
@@ -134,26 +131,14 @@ export function OverflowMenu(props: OverflowMenuProps): JSX.Element {
           )}
           {IS_LANGUAGE && (
             <button
-              id="libraryBtn"
-              title="Contents — every language pack this board can teach from"
-              onClick={pick(props.onLibrary)}
+              id="contentBtn"
+              title="Content — what this board teaches, your packs, and creating your own"
+              onClick={pick(props.onContent)}
             >
               <span className="ico">
                 <ContentIcon />
               </span>
-              <span className="label">Contents</span>
-            </button>
-          )}
-          {IS_LANGUAGE && (
-            <button
-              id="contentBtn"
-              title="Create content — write your own words, sentences & verbs pack"
-              onClick={pick(props.onContent)}
-            >
-              <span className="ico">
-                <PlusIcon />
-              </span>
-              <span className="label">Create content</span>
+              <span className="label">Content</span>
             </button>
           )}
           <button

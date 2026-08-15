@@ -57,6 +57,15 @@ function spanishPack(id = "test-es"): ContentPack {
   };
 }
 
+/** Load a pack into the library AND switch it on. Loading alone only adds a
+ *  pack to the library now — what teaches is the open board's declared choice
+ *  (see content/boardContent.ts) — so tests about the live catalogue say so. */
+function load(pack: ContentPack | Record<string, unknown>): void {
+  const r = importPackJson(JSON.stringify(pack));
+  expect(r.ok).toBe(true);
+  if (r.ok) setPackActive(r.pack.id, true);
+}
+
 afterEach(() => {
   // Undo anything a test imported so the shared registry state stays clean.
   for (const p of [...importedPacks()]) removeImportedPack(p.id);
@@ -185,8 +194,7 @@ describe("importPackJson / registry", () => {
 
   it("adds a pack's languages, vocab, sentences and verbs to the live catalogue", () => {
     expect(languageByCode("es")).toBeUndefined();
-    const r = importPackJson(JSON.stringify(spanishPack()));
-    expect(r.ok).toBe(true);
+    load(spanishPack());
 
     // data.ts arrays are mirrored in place.
     expect(languageByCode("es")?.name).toBe("Spanish");
@@ -214,7 +222,7 @@ describe("importPackJson / registry", () => {
   });
 
   it("removing a pack drops its content again", () => {
-    importPackJson(JSON.stringify(spanishPack()));
+    load(spanishPack());
     expect(currentContent().vocab.some((v) => v.terms.es === "rojo")).toBe(true);
     expect(removeImportedPack("test-es")).toBe(true);
     expect(currentContent().vocab.some((v) => v.terms.es === "rojo")).toBe(false);
@@ -297,45 +305,45 @@ describe("active-pack selection", () => {
     };
   }
 
-  it("loading a pack makes it the only active one", () => {
+  it("loading a pack adds it to the library without switching it on", () => {
+    // Loading content must not silently change what the open board teaches —
+    // that is the board's own declared choice. It used to, which is how loading
+    // a second pack for the same languages dropped the first.
     importPackJson(JSON.stringify(spanishPack("a")));
     importPackJson(JSON.stringify(germanPack("b")));
-    // The most recent import is active; the earlier one was switched off.
-    expect(activePackIds()).toEqual(["b"]);
-    expect(isPackActive("a")).toBe(false);
-    expect(isPackActive("b")).toBe(true);
-    // Only the active pack's content is in the catalogue (base stays on).
-    expect(currentContent().vocab.some((v) => v.terms.de === "rot")).toBe(true);
+    expect(importedPacks().map((p) => p.id)).toEqual(["a", "b"]);
+    expect(activePackIds()).toEqual([]);
+    expect(isBaseActive()).toBe(true);
     expect(currentContent().vocab.some((v) => v.terms.es === "rojo")).toBe(false);
+    expect(currentContent().vocab.some((v) => v.terms.de === "rot")).toBe(false);
   });
 
   it("keeps base combined with a same-language import but drops it for a different one", () => {
     // A same-language import (English↔French) stays combined with the base pack.
-    importPackJson(JSON.stringify(frenchPack("fr2")));
+    load(frenchPack("fr2"));
     expect(isBaseActive()).toBe(true);
     expect(currentContent().languages.some((l) => l.code === "fr")).toBe(true);
     removeImportedPack("fr2");
     // A different-language import (English↔Spanish) switches base off, so the
     // board isn't left mixing English↔French with English↔Spanish content.
-    importPackJson(JSON.stringify(spanishPack("es")));
+    load(spanishPack("es"));
     expect(isBaseActive()).toBe(false);
     expect(currentContent().languages.some((l) => l.code === "fr")).toBe(false);
     expect(currentContent().languages.some((l) => l.code === "es")).toBe(true);
   });
 
   it("combines several packs that teach the SAME languages", () => {
-    importPackJson(JSON.stringify(spanishPack("a")));
-    importPackJson(JSON.stringify(spanishPackBlue("b"))); // now only "b" is active
-    setPackActive("a", true); // both English↔Spanish — combine them
+    load(spanishPack("a"));
+    load(spanishPackBlue("b")); // both English↔Spanish — they combine
     expect(activePackIds().sort()).toEqual(["a", "b"]);
     expect(currentContent().vocab.some((v) => v.terms.es === "rojo")).toBe(true);
     expect(currentContent().vocab.some((v) => v.terms.es === "azul")).toBe(true);
   });
 
   it("won't combine packs of different languages — switching one on drops the other", () => {
-    importPackJson(JSON.stringify(spanishPack("a"))); // English↔Spanish
-    importPackJson(JSON.stringify(germanPack("b"))); // English↔German; now only "b" active
-    setPackActive("a", true); // different languages — replaces German, doesn't merge
+    load(spanishPack("a")); // English↔Spanish
+    load(germanPack("b")); // English↔German — different languages, so it replaces
+    setPackActive("a", true); // …and switching Spanish back on drops German again
     expect(activePackIds()).toEqual(["a"]);
     expect(isPackActive("b")).toBe(false);
     // The base pack (English↔French) can't join a different-language selection either.
@@ -345,7 +353,7 @@ describe("active-pack selection", () => {
   });
 
   it("switching a pack off drops its content without removing it", () => {
-    importPackJson(JSON.stringify(spanishPack("a")));
+    load(spanishPack("a"));
     expect(currentContent().vocab.some((v) => v.terms.es === "rojo")).toBe(true);
     setPackActive("a", false);
     expect(currentContent().vocab.some((v) => v.terms.es === "rojo")).toBe(false);
@@ -355,7 +363,7 @@ describe("active-pack selection", () => {
   });
 
   it("removing a pack takes it out of the active set", () => {
-    importPackJson(JSON.stringify(spanishPack("a")));
+    load(spanishPack("a"));
     expect(isPackActive("a")).toBe(true);
     removeImportedPack("a");
     expect(activePackIds()).toEqual([]);
@@ -379,7 +387,7 @@ describe("base-pack selection", () => {
   });
 
   it("can be switched off once another pack is active", () => {
-    importPackJson(JSON.stringify(spanishPack("es")));
+    load(spanishPack("es"));
     expect(canDisableBase()).toBe(true);
     setBaseActive(false);
     expect(isBaseActive()).toBe(false);
@@ -389,7 +397,7 @@ describe("base-pack selection", () => {
   });
 
   it("comes back on automatically when the last other pack is switched off", () => {
-    importPackJson(JSON.stringify(spanishPack("es")));
+    load(spanishPack("es"));
     setBaseActive(false);
     expect(isBaseActive()).toBe(false);
     setPackActive("es", false); // no other content left — base must return
@@ -399,11 +407,58 @@ describe("base-pack selection", () => {
   });
 
   it("comes back on automatically when the last other pack is removed", () => {
-    importPackJson(JSON.stringify(spanishPack("es")));
+    load(spanishPack("es"));
     setBaseActive(false);
     removeImportedPack("es");
     expect(isBaseActive()).toBe(true);
     expect(currentContent().languages.some((l) => l.code === "fr")).toBe(true);
+  });
+});
+
+// A pack is allowed to leave out whole sections — a vocabulary-only pack is the
+// common LLM output. Every consumer (the library's "x words · y sentences · z
+// verbs" line, packsUsedBy, the review page) reads those sections directly, so
+// the validator has to hand back a pack that HAS them.
+describe("optional sections", () => {
+  /** Valid per the schema: only the required fields, no sentences/verbs/pronouns. */
+  const vocabOnly = (id = "vocab-only"): Record<string, unknown> => ({
+    formatVersion: 1,
+    id,
+    name: "Vocabulary only",
+    languages: [
+      { code: "en", name: "English", nativeName: "English", flag: "🇬🇧" },
+      { code: "es", name: "Spanish", nativeName: "Español", flag: "🇪🇸" },
+    ],
+    categories: [{ id: "colours", label: "Colours", emoji: "🎨" }],
+    vocab: [{ category: "colours", level: "basic", terms: { en: "red", es: "rojo" } }],
+  });
+
+  it("accepts a pack with no sentences, verbs, pronouns or prepositions", () => {
+    expect(validatePack(vocabOnly()).ok).toBe(true);
+  });
+
+  it("fills the missing sections in, so counting them never throws", () => {
+    const r = validatePack(vocabOnly());
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.pack.sentences).toEqual([]);
+    expect(r.pack.verbs).toEqual([]);
+    expect(r.pack.prepositions).toEqual([]);
+    expect(r.pack.pronouns).toEqual({});
+    expect(r.pack.vocab).toHaveLength(1);
+  });
+
+  it("leaves a complete pack untouched (same object)", () => {
+    const pack: ContentPack = { ...spanishPack(), prepositions: [] };
+    const r = validatePack(pack);
+    expect(r.ok && r.pack).toBe(pack);
+  });
+
+  it("stores the filled-in pack, so the library reads it back complete", () => {
+    expect(importPackJson(JSON.stringify(vocabOnly("vo-import"))).ok).toBe(true);
+    const stored = importedPacks().find((p) => p.id === "vo-import");
+    expect(stored?.verbs).toEqual([]);
+    expect(stored?.sentences).toEqual([]);
   });
 });
 

@@ -183,7 +183,6 @@ export default function App(): JSX.Element {
         onHelp={() => setModal({ kind: "help" })}
         onAbout={() => setModal({ kind: "about" })}
         onContent={() => setModal({ kind: "content" })}
-        onLibrary={() => setModal({ kind: "library" })}
         onVoices={() => setModal({ kind: "voices" })}
       />
 

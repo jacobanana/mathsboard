@@ -32,6 +32,9 @@ export function downloadPack(pack: ContentPack): void {
 export interface ImportFilesResult {
   /** How many packs were imported successfully. */
   added: number;
+  /** The packs that were loaded, so the caller can act on them (e.g. put them
+   *  straight onto the open board). */
+  packs: ContentPack[];
   /** One message per failed file, prefixed with its name. */
   errors: string[];
 }
@@ -41,20 +44,23 @@ export interface ImportFilesResult {
  *  `errors`). */
 export function importPackFiles(files: FileList | File[]): Promise<ImportFilesResult> {
   const list = Array.from(files);
-  if (list.length === 0) return Promise.resolve({ added: 0, errors: [] });
+  if (list.length === 0) return Promise.resolve({ added: 0, packs: [], errors: [] });
   return new Promise((resolve) => {
     const errors: string[] = [];
+    const packs: ContentPack[] = [];
     let added = 0;
     let remaining = list.length;
     const finish = (): void => {
-      if (--remaining === 0) resolve({ added, errors });
+      if (--remaining === 0) resolve({ added, packs, errors });
     };
     for (const file of list) {
       const reader = new FileReader();
       reader.onload = () => {
         const result = importPackJson(String(reader.result ?? ""));
-        if (result.ok) added += 1;
-        else errors.push(`${file.name}: ${result.errors.join(" ")}`);
+        if (result.ok) {
+          added += 1;
+          packs.push(result.pack);
+        } else errors.push(`${file.name}: ${result.errors.join(" ")}`);
         finish();
       };
       reader.onerror = () => {

@@ -8,7 +8,6 @@
 
 import { useState, useSyncExternalStore } from "react";
 import {
-  adoptBoardContent,
   boardPacksNow,
   importPackJson,
   subscribeContent,
@@ -32,11 +31,10 @@ export function BoardContentNotice(): JSX.Element | null {
   const names = packs.map((p) => p.name).join(", ");
 
   function saveAll(): void {
-    const saved = boardPacksNow();
-    for (const p of saved) importPackJson(JSON.stringify(p));
-    // Importing activates only the LAST pack; re-adopt the full set so a board
-    // carrying several packs keeps them all teaching after the save.
-    if (saved.length > 1) adoptBoardContent(saved);
+    // Importing moves each pack from the board's own layer into the library and
+    // keeps it teaching (see importPackJson), so a board carrying several packs
+    // still teaches from all of them afterwards.
+    for (const p of boardPacksNow()) importPackJson(JSON.stringify(p));
     useUiStore.getState().flashSaved();
   }
 

@@ -32,6 +32,7 @@ import { create } from "zustand";
 import type {
   AnyBoardObject,
   Background,
+  BoardContentSetup,
   BoardDocument,
   BoardSummary,
   Camera,
@@ -52,11 +53,14 @@ import { useCollabStore } from "@/collab/collabStore";
 import { getStoredName } from "@/collab/profile";
 import { track, trackBoardActivated } from "@/analytics";
 import { IS_LANGUAGE, SUBJECT, crossAppRedirect } from "@/subject";
-import { adoptBoardContent, setBoardPacks, importedPacks } from "@/lang/content/registry";
-import { packsUsedBy, dedupePacks } from "@/lang/content/embed";
-import type { ContentPack } from "@/lang/content/schema";
-import { useLangStore } from "@/lang/store";
-import { defaultPair, isValidPair } from "@/lang/pairs";
+import { setBoardPacks } from "@/lang/content/registry";
+import {
+  applySetup,
+  availablePacks,
+  packsToEmbed,
+  setupOf,
+  setupSignature,
+} from "@/lang/content/boardContent";
 
 /**
  * The current selection. Holds object ids AND stroke ids so freehand "arcs" can
@@ -359,8 +363,18 @@ interface BoardState {
   renameBoard(id: string, name: string): Promise<void>;
   /** Replace the draft with a copy of the named library board. */
   openBoard(id: string): Promise<void>;
-  /** Start a fresh, empty, unsaved draft. */
-  newBoard(): Promise<void>;
+  /**
+   * Start a fresh, empty, unsaved draft. The language board passes the content
+   * choice made in the new-board flow, which is stamped onto the document so
+   * the board keeps teaching it after a save / reload / share.
+   */
+  newBoard(setup?: BoardContentSetup): Promise<void>;
+  /**
+   * Change WHAT THE OPEN BOARD TEACHES (language board): apply the choice to the
+   * live catalogue and record it on the document, so it survives a save and
+   * reaches collaborators.
+   */
+  setBoardContent(setup: BoardContentSetup): void;
   /** Delete a library board; unlinks the draft if it was the source. */
   deleteBoard(id: string): Promise<void>;
 }
@@ -1034,9 +1048,12 @@ export const useBoardStore = create<BoardState>((set, get) => {
       });
     },
 
-    async newBoard() {
+    async newBoard(setup) {
       await flushView(); // remember the board being left before swapping it out
-      const doc = newBoardDocument();
+      // The content choice is stamped on the document at creation, so the board
+      // is self-describing from the very first save — before any widget that
+      // would otherwise imply it has been placed.
+      const doc = newBoardDocument(undefined, undefined, setup);
       const board = session.startSolo(doc);
       session.clearBoardIdFromUrl();
       await flushDraft(doc, null, false);
@@ -1048,6 +1065,31 @@ export const useBoardStore = create<BoardState>((set, get) => {
         ...FRESH_DOC_STATE,
       });
       track("board_created");
+    },
+
+    setBoardContent(setup) {
+      if (!IS_LANGUAGE) return;
+      // Teach it now…
+      applySetup(setup);
+      // …and record it on the document, together with the packs the new choice
+      // needs, so a save keeps it and collaborators get it.
+      try {
+        const board = session.currentBoard();
+        session.setContentSetup(setup);
+        const want = packsToEmbed(board, setup, availablePacks(board));
+        if (!samePackIds(want, board.contentPacks ?? [])) {
+          session.setContentPacks(want.length > 0 ? want : undefined);
+        }
+      } catch {
+        // No document yet (the content manager opened from the welcome hub
+        // before init() landed). The choice is live either way, and the board
+        // that init() brings in records its own.
+        return;
+      }
+      // Both writes run under SEED_ORIGIN (they sync but aren't undoable), which
+      // never dirties the draft — yet changing what a board teaches is a change
+      // worth saving, so say so for a solo board.
+      if (useCollabStore.getState().mode === "solo") set({ dirty: true });
     },
 
     async deleteBoard(boardId) {
@@ -1076,16 +1118,21 @@ export const useBoardStore = create<BoardState>((set, get) => {
 });
 
 // --- custom-content <-> board wiring (language board) -----------------------
-// Two directions, both funnelled through onBoardChange so every path (load,
-// open, join, remote sync, local edit) is covered by one place:
-//   • ADOPT — when a board ARRIVES (open, join, first shared sync), its packs
-//     become the active teaching content and the language pair follows, so the
-//     board is fully usable with no trip to the contents page.
-//   • REGISTER — on subsequent changes, keep the packs a board carries
-//     available so its widgets resolve, even for someone who never imported
-//     them (without re-fighting deliberate mid-session choices).
-//   • EMBED — on the author's own edits, keep the board's embedded set equal to
-//     the imported packs its widgets now use, so Save/Share carry the content.
+// A language board DECLARES what it teaches (BoardDocument.contentSetup: the
+// direction plus the ids of its content packs) and CARRIES the packs that make
+// that portable (contentPacks). Both directions are funnelled through
+// onBoardChange, so every path — open, join, remote sync, local edit — is
+// covered in one place:
+//   • ADOPT  — when a board ARRIVES, or its declared content changes, the app
+//     switches to teaching exactly that: its packs become the active ones and
+//     the language pair follows. Opening a saved board therefore teaches what it
+//     taught when it was saved, not whatever this device last had switched on.
+//   • REGISTER — on every other change, keep the packs a board carries loaded so
+//     its widgets resolve for someone who never imported them (a no-op when
+//     unchanged, so it is cheap to call on every edit).
+//   • EMBED — on the author's own edits, keep the board's carried packs equal to
+//     what its choice and its widgets need, and stamp the choice itself onto a
+//     board that predates the field, so Save / Share carry the content.
 const samePackIds = (
   a: NonNullable<BoardDocument["contentPacks"]>,
   b: NonNullable<BoardDocument["contentPacks"]>,
@@ -1095,74 +1142,56 @@ const samePackIds = (
   return b.every((p) => ids.has(p.id));
 };
 
-/**
- * Point the language-pair store at the direction an arriving board teaches, so
- * new widgets and the direction control match the board instead of a stale
- * per-device choice. The board's own widgets say it best; an empty board falls
- * back to its first pack's languages (keeping the current known side where the
- * pack offers it). Runs AFTER adoptBoardContent so the pack's languages are in
- * the catalogue when setPair validates.
- */
-function adoptBoardPair(board: BoardDocument, packs: ContentPack[]): void {
-  const store = useLangStore.getState();
-  for (const o of board.objects as readonly Record<string, unknown>[]) {
-    if (typeof o.type !== "string" || !o.type.startsWith("lang")) continue;
-    const { known, learning } = o;
-    if (typeof known === "string" && typeof learning === "string" && known !== learning) {
-      store.setPair({ known, learning });
-      return;
-    }
-  }
-  const codes = packs[0]?.languages?.map((l) => l.code) ?? [];
-  if (codes.length < 2) return;
-  const known = codes.includes(store.pair.known) ? store.pair.known : codes[0];
-  const learning = codes.find((c) => c !== known);
-  if (learning) store.setPair({ known, learning });
-}
-
-// The last board + embedded-pack set whose content was ADOPTED (activated as
-// the teaching content), so adoption runs once per arrival — on the next
-// change event it decays to plain registration and never fights a deliberate
-// mid-session choice.
+// The last board + content whose choice was ADOPTED (switched to as the live
+// teaching content), so adoption runs once per arrival and once per genuine
+// change — never fighting a deliberate mid-session choice on every edit.
 let adoptedContentKey: string | null = null;
+
+/** Forget which board's content was last adopted. Only the tests need this (a
+ *  fresh test must re-adopt even if it reuses a board id). */
+export function resetAdoptedContent(): void {
+  adoptedContentKey = null;
+}
 
 function syncBoardContent(board: BoardDocument, origin: unknown): void {
   if (!IS_LANGUAGE) return;
   const packs = Array.isArray(board.contentPacks) ? board.contentPacks : [];
-  const key = `${board.id}|${packs.map((p) => p.id).sort().join(",")}`;
+  const setup = setupOf(board);
+  const key = `${board.id}|${packs
+    .map((p) => p.id)
+    .sort()
+    .join(",")}|${setupSignature(setup)}`;
+
+  // REGISTER first, always: applySetup resolves the choice's pack ids against
+  // the library AND the board's own packs, so the board's packs must be loaded
+  // before the choice is read.
+  setBoardPacks(packs);
   if (key !== adoptedContentKey) {
-    const sameBoard = adoptedContentKey?.startsWith(`${board.id}|`) ?? false;
     adoptedContentKey = key;
-    // ADOPT: the board's content becomes the active teaching content (open,
-    // join, first shared sync, or a collaborator adding content live). Base is
-    // only restored when ARRIVING at a pack-less board whose language widgets
-    // prove it teaches base-only content — an author deleting their last custom
-    // widget, or a board of plain drawings, keeps the current selection.
-    const baseOnly =
-      packs.length === 0 &&
-      board.objects.some((o) => typeof o.type === "string" && o.type.startsWith("lang"));
-    adoptBoardContent(packs, !sameBoard && baseOnly);
-    if (packs.length > 0) adoptBoardPair(board, packs);
-    // A pack-less board teaches from base: a foreign pair can't survive there.
-    else if (!isValidPair(useLangStore.getState().pair))
-      useLangStore.getState().setPair(defaultPair());
-  } else {
-    // REGISTER: whatever the board carries (a no-op when unchanged).
-    setBoardPacks(packs);
+    // ADOPT. A board with nothing to say (blank, or plain drawings with no
+    // language content at all) yields no setup — leave the current choice alone
+    // rather than inventing one the user never made.
+    if (setup) applySetup(setup);
   }
+
   // EMBED: only react to THIS user's edits — remote/seed writes are already
   // authored elsewhere, and reacting to them would have every peer race to
   // rewrite the same value.
   if (origin !== LOCAL_ORIGIN) return;
-  const available = dedupePacks([...importedPacks(), ...(board.contentPacks ?? [])]);
-  const used = packsUsedBy(board.objects, available);
-  const current = board.contentPacks ?? [];
-  if (samePackIds(used, current)) return;
+  const wantPacks = packsToEmbed(board, setup, availablePacks(board));
+  const havePacks = board.contentPacks ?? [];
+  const packsChanged = !samePackIds(wantPacks, havePacks);
+  // Stamp the inferred choice onto a board saved before boards declared one, so
+  // it is self-describing from its first edit on. A board that already declares
+  // its choice is left alone — changing it is setBoardContent's job.
+  const wantSetup = board.contentSetup ? undefined : setup;
+  if (!packsChanged && !wantSetup) return;
   // Defer the write: mutating the doc from inside its own change callback is
   // avoided, and the resulting SEED-origin change comes back here as a no-op.
   queueMicrotask(() => {
     try {
-      session.setContentPacks(used.length > 0 ? used : undefined);
+      if (packsChanged) session.setContentPacks(wantPacks.length > 0 ? wantPacks : undefined);
+      if (wantSetup) session.setContentSetup(wantSetup);
     } catch {
       /* the board was swapped out before the microtask ran — nothing to embed */
     }
