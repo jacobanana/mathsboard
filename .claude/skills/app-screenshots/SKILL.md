@@ -53,7 +53,7 @@ with `SendUserFile`.
 | --- | --- |
 | `--path` | app path; repeat for several. The **language board** is a second page of the same build, at `/language/` |
 | `--width` | `phone` (390), `tablet` (768), `desktop` (1440) or a number; repeat |
-| `--insert` | place a tool from the Insert gallery by registry type (`worksheet`, `timer`, `dice`, `numberline`, `flashcards`, …) and accept its dialog; repeat |
+| `--insert` | place a tool from the Insert gallery by registry type (`worksheet`, `langvocab`, …) and accept its dialog; repeat. A name that isn't in this board's gallery fails with the list of ones that are, so guess and read the error |
 | `--draw` | `x1,y1,x2,y2` — drag a pen stroke across the stage; repeat |
 | `--tool` | select a dock tool first (`draw`, `text`, `erase`, `select`… — the button id without `Btn`) |
 | `--key` | press a shortcut (`Control+d`, `?`, `Escape`); repeat. Half this app's surface is keyboard |
@@ -74,11 +74,20 @@ This is the mistake to avoid here. The canvas starts blank, so a screenshot of
 "the new widget spacing" taken without `--insert` is a screenshot of paper.
 Seed the board with the thing the change is about:
 
+The two boards register DIFFERENT widgets, so one `--insert` cannot serve both —
+shoot them in separate runs when the content matters, and in one run when the
+point is the shared chrome around it.
+
 ```bash
-# a widget and a stroke, on both boards, at both widths
+# shared chrome on both boards, at both widths
 node .claude/skills/app-screenshots/scripts/screenshot.mjs \
-  --insert worksheet --draw 300,240,700,420 \
+  --draw 300,240,700,420 \
   --path / --path /language/ --width phone --width desktop
+
+# each board with its own content
+node .claude/skills/app-screenshots/scripts/screenshot.mjs --insert worksheet
+node .claude/skills/app-screenshots/scripts/screenshot.mjs \
+  --path /language/ --insert langvocab --name langboard
 
 # a dialog: open it with --click, and name the shot for what it shows
 node .claude/skills/app-screenshots/scripts/screenshot.mjs \
@@ -95,16 +104,22 @@ node .claude/skills/app-screenshots/scripts/screenshot.mjs \
   touching them needs `--width phone` *and* `--width desktop`**. Tablet only
   when the change is about the middle.
 - There are **two boards off one build**: the maths board at `/` and the
-  language board at `/language/` (`src/subject.ts` assembles a different tool
-  set per page). A change to shared UI — toolbar, dock, modals, welcome — is
-  shown on both; a change inside one subject's tools is shown on that one.
+  language board at `/language/`. They differ by more than their widgets — paper,
+  dock and launcher differ too — so a change to shared UI (toolbar, dock, modals,
+  welcome) is shown on **both**; a change inside one subject's tools is shown on
+  that one.
+- **`e2e/` never loads `/language/`.** Every Playwright spec runs against the
+  maths board, so a screenshot is the only check the language side gets on a
+  shared-UI change. Take it.
 - A collaboration change is shown *shared* (`--peers 1`), not solo. The share
   chip, the presence cursors and the join code only exist there.
 
 ## When something goes wrong
 
-- **`#welcomeContinue` never becomes enabled** — the board store is still on its
-  placeholder document; the app did not boot. Check `.dev/vite.log`.
+- **The shot is of the welcome screen** — the script dismisses it (Continue when
+  there is a draft to resume, Escape otherwise, since the language board only
+  shows Continue when there IS one). If it is still there, the board store never
+  left its "pending" placeholder — the app did not boot. Check `.dev/vite.log`.
 - **Sharing hangs or the share dialog never shows a link** — the token API or
   the sync server is down. Check `.dev/api.log` and `.dev/ysweet.log`, then
   re-run `start_app.sh`.

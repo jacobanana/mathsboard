@@ -286,9 +286,9 @@ npm run test:e2e                  # raw playwright: boots the compose stack itse
 
 `scripts/e2e.sh` is the one to reach for: it waits for dependencies, starts the
 local stack when there is no Docker daemon, and finds a usable Chromium when the
-pinned build is not installed. On the local stack it skips `e2e/image.spec.ts` —
-upload needs the S3 stand-in — and says so; CI runs the whole suite on the
-compose topology.
+pinned build is not installed. On the local stack it skips the specs that need
+the S3 stand-in for image upload, and prints which; CI runs the whole suite on
+the compose topology.
 
 If you already have the stack up, the tests reuse it — but remember the web
 image bakes the frontend in, so rebuild (`up --build`) after changing `src/`.
