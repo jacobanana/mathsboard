@@ -35,7 +35,7 @@ Get the failing job's log first. Which suite failed decides everything:
 | **E2E** (`e2e-run.yml`) | `bash scripts/e2e.sh` | the browser suite against a real sync backend |
 
 Reproduce locally before pushing anything. One validated push beats three
-speculative ones, and each speculative one costs a 30-minute e2e run.
+speculative ones, and each speculative one costs a full CI round.
 
 Two things about the e2e suite in particular:
 
@@ -45,10 +45,10 @@ Two things about the e2e suite in particular:
   uploads through S3 — if *that* is what CI is failing on, you need
   `bash scripts/e2e.sh --stack` and a Docker daemon. Without one, reason from
   the CI log and say plainly that the fix is unverified locally.
-- **Retries are already on** (`retries: 1` in CI), so a failure that survived a
-  retry is not a network burp. "Flaky" is a diagnosis of last resort, and only
-  for a job that died before any test body ran — checkout, `npm ci`, the browser
-  download. Re-run those and say so.
+- **CI already retries a failed test before reporting it**, so a failure that
+  survived a retry is not a network burp. "Flaky" is a diagnosis of last resort,
+  and only for a job that died before any test body ran — checkout, `npm ci`,
+  the browser download. Re-run those and say so.
 
 **Never make a test pass by weakening it.** No `test.skip`, no `.only` removed
 from around the inconvenient half, no timeout inflated to paper over a race, no

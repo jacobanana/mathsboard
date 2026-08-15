@@ -53,7 +53,7 @@ with `SendUserFile`.
 | --- | --- |
 | `--path` | app path; repeat for several. The **language board** is a second page of the same build, at `/language/` |
 | `--width` | `phone` (390), `tablet` (768), `desktop` (1440) or a number; repeat |
-| `--insert` | place a tool from the Insert gallery by registry type and accept its dialog; repeat. Maths: `worksheet`, `timer`, `dice`, `numberline`, `flashcards`, `longmult`, `placevalue`, … Language: `langvocab`, `langflashcards`, `langphrases`, `langtable`, `langconjugate`, `langmatch`, `langsentence`, `langgaps`, `langgender`, `langprep` |
+| `--insert` | place a tool from the Insert gallery by registry type (`worksheet`, `langvocab`, …) and accept its dialog; repeat. A name that isn't in this board's gallery fails with the list of ones that are, so guess and read the error |
 | `--draw` | `x1,y1,x2,y2` — drag a pen stroke across the stage; repeat |
 | `--tool` | select a dock tool first (`draw`, `text`, `erase`, `select`… — the button id without `Btn`) |
 | `--key` | press a shortcut (`Control+d`, `?`, `Escape`); repeat. Half this app's surface is keyboard |
@@ -74,9 +74,9 @@ This is the mistake to avoid here. The canvas starts blank, so a screenshot of
 "the new widget spacing" taken without `--insert` is a screenshot of paper.
 Seed the board with the thing the change is about:
 
-The two boards take DIFFERENT widget types, so one `--insert` cannot serve
-both — shoot them in separate runs when the content matters, and in one run
-when the point is the shared chrome around it.
+The two boards register DIFFERENT widgets, so one `--insert` cannot serve both —
+shoot them in separate runs when the content matters, and in one run when the
+point is the shared chrome around it.
 
 ```bash
 # shared chrome on both boards, at both widths
@@ -104,11 +104,10 @@ node .claude/skills/app-screenshots/scripts/screenshot.mjs \
   touching them needs `--width phone` *and* `--width desktop`**. Tablet only
   when the change is about the middle.
 - There are **two boards off one build**: the maths board at `/` and the
-  language board at `/language/`. They differ by more than their widgets — the
-  language board starts on lined paper, drops the maths-notation dock tool, and
-  fronts the page with its own launcher. A change to shared UI — toolbar, dock,
-  modals, welcome — is shown on **both**; a change inside one subject's tools is
-  shown on that one.
+  language board at `/language/`. They differ by more than their widgets — paper,
+  dock and launcher differ too — so a change to shared UI (toolbar, dock, modals,
+  welcome) is shown on **both**; a change inside one subject's tools is shown on
+  that one.
 - **`e2e/` never loads `/language/`.** Every Playwright spec runs against the
   maths board, so a screenshot is the only check the language side gets on a
   shared-UI change. Take it.

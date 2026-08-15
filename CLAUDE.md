@@ -13,12 +13,10 @@ This repo ships **two whiteboards**, not one app with a mode switch:
 | | **Maths Board** | **Language Board** |
 | --- | --- | --- |
 | for | teaching written maths methods — column arithmetic, fractions, place value, times tables | teaching a foreign language — vocabulary, phrases, conjugation, translation games |
-| production | `mathsboard.mixedmode.ch` | `langsboard.mixedmode.ch` |
+| production | its own domain (`maths…`) | its own domain (`lang…`) |
 | elsewhere | `/` | `/language/` |
 | page | `index.html` | `language/index.html` |
-| tools | 27 maths widgets | 10 language widgets |
-| paper | squared | lined |
-| dock | pan, select, pen, eraser, text, **math** | pan, select, pen, eraser, text |
+| paper, dock | squared paper, and a maths-notation tool nothing else needs | lined paper, and no use for one |
 
 Both pages load the **same** `src/main.tsx`, share one backend, one sync server
 and one storage bucket. They are different *products* assembled from one
@@ -52,18 +50,13 @@ board type would be a `Subject` in `subject.ts` plus one `PROFILES` entry.
 gallery is right by construction and the two subjects can never collide on a
 tool type.
 
-Beyond those two tables, **only these modules branch on the subject at all** —
-if a change needs a third, it probably belongs in the profile instead:
-
-| module | what it branches on |
-| --- | --- |
-| `App.tsx` | board-title target (boards manager vs welcome), the content notice |
-| `ui/modals/defs.tsx` | which welcome and new-board flow; Content entry points |
-| `ui/Toolbar.tsx`, `ui/OverflowMenu.tsx` | title tooltip; the Content / Voices menu items |
-| `ui/BoardsManager.tsx` | the "teaches 🇬🇧→🇫🇷 · Base + Kitchen" line on each card |
-| `board/store.ts` | applying a board's content choice on load/join |
-| `board/persistence/LocalBoardRepository.ts` | **boards are subject-scoped**: each app lists only its own. Documents saved before the field existed read as maths |
-| `pwa.ts` | the service-worker URL from the page's depth |
+Beyond those two tables only a short, deliberate list of modules branches on the
+subject at all — `grep -rn IS_LANGUAGE src` is the current list, and it is
+mostly chrome (which welcome, which menu items, where the board title goes).
+Two on it matter more than they look: **boards are subject-scoped**, so each app
+lists only its own and a document saved before the field existed reads as maths;
+and **a language board's content choice is applied on load and on join**. A
+change that seems to need another branch usually belongs in the profile instead.
 
 # NAVIGATION — where a task lands
 
@@ -82,7 +75,7 @@ if a change needs a third, it probably belongs in the profile instead:
 | what gets painted | `canvas/scene.ts` (the document) — interaction previews come from the controller's `drawOverlay`, never from here |
 | pan / zoom / pinch | `canvas/viewport.ts` |
 | in-place editing | `canvas/textEditor.ts`, `canvas/mathEditor.ts`, registered via `canvas/editors.ts` |
-| overlays on top of the canvas | `canvas/WidgetLayer`, `InputOverlayLayer` (type-in answers), `AnswerButtonLayer` (reveal), `ui/PresenceLayer`, `ui/TimerDoneLayer` |
+| overlays on top of the canvas | the `*Layer` components in `canvas/` (widgets, type-in answers, reveal buttons) and `ui/` (presence, timer alert) — each owns one overlay for every tool that opts in, so none of them is edited per tool |
 | sharing, join codes, presence, the Y.Doc | `collab/session.ts` (the one write API), `collab/docModel.ts` (how a board maps onto a Y.Doc, and how it merges), `collab/collabStore.ts` (ephemeral session state) |
 | a dialog or flow | `ui/modals/defs.tsx` — one entry per modal, routed by `kind` |
 | the dock, the options pill, a tool's chrome | `ui/toolSpecs.tsx` — one spec drives the button, the shortcut and the pill |
@@ -90,11 +83,10 @@ if a change needs a third, it probably belongs in the profile instead:
 
 ## The language board only
 
-`src/lang/` is the language app's own subsystem. It is *reached* from a handful
-of shared modules — `board/store.ts`, `ui/modals/defs.tsx`, `ui/BoardsManager.tsx`
-and `App.tsx` import from it, guarded by the subject at runtime rather than at
-the import — so a change in here can still break the maths build's typecheck.
-Everything else in it is language-only.
+`src/lang/` is the language app's own subsystem. A few shared modules import
+from it — the store, the modal registry, the boards manager — guarded by the
+subject at *runtime* rather than at the import, so **a change in here can still
+break the maths build's typecheck**. Everything else in it is language-only.
 
 | a task about… | goes to |
 | --- | --- |
@@ -120,21 +112,22 @@ A folder plus one registration line: `src/tools/<name>/index.ts` exporting
 `defineCanvasTool` / `defineWidgetTool`, added to the right array in
 `src/tools/index.ts` and nowhere else. Copy `src/tools/numberline` (canvas +
 dialog) or `src/tools/text` (canvas only); for the language board copy
-`src/tools/langmatch`. `tools/registry.ts` is the contract — including the
-opt-in capabilities (`inputs`, `vertices`, `styling`, `editWith`, `answer`,
-`available`) that let a tool get type-in boxes, draggable vertices or a reveal
-toggle with no host edits. `registry.test.ts` sweeps every registered tool.
+`src/tools/langmatch`. `tools/registry.ts` is the contract — read its optional
+capabilities before writing anything by hand, because they are how a tool gets
+type-in answer boxes, draggable vertices, a reveal toggle or a gallery gate with
+no edit to any host. `registry.test.ts` sweeps every registered tool.
 
 # TESTING THE TWO APPS
 
-Unit tests (`src/**/*.test.ts`, ~50 files) cover both subjects: `subject.test.ts`
-pins the resolution and hand-off rules, and the language subsystem has its own
-suites for pairs, packs, board content, conjugation and each game's logic.
+Unit tests (`src/**/*.test.ts`) cover both subjects: `subject.test.ts` pins the
+resolution and hand-off rules, and the language subsystem has its own suites for
+pairs, packs, board content, conjugation and each game's logic.
 
-**The Playwright suite does not cover the language board at all** — every spec
-loads `/`. So a change to shared UI is only proven on the maths side by `e2e/`,
-and a language-board change is proven by unit tests plus what you can see. That
-is the gap screenshots exist to fill: shoot `--path /language/` too.
+**The Playwright suite covers the maths board only** — the specs load `/`, and
+`grep -l language e2e/*.spec.ts` still comes back empty. So a change to shared
+UI is proven on the maths side and nowhere else, and a language-board change is
+proven by unit tests plus what you can see. That is the gap screenshots exist to
+fill: shoot `--path /language/` too.
 
 # WORKFLOW
 
@@ -196,11 +189,11 @@ documented topology needs a daemon a cloud container does not have.
 | sharing, presence, join codes, sync | yes | yes |
 | image upload (`/api/upload`) | **no** — MinIO is the S3 stand-in and MinIO is a container | yes |
 
-The local stack is what a web or mobile session gets, and it runs all of `e2e/`
-except `e2e/image.spec.ts`; `scripts/e2e.sh` skips that one there and says so.
-CI runs the whole suite on the compose stack, so nothing goes uncovered — but
-an upload bug cannot be reproduced without `--stack` and a daemon. Say so
-rather than guessing.
+The local stack is what a web or mobile session gets, and it runs every spec
+that does not need the S3 stand-in — `scripts/e2e.sh` skips the ones that do and
+prints which. CI runs the whole suite on the compose stack, so nothing goes
+uncovered — but an upload bug cannot be reproduced without `--stack` and a
+daemon. Say so rather than guessing.
 
 ## Done means seen, not green
 
@@ -271,9 +264,8 @@ Load the skill before the work, not after the review.
   above. A tool never registers itself; `src/tools/index.ts` owns that.
 - **Nothing new branches on the subject.** What differs between the two boards
   belongs in `src/boardProfile.ts` or in which array of `src/tools/index.ts` a
-  tool sits — not in a fresh `if (IS_LANGUAGE)` in a component. The handful of
-  modules that legitimately do branch are listed above; adding to that list is a
-  decision, not a detail.
+  tool sits — not in a fresh `if (IS_LANGUAGE)` in a component. Joining the short
+  list of modules that legitimately do branch is a decision, not a detail.
 - **Shared UI belongs to both boards.** A change to the toolbar, dock, modals,
   canvas or shortcuts ships to the maths board *and* the language board. `e2e/`
   only exercises the maths one, so the language side is checked by eye —
