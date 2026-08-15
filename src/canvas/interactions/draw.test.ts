@@ -28,6 +28,10 @@ const lastShape = (): ShapeObject =>
 
 beforeEach(() => {
   freshBoard();
+  // These tests drive the DRAW controller, so put the draw tool in hand — the
+  // board boots on Move (pan). The "still pen afterwards" assertions below then
+  // say what they mean: drawing never drops the tool.
+  st().setTool("pen");
 });
 
 describe("freehand mode (unchanged pen behaviour)", () => {

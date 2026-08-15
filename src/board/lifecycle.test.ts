@@ -148,7 +148,7 @@ describe("save", () => {
 });
 
 describe("open / new / delete / rename", () => {
-  it("openBoard loads a copy, links it, and resets camera/selection/history", async () => {
+  it("openBoard loads a copy, links it, and resets selection/history", async () => {
     await st().init();
     st().addStroke(aStroke());
     await st().saveAs("Source board");
@@ -219,5 +219,90 @@ describe("open / new / delete / rename", () => {
 
     const names = (await st().listBoards()).map((b) => b.name);
     expect(names).toEqual(["Newer", "Older"]);
+  });
+});
+
+describe("view memory (where each board was left)", () => {
+  it("reopening a board lands back at its zoom and position", async () => {
+    await st().init();
+    await st().saveAs("Fractions");
+    const fractions = st().sourceId!;
+    st().setCamera({ x: -320, y: 140, scale: 2.5 });
+
+    // Somewhere else entirely, then back again.
+    await st().newBoard();
+    expect(st().camera).toEqual({ x: 0, y: 0, scale: 1 }); // a fresh board is at home
+    await st().openBoard(fractions);
+
+    expect(st().camera).toEqual({ x: -320, y: 140, scale: 2.5 });
+  });
+
+  it("each board keeps its own view", async () => {
+    await st().init();
+    await st().saveAs("First");
+    const first = st().sourceId!;
+    st().setCamera({ x: 10, y: 20, scale: 2 });
+
+    await st().newBoard();
+    await st().saveAs("Second");
+    const second = st().sourceId!;
+    st().setCamera({ x: -50, y: -60, scale: 0.5 });
+
+    await st().openBoard(first);
+    expect(st().camera).toEqual({ x: 10, y: 20, scale: 2 });
+    await st().openBoard(second);
+    expect(st().camera).toEqual({ x: -50, y: -60, scale: 0.5 });
+  });
+
+  it("panning is remembered on the autosave debounce, without switching boards", async () => {
+    await st().init();
+    const boardId = st().board.id;
+
+    st().setCamera({ x: 5, y: 6, scale: 1.5 });
+    expect(await localRepository.loadView(boardId)).toBeNull(); // not yet
+    await vi.advanceTimersByTimeAsync(400);
+
+    expect(await localRepository.loadView(boardId)).toEqual({
+      x: 5,
+      y: 6,
+      scale: 1.5,
+    });
+  });
+
+  it("a reload resumes the draft at the view it was left at", async () => {
+    await st().init();
+    st().setCamera({ x: -80, y: 12, scale: 3 });
+    await vi.advanceTimersByTimeAsync(400);
+
+    // A reload: the store boots at the home view and init() restores the draft.
+    useBoardStore.setState({ camera: { x: 0, y: 0, scale: 1 } });
+    await st().init();
+
+    expect(st().camera).toEqual({ x: -80, y: 12, scale: 3 });
+  });
+
+  it("saving under a new name carries the view across", async () => {
+    await st().init();
+    st().setCamera({ x: 7, y: 8, scale: 2 });
+    await st().saveAs("Named");
+
+    expect(await localRepository.loadView(st().sourceId!)).toEqual({
+      x: 7,
+      y: 8,
+      scale: 2,
+    });
+  });
+
+  it("deleting a board forgets its view", async () => {
+    await st().init();
+    await st().saveAs("Doomed");
+    const boardId = st().sourceId!;
+    st().setCamera({ x: 1, y: 2, scale: 2 });
+    await vi.advanceTimersByTimeAsync(400);
+    expect(await localRepository.loadView(boardId)).not.toBeNull();
+
+    await st().deleteBoard(boardId);
+
+    expect(await localRepository.loadView(boardId)).toBeNull();
   });
 });

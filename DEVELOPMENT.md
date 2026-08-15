@@ -48,7 +48,14 @@ State splits in two (see `src/board/store.ts`):
   and the in-progress text `editingId`. Local-only; never persisted into the
   document, never synced (selection included: what you select is your own
   business). Presence (cursors, names) travels over the Yjs *awareness*
-  protocol only — it is never written into the document.
+  protocol only — it is never written into the document. The board opens on the
+  **Move (pan)** tool: the first gesture is to look around, and a navigating
+  default can never leave a stray mark.
+  The one piece of ephemeral state that outlives the session is the **camera**:
+  it is remembered *per board on this device* (`saveView` / `loadView`, keyed by
+  the board's library id, else its document id — a shared board's id is its join
+  code). Reopening a board restores its zoom and position; it stays out of the
+  document, so collaborators on one shared board each keep their own view.
 
 **Rule:** never mutate the document outside a store action. All document changes
 go through named actions (`addObject`, `updateObject`, `moveObject`,
@@ -132,7 +139,10 @@ Storage hides behind the `BoardRepository` interface
 `LocalBoardRepository` (localStorage, key prefix `mathsboard:`), exported as the
 singleton `localRepository`. In solo mode the store autosaves the working draft
 via a debounced `localRepository.saveDraft`; shared boards are persisted by
-Y-Sweet (S3) instead, and the private local draft is left untouched.
+Y-Sweet (S3) instead, and the private local draft is left untouched. On the same
+debounce, and on `pagehide`, the store writes the board's **view** (camera) to
+the `mathsboard:views` map — local to the device for solo AND shared boards, so
+reopening one lands where it was left.
 
 ### Tool registry
 

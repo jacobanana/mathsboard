@@ -12,6 +12,12 @@
 //                                               (local-only; never persisted to
 //                                               the document, never synced)
 //
+// One slice of the ephemeral half outlives the session: the CAMERA is
+// remembered PER BOARD on this device (see the view autosave below), so
+// reopening a board lands you back where you left it — at the same zoom, over
+// the same part of the canvas. It stays out of the document: a view is
+// per-person, so collaborators on one shared board each keep their own place.
+//
 // RULE: never mutate board.objects / board.strokes / board.background outside an
 // action. UI and tools call addObject / updateObject / addStroke / etc. Those
 // actions are the sync seam: each becomes one Yjs transaction, which both
@@ -381,13 +387,76 @@ function scheduleDraftSave(): void {
   }, 400);
 }
 /**
- * Cancel any pending debounced draft save without writing. Lifecycle actions
- * cancel implicitly via flushDraft; this is for hosts that tear the world
- * down between edits (the unit tests' afterEach — a timer firing after jsdom
- * teardown would crash on the missing localStorage).
+ * Cancel any pending debounced save (draft AND view) without writing. Lifecycle
+ * actions cancel implicitly via flushDraft / flushView; this is for hosts that
+ * tear the world down between edits (the unit tests' afterEach — a timer firing
+ * after jsdom teardown would crash on the missing localStorage).
  */
 export function cancelScheduledDraftSave(): void {
   cancelDraftSave();
+  cancelViewSave();
+}
+
+// --- Debounced per-board view (camera) save ------------------------------
+// Panning and zooming fire continuously, so where a board was left is written on
+// the same 400ms debounce as the draft. The board the timer was armed for is
+// captured with it: if the document was swapped meanwhile, the pending write is
+// dropped rather than stamping one board's camera onto another.
+
+/** The view a board opens at when this device has never seen it. */
+const HOME_CAMERA: Camera = { x: 0, y: 0, scale: 1 };
+
+/** The id of the placeholder document that stands in until init() resolves. No
+ *  view is ever read or written for it — it is not a real board. */
+const PENDING_ID = "pending";
+
+/**
+ * The key a board's view is remembered under: its LIBRARY id when it has one,
+ * else the live document id (an unsaved draft, or a shared board, whose id IS
+ * its join code). Saving rewrites the draft under the library id while the live
+ * mirror keeps the id it was created with, so keying on the library id is what
+ * makes a view survive Save → reload → Open as one board.
+ */
+function viewKey(): string | null {
+  const { board, sourceId } = useBoardStore.getState();
+  const key = sourceId ?? board.id;
+  return key === PENDING_ID ? null : key;
+}
+
+let viewTimer: ReturnType<typeof setTimeout> | undefined;
+function cancelViewSave(): void {
+  if (viewTimer) {
+    clearTimeout(viewTimer);
+    viewTimer = undefined;
+  }
+}
+function scheduleViewSave(): void {
+  const key = viewKey();
+  if (!key) return;
+  cancelViewSave();
+  viewTimer = setTimeout(() => {
+    viewTimer = undefined;
+    if (viewKey() !== key) return; // the board changed under the timer
+    void localRepository.saveView(key, useBoardStore.getState().camera);
+  }, 400);
+}
+
+/**
+ * Persist the open board's view immediately. Lifecycle actions call this before
+ * they swap the document, so leaving a board (open another, start a new one,
+ * join a share) always remembers where you were, debounce or no debounce.
+ */
+export async function flushView(): Promise<void> {
+  cancelViewSave();
+  const key = viewKey();
+  if (!key) return;
+  await localRepository.saveView(key, useBoardStore.getState().camera);
+}
+
+/** Where a board was last left on this device, or the home view for a board it
+ *  has never opened. */
+async function viewFor(boardId: string): Promise<Camera> {
+  return (await localRepository.loadView(boardId)) ?? HOME_CAMERA;
 }
 
 /** Write the draft immediately (used by explicit lifecycle actions). */
@@ -467,8 +536,12 @@ export const useBoardStore = create<BoardState>((set, get) => {
     sourceId: null,
     dirty: false,
 
-    camera: { x: 0, y: 0, scale: 1 },
-    tool: "pen",
+    camera: HOME_CAMERA,
+    // The Move (pan) tool is where a board opens: the first gesture on a board
+    // someone else built — or on your own, reopened — is to look around, and a
+    // navigating default can never leave a stray mark. Drawing is one key (3/D)
+    // or one dock button away.
+    tool: "pan",
     color: theme.ink,
     sizes: defaultSizes(),
     textAlign: "left",
@@ -690,6 +763,9 @@ export const useBoardStore = create<BoardState>((set, get) => {
     },
     setCamera(patch) {
       set((state) => ({ camera: { ...state.camera, ...patch } }));
+      // Remember where this board is being left (debounced — pan and zoom fire
+      // on every frame). Restored by init / openBoard / joinBoard.
+      scheduleViewSave();
     },
     select(id) {
       set({
@@ -720,6 +796,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
 
     // ---- COLLAB lifecycle ----
     async joinBoard(boardId, source = "link") {
+      await flushView(); // remember the board being left before swapping it out
       const board = session.joinShared(boardId, displayName());
       session.putBoardIdInUrl(boardId);
       track("board_joined", { via: source });
@@ -731,7 +808,9 @@ export const useBoardStore = create<BoardState>((set, get) => {
         board,
         sourceId: null,
         dirty: false,
-        camera: { x: 0, y: 0, scale: 1 },
+        // Back to where this device last left this shared board (each
+        // collaborator has their own view), or its home view on a first join.
+        camera: await viewFor(boardId),
         ...FRESH_DOC_STATE,
       });
       // Remember it as a visited shared board. The name may still be the default
@@ -757,6 +836,8 @@ export const useBoardStore = create<BoardState>((set, get) => {
       // not resurrect the pre-share solo copy. Unlink the local source.
       cancelDraftSave();
       set({ board, sourceId: null, dirty: false, canUndo: false, canRedo: false });
+      // The board is now known by its join code: carry the view over to it.
+      await localRepository.saveView(boardId, get().camera);
       await localRepository.saveRemote({
         id: boardId,
         name: current.name,
@@ -797,6 +878,8 @@ export const useBoardStore = create<BoardState>((set, get) => {
           board,
           sourceId: draft.sourceId,
           dirty: draft.dirty,
+          // An interrupted session resumes EXACTLY: same content, same view.
+          camera: await viewFor(draft.sourceId ?? board.id),
           ...FRESH_DOC_STATE,
         });
         return;
@@ -818,7 +901,13 @@ export const useBoardStore = create<BoardState>((set, get) => {
       if (!doc) doc = newBoardDocument();
       await flushDraft(doc, sourceId, false);
       const board = session.startSolo(doc);
-      set({ board, sourceId, dirty: false, ...FRESH_DOC_STATE });
+      set({
+        board,
+        sourceId,
+        dirty: false,
+        camera: await viewFor(sourceId ?? board.id),
+        ...FRESH_DOC_STATE,
+      });
     },
 
     async listBoards() {
@@ -893,6 +982,9 @@ export const useBoardStore = create<BoardState>((set, get) => {
       await localRepository.save(doc);
       // Rename the live document too (syncs to peers; not undoable).
       session.setBoardName(name);
+      // The board continues under a new id: carry the current view across so
+      // saving doesn't lose your place, here or on the next open.
+      await localRepository.saveView(docId, get().camera);
       await flushDraft(doc, docId, false);
       set({ sourceId: docId, dirty: false });
       track("board_saved", { as: "new" });
@@ -927,6 +1019,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
     async openBoard(boardId) {
       const src = await localRepository.load(boardId);
       if (!src) return;
+      await flushView(); // remember the board being left before swapping it out
       const doc = migrateDocument(src);
       // Opening a library board always lands in a private solo session.
       const board = session.startSolo(doc);
@@ -936,12 +1029,13 @@ export const useBoardStore = create<BoardState>((set, get) => {
         board,
         sourceId: boardId,
         dirty: false,
-        camera: { x: 0, y: 0, scale: 1 },
+        camera: await viewFor(boardId), // reopen it where it was left
         ...FRESH_DOC_STATE,
       });
     },
 
     async newBoard() {
+      await flushView(); // remember the board being left before swapping it out
       const doc = newBoardDocument();
       const board = session.startSolo(doc);
       session.clearBoardIdFromUrl();
@@ -950,7 +1044,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
         board,
         sourceId: null,
         dirty: false,
-        camera: { x: 0, y: 0, scale: 1 },
+        camera: HOME_CAMERA, // a board with no history starts at its origin
         ...FRESH_DOC_STATE,
       });
       track("board_created");
@@ -964,9 +1058,11 @@ export const useBoardStore = create<BoardState>((set, get) => {
       if (remotes.some((r) => r.id === boardId)) {
         if (useCollabStore.getState().boardId === boardId) get().leaveBoard();
         await localRepository.removeRemote(boardId);
+        await localRepository.removeView(boardId);
         return;
       }
       await localRepository.remove(boardId);
+      await localRepository.removeView(boardId);
       if (get().sourceId === boardId) {
         // The open board's library entry is gone; keep the work but unlink it so
         // it reads as an unsaved draft again.

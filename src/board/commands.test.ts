@@ -102,6 +102,7 @@ describe("placeObject", () => {
   });
 
   it("is a no-op for an unregistered tool type", () => {
+    st().setTool("pen");
     placeObject("no-such-tool", {});
     expect(st().board.objects).toHaveLength(0);
     expect(st().tool).toBe("pen"); // untouched

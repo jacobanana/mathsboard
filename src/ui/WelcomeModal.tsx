@@ -28,15 +28,16 @@ export function WelcomeModal({
   const board = useBoardStore((s) => s.board);
   const sourceId = useBoardStore((s) => s.sourceId);
   const newBoard = useBoardStore((s) => s.newBoard);
+  const setTool = useBoardStore((s) => s.setTool);
 
   // init() is loading the draft while this renders; gate the actions until it
   // has landed so a lightning-fast click can't race the async load.
   const pending = board.id === "pending";
   const blank = board.objects.length === 0 && board.strokes.length === 0;
-  const continueLabel =
-    !sourceId && blank
-      ? "Start drawing"
-      : "Continue — " + (sourceId ? board.name : "Untitled draft");
+  const fresh = !sourceId && blank;
+  const continueLabel = fresh
+    ? "Start drawing"
+    : "Continue — " + (sourceId ? board.name : "Untitled draft");
 
   // autoFocus can't work on a button that mounts disabled: focus it (for the
   // Enter-key default) once the draft load enables it.
@@ -59,7 +60,13 @@ export function WelcomeModal({
         className="btn primary welcome-continue"
         id="welcomeContinue"
         disabled={pending}
-        onClick={onClose}
+        // The board boots on Move (pan) — the right default for arriving at
+        // work that already exists. On an empty first board the button promises
+        // drawing, so hand over the pen and keep that promise.
+        onClick={() => {
+          if (fresh) setTool("pen");
+          onClose();
+        }}
       >
         {continueLabel}
       </button>
