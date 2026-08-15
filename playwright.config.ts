@@ -19,6 +19,12 @@ import { defineConfig, devices } from "@playwright/test";
 // boot a second `compose up`, and tear the stack down when the run ends.
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:8080";
 
+// A dev container can ship a Chromium that is not the build this Playwright
+// pins, and no way to download the pinned one (`playwright install` needs a CDN
+// the sandbox blocks). Rather than die on "Executable doesn't exist", accept a
+// binary named from the environment — scripts/e2e.sh finds one and sets this.
+const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 60_000,
@@ -40,7 +46,15 @@ export default defineConfig({
     baseURL,
     trace: "retain-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        ...(executablePath ? { launchOptions: { executablePath } } : {}),
+      },
+    },
+  ],
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {

@@ -26,7 +26,8 @@ COMPOSE_LOCAL := docker compose -f docker-compose.yml -f docker-compose.local.ym
 .DEFAULT_GOAL := help
 .PHONY: help install dev typecheck build preview \
         up up-d down reset logs \
-        test test-watch e2e-install e2e \
+        checks test test-watch e2e-install e2e e2e-local \
+        app app-stop \
         deploy deploy-down deploy-logs \
         clean
 
@@ -48,10 +49,16 @@ help:
 	@echo $(Q)    logs          Follow the stack logs$(Q)
 	@$(BLANK)
 	@echo $(Q)  Tests$(Q)
+	@echo $(Q)    checks        Typecheck + unit tests - the commit gate (sh only)$(Q)
 	@echo $(Q)    test          Run the unit test suite (Vitest, headless - no Docker)$(Q)
 	@echo $(Q)    test-watch    Run the unit tests in watch mode$(Q)
 	@echo $(Q)    e2e-install   Install the Chromium browser (run once)$(Q)
 	@echo $(Q)    e2e           Run the Playwright suite (boots the stack if needed)$(Q)
+	@echo $(Q)    e2e-local     Same, on the no-Docker local stack (sh only)$(Q)
+	@$(BLANK)
+	@echo $(Q)  Local app, without Docker (sh only - see scripts/start_app.sh)$(Q)
+	@echo $(Q)    app           Start y-sweet + the token API + Vite on :5173$(Q)
+	@echo $(Q)    app-stop      Stop it$(Q)
 	@$(BLANK)
 	@echo $(Q)  Production deploy (Docker, needs .env)$(Q)
 	@echo $(Q)    deploy        Pull the published images and run the production stack detached$(Q)
@@ -96,6 +103,13 @@ logs:
 	$(COMPOSE_LOCAL) logs -f
 
 # ---- Tests -------------------------------------------------------------------
+#
+# The three scripts below are bash, so these targets are POSIX-shell only (they
+# are the same commands CLAUDE.md and DEVELOPMENT.md spell out; on Windows run
+# them from Git Bash / WSL).
+
+checks:
+	bash scripts/checks.sh
 
 test:
 	npm test
@@ -108,6 +122,17 @@ e2e-install:
 
 e2e:
 	npm run test:e2e
+
+e2e-local:
+	bash scripts/e2e.sh
+
+# ---- Local app, without Docker ----------------------------------------------
+
+app:
+	bash scripts/start_app.sh
+
+app-stop:
+	bash scripts/stop_app.sh
 
 # ---- Production deploy (Docker, needs .env) ---------------------------------
 
