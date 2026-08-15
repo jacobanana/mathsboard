@@ -4,9 +4,11 @@
 //
 //   - canvas/DOM lifecycle (dpr sizing, window resize)          .. C1
 //   - rAF-batched render scheduling + store subscription        .. C4
-//   - pointer bookkeeping: capture, two-finger pinch (viewport),
-//     the post-pinch ignoreSingle guard, wheel zoom/pan, and
-//     dispatch to the active interaction controller             .. dispatch
+//   - pointer dispatch: capture, wheel zoom/pan, and routing to the
+//     active interaction controller. The multi-touch bookkeeping (the
+//     pointer map, the two-finger pinch, the post-pinch guard) lives in
+//     canvas/gestures, SHARED with the widget overlay so a pinch still
+//     works with a finger resting on a widget         .. dispatch
 //
 // Everything tool-specific lives in canvas/interactions/* (T1): the host looks
 // up getInteraction(tool) and forwards pointer events; controllers own their
@@ -32,15 +34,12 @@ import {
 } from "@/canvas/editors";
 import { registerExportLayers } from "@/canvas/export";
 import { getInteraction } from "@/canvas/interactions";
+import * as gestures from "@/canvas/gestures";
 import { drawSelectionOutlines } from "@/canvas/interactions/select";
 import * as viewport from "@/canvas/viewport";
 import { theme } from "@/styles/theme";
 import type { AnyBoardObject } from "@/board/types";
-import type {
-  InputCtx,
-  InteractionController,
-  Pt,
-} from "@/canvas/interactions";
+import type { InputCtx, InteractionController } from "@/canvas/interactions";
 
 export interface BoardCanvasProps {
   /**
@@ -62,12 +61,10 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
   // Viewport size (CSS px) + dpr, kept in a ref so render fns read live values.
   const viewRef = useRef({ W: 0, H: 0, dpr: 1 });
 
-  // Shared pointer bookkeeping (everything tool-specific is in controllers).
-  const pointers = useRef(new Map<number, Pt>());
-  const pinchRef = useRef<viewport.Pinch | null>(null);
-  // After a pinch ends with one finger still down, that finger must not start
-  // a fresh single-pointer action; cleared when every pointer lifts.
-  const ignoreSingleRef = useRef(false);
+  // Pointer bookkeeping (the map, the pinch, the post-pinch guard) lives in
+  // canvas/gestures — SHARED with the widget overlay, so a two-finger zoom
+  // still works when one finger is resting on a widget card.
+  //
   // The controller that received pointerdown: moves/ups keep routing to it (and
   // its overlay keeps drawing) even if the tool switches mid-drag via keyboard.
   const activeRef = useRef<InteractionController | null>(null);
@@ -211,38 +208,41 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     // Wheel zoom/pan is bound on the host #stage (the canvas's parent).
     const stage = surface?.parentElement;
     if (!surface || !stage) return;
+    // Publish the surface so the widget overlay can measure its own presses in
+    // the same space (canvas/gestures).
+    gestures.setSurface(surface);
+    // A press that lands on a widget's own control and is released off the card
+    // reports to nobody; the net stops it stranding a finger in the registry.
+    const dropSafetyNet = gestures.installSafetyNet();
 
-    const twoPoints = () => {
-      const a = [...pointers.current.values()];
-      return [a[0], a[1]] as const;
-    };
     /** The controller owning the live interaction, else the active tool's. */
     const routed = () =>
       activeRef.current ?? getInteraction(store.getState().tool);
+
+    /** Hand the gesture layer the way to abandon our live interaction when a
+     *  second finger — on the canvas OR on a widget — turns this into a pinch. */
+    const cancelLive = () => {
+      const live = activeRef.current;
+      activeRef.current = null;
+      live?.cancel?.(inputCtx);
+    };
 
     const onPointerDown = (e: PointerEvent) => {
       if (anyEditorOpen()) {
         commitAllEditors();
         return; // the dismissing tap is swallowed
       }
-      pointers.current.set(e.pointerId, inputCtx.evPos(e));
       try {
         surface.setPointerCapture(e.pointerId);
       } catch {
         /* ignore */
       }
-
-      // Two-pointer pinch begins; cancel any single-pointer interaction.
-      if (pointers.current.size === 2) {
-        const live = activeRef.current;
-        activeRef.current = null;
-        live?.cancel?.(inputCtx);
-        const [p1, p2] = twoPoints();
-        if (p1 && p2) pinchRef.current = viewport.startPinch(p1, p2);
+      // The gesture layer takes the finger first: it starts (and owns) the
+      // pinch, and tells us when this pointer must not begin a tool action.
+      if (gestures.down(e.pointerId, inputCtx.evPos(e), cancelLive)) {
         e.preventDefault();
         return;
       }
-      if (pointers.current.size > 2 || ignoreSingleRef.current) return;
 
       const ctrl = getInteraction(store.getState().tool);
       if (ctrl) {
@@ -253,9 +253,9 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      // Bare hover (no pointer down): cursor feedback + hover previews (the
-      // select tool's resize cursors, the pen/eraser brush ring).
-      if (pointers.current.size === 0) {
+      // Bare hover (no pointer down anywhere): cursor feedback + hover previews
+      // (the select tool's resize cursors, the pen/eraser brush ring).
+      if (gestures.count() === 0) {
         const ctrl = getInteraction(store.getState().tool);
         if (ctrl?.hoverCursor) {
           const cur = ctrl.hoverCursor(e, inputCtx);
@@ -263,34 +263,19 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
         }
         return;
       }
-      if (!pointers.current.has(e.pointerId)) return;
-      pointers.current.set(e.pointerId, inputCtx.evPos(e));
-      if (pinchRef.current) {
-        const [p1, p2] = twoPoints();
-        if (p1 && p2) viewport.updatePinch(pinchRef.current, p1, p2);
+      if (!gestures.has(e.pointerId)) return;
+      if (gestures.move(e.pointerId, inputCtx.evPos(e))) {
         e.preventDefault();
-        return;
+        return; // the pinch (or its tail) consumed it
       }
-      if (ignoreSingleRef.current) return;
       routed()?.onPointerMove(e, inputCtx);
       e.preventDefault();
     };
 
     const release = (e: PointerEvent) => {
-      if (!pointers.current.has(e.pointerId)) return;
-      pointers.current.delete(e.pointerId);
-      if (pinchRef.current) {
-        if (pointers.current.size < 2) {
-          pinchRef.current = null;
-          if (pointers.current.size === 1) ignoreSingleRef.current = true;
-        }
-      } else {
-        routed()?.onPointerUp(e, inputCtx);
-      }
-      if (pointers.current.size === 0) {
-        activeRef.current = null;
-        ignoreSingleRef.current = false;
-      }
+      if (!gestures.has(e.pointerId)) return;
+      if (!gestures.up(e.pointerId)) routed()?.onPointerUp(e, inputCtx);
+      if (gestures.count() === 0) activeRef.current = null;
     };
 
     const onDblClick = (e: MouseEvent) => {
@@ -328,6 +313,9 @@ export function BoardCanvas({ onEditObject }: BoardCanvasProps) {
       surface.removeEventListener("pointerleave", onPointerLeave);
       surface.removeEventListener("dblclick", onDblClick);
       stage.removeEventListener("wheel", onWheel);
+      dropSafetyNet();
+      gestures.setSurface(null);
+      gestures.reset();
     };
   }, [inputCtx, store]);
 

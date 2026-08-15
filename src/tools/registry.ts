@@ -376,6 +376,11 @@ export interface WidgetTool<P = Record<string, unknown>> extends ToolMeta {
    * editObject writes the returned patch via updateWidgetState (INPUT_ORIGIN,
    * undo-invisible) right after the param edit — the timer uses this to reset its
    * run whenever its settings change. Return null to leave the run untouched.
+   *
+   * An activity that DEALS a round (the games, the flash decks) returns its
+   * fresh-round patch here, not just a session wipe: saving the settings sheet
+   * is how "New" is spelled now, so it has to land a genuinely new game even
+   * when nothing in the sheet was touched.
    */
   resetOnEdit?(obj: BoardObjectBase & P): Record<string, unknown> | null;
 }

@@ -18,7 +18,7 @@ import { defineWidgetTool } from "@/tools/registry";
 import { NumberOrder } from "@/tools/numberorder/NumberOrder";
 import { NumberOrderDialog } from "@/tools/numberorder/Dialog";
 import {
-  resetSessionPatch,
+  newDeckPatch,
   type Level,
   type NoMode,
   type NoTarget,
@@ -72,7 +72,7 @@ const numberOrderTool = defineWidgetTool<NumberOrderParams>({
   Dialog: NumberOrderDialog,
   // Editing settings always restarts the (re-derived) session from round one and
   // clears the old taps, so a config change never leaves a half-played game.
-  resetOnEdit: (obj) => resetSessionPatch(obj as unknown as OrderObj),
+  resetOnEdit: (obj) => newDeckPatch(obj as unknown as OrderObj),
 });
 
 export default numberOrderTool;

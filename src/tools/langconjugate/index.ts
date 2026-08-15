@@ -6,7 +6,7 @@ import { currentPair } from "@/lang/store";
 import { verbsFor } from "@/lang/conjugation";
 import { LangConjugate } from "@/tools/langconjugate/LangConjugate";
 import { LangConjugateDialog } from "@/tools/langconjugate/Dialog";
-import { resetSessionPatch, type ConjMode, type ConjObj } from "@/tools/langconjugate/conj";
+import { newRoundPatch, type ConjMode, type ConjObj } from "@/tools/langconjugate/conj";
 
 export interface LangConjugateParams {
   known: string;
@@ -44,7 +44,7 @@ const langConjugateTool = defineWidgetTool<LangConjugateParams>({
   autoHeight: true,
   Component: LangConjugate,
   Dialog: LangConjugateDialog,
-  resetOnEdit: (obj) => resetSessionPatch(obj as unknown as ConjObj),
+  resetOnEdit: (obj) => newRoundPatch(obj as unknown as ConjObj),
 });
 
 export default langConjugateTool;

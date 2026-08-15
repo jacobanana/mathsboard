@@ -63,7 +63,7 @@ function confettiStyle(i: number): React.CSSProperties {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-export function FlashCards({ obj }: WidgetProps<FlashCardsParams>) {
+export function FlashCards({ obj, onEdit }: WidgetProps<FlashCardsParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
@@ -246,12 +246,12 @@ export function FlashCards({ obj }: WidgetProps<FlashCardsParams>) {
       style={{ width: W + "px", height: obj.h + "px", ...rootVars }}
       onPointerDown={onCardPointerDown}
     >
-      <div className="if-head" style={{ height: HEAD_H + "px" }}>
+      <div className="if-head widget-head" style={{ height: HEAD_H + "px" }}>
         <span className="if-title">{deckTitle(mo)}</span>
         <span className="if-progress">
           {finished ? "Results" : `${idx + 1} / ${count}`}
         </span>
-        <button className="if-new" title="New deck" onClick={newDeck}>
+        <button className="if-new" title="New — pick the options, then start again" onClick={onEdit ?? newDeck}>
           New
         </button>
       </div>

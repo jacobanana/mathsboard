@@ -30,13 +30,14 @@ import {
   genQuestions,
   markAnswers,
   markField,
+  prunedAnswerFields,
   qKey,
   widgetTitle,
   type Mark,
   type WorksheetParams,
 } from "@/tools/worksheet";
 
-export function Worksheet({ obj }: WidgetProps<WorksheetParams>) {
+export function Worksheet({ obj, onEdit }: WidgetProps<WorksheetParams>) {
   const updateObject = useBoardStore((s) => s.updateObject);
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
@@ -104,15 +105,14 @@ export function Worksheet({ obj }: WidgetProps<WorksheetParams>) {
   }
 
   // --- new questions (port of regenWidget — persists via the store) -------
+  // The New button now opens the settings Dialog instead (a silent reshuffle
+  // read as "this made a new widget"); submitting it regenerates the set the
+  // same way. This stays the fallback for a host that wires no edit route.
   function regen() {
     const questions = genQuestions(obj);
     // Replace the questions AND prune every stale answer/mark field in the
     // same (undoable) patch — undo restores the old set with its answers.
-    const patch: Record<string, unknown> = { questions };
-    for (const k of Object.keys(rec)) {
-      if (k.startsWith("ans:") || k.startsWith("mark:")) patch[k] = undefined;
-    }
-    updateObject(obj.id, patch);
+    updateObject(obj.id, { questions, ...prunedAnswerFields(rec) });
   }
 
   function setAnswer(i: number, v: string) {
@@ -136,10 +136,14 @@ export function Worksheet({ obj }: WidgetProps<WorksheetParams>) {
       onPointerDown={onCardPointerDown}
     >
       <div className="iw-body">
-        <div className="iw-top">
+        <div className="iw-top widget-head">
           <span className="iw-title">{widgetTitle(obj)}</span>
           <span className="iw-sp" />
-          <button className="iw-btn" title="New questions" onClick={regen}>
+          <button
+            className="iw-btn"
+            title="New — pick the options, then start again"
+            onClick={onEdit ?? regen}
+          >
             New
           </button>
           <button className="iw-btn check" onClick={check}>

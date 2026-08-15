@@ -14,7 +14,7 @@ import { LangPrepDialog } from "@/tools/langprep/Dialog";
 import {
   DEFAULT_ROUNDS,
   MIN_ROUNDS,
-  resetSessionPatch,
+  newDeckPatch,
   type PrepObj,
 } from "@/tools/langprep/prep";
 
@@ -50,7 +50,7 @@ const langPrepTool = defineWidgetTool<LangPrepParams>({
   freeAspect: true,
   Component: LangPrep,
   Dialog: LangPrepDialog,
-  resetOnEdit: (obj) => resetSessionPatch(obj as unknown as PrepObj),
+  resetOnEdit: (obj) => newDeckPatch(obj as unknown as PrepObj),
 });
 
 export default langPrepTool;

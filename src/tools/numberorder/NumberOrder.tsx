@@ -73,7 +73,7 @@ function confettiStyle(i: number): React.CSSProperties {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-export function NumberOrder({ obj }: WidgetProps<NumberOrderParams>) {
+export function NumberOrder({ obj, onEdit }: WidgetProps<NumberOrderParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
@@ -246,10 +246,10 @@ export function NumberOrder({ obj }: WidgetProps<NumberOrderParams>) {
       style={{ width: W + "px", height: obj.h + "px", ...rootVars }}
       onPointerDown={onCardPointerDown}
     >
-      <div className="io-head" style={{ height: HEAD_H + "px" }}>
+      <div className="io-head widget-head" style={{ height: HEAD_H + "px" }}>
         <span className="io-title">{deckTitle(mo)}</span>
         <span className="io-progress">{finished ? "Results" : `${idx + 1} / ${rounds}`}</span>
-        <button className="io-new" title="New game" onClick={newGame}>
+        <button className="io-new" title="New — pick the options, then start again" onClick={onEdit ?? newGame}>
           New
         </button>
       </div>

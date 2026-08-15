@@ -1,9 +1,11 @@
 // The contextual options pill (#options), a floating layer just above the
 // bottom tool dock — now a pure HOST: the active tool's Options component
 // (declared in its ToolUiSpec, ui/toolSpecs.tsx) renders its own pill island;
-// tools without one simply have no pill. Because the pill is its own
-// fixed-position layer, its appearance never displaces the dock or any other
-// button — the dock stays static while the options animate in and out.
+// tools without one simply have no pill, and neither does one whose pill the
+// user has folded away with its dock button (uiStore.optionsOpen). Because the
+// pill is its own fixed-position layer, its appearance never displaces the dock
+// or any other button — the dock stays static while the options animate in and
+// out.
 //
 // EDIT MODE. Restyling an existing object is done by EDITING IT WITH ITS OWN
 // TOOL: double-clicking an object switches to the tool its registry entry
@@ -12,8 +14,9 @@
 // value and writes through applyStyle, the same pipeline as the keyboard
 // shortcuts — so what the pill shows is always what it changes.
 
-import { useLayoutEffect, type ComponentType } from "react";
+import { useEffect, useLayoutEffect, type ComponentType } from "react";
 import { useBoardStore } from "@/board/store";
+import { useUiStore } from "@/ui/uiStore";
 import { toolUiFor } from "@/ui/toolSpecs";
 
 /** Publish the pill's live height as --options-lift on the root element.
@@ -41,7 +44,14 @@ function useOptionsLift(Options: ComponentType | undefined): void {
 
 export function OptionsStrip(): JSX.Element | null {
   const tool = useBoardStore((s) => s.tool);
-  const Options = toolUiFor(tool)?.Options;
+  const optionsOpen = useUiStore((s) => s.optionsOpen);
+  // Folding the pill away is per VISIT, not per tool: arriving at a tool
+  // always shows its options, so a pill folded away on the pen can never
+  // leave the eraser or the text tool mysteriously bare.
+  useEffect(() => {
+    useUiStore.getState().setOptionsOpen(true);
+  }, [tool]);
+  const Options = optionsOpen ? toolUiFor(tool)?.Options : undefined;
   useOptionsLift(Options);
   return Options ? <Options /> : null;
 }
