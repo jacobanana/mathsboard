@@ -11,9 +11,10 @@
 // flash-cards deck. Like the worksheet the card self-measures and syncs its
 // rendered size back onto the object box. The card body is the drag handle.
 
-import { useLayoutEffect, useRef } from "react";
+import { useRef } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
+import { useCardSize } from "@/tools/useCardSize";
 import { id as newId } from "@/board/types";
 import { placeObject } from "@/board/commands";
 import { languageByCode } from "@/lang/data";
@@ -53,28 +54,9 @@ export function LangTable({ obj }: WidgetProps<LangTableParams>) {
     .filter((p) => p.known && p.learning);
 
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const lastSize = useRef({ w: obj.w, h: obj.h });
 
-  // Keep the object's box matched to the rendered card (see Worksheet.tsx).
-  useLayoutEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-    const sync = () => {
-      const w = el.offsetWidth;
-      const h = el.offsetHeight;
-      if (
-        Math.abs(w - lastSize.current.w) > 0.5 ||
-        Math.abs(h - lastSize.current.h) > 0.5
-      ) {
-        lastSize.current = { w, h };
-        updateWidgetState(obj.id, { w, h });
-      }
-    };
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [obj.id, updateWidgetState]);
+  // Keep the object's box matched to the rendered card (see useCardSize).
+  useCardSize(obj, cardRef);
 
   function setCell(rowId: string, col: "a" | "b", v: string) {
     updateWidgetState(obj.id, { [(col === "a" ? cellA : cellB)(rowId)]: v });

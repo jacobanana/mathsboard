@@ -17,10 +17,9 @@ import {
   screenToWorld,
   snapPt,
   worldToScreen,
-  RESIZE_HANDLES,
 } from "@/board/geometry";
 import type { ResizeHandle } from "@/board/geometry";
-import { RESIZE_CURSOR, resizeRect } from "@/board/resize";
+import { RESIZE_CURSOR, resizeRect, widgetHandles } from "@/board/resize";
 import { getTool } from "@/tools/registry";
 
 /** Screen padding (px) of the handle box outside the widget, matching the
@@ -51,6 +50,9 @@ export function WidgetHandleLayer(): JSX.Element {
     target && t && t.kind === "widget" && t.resizable ? target : null;
   // A widget whose layout reflows to any box resizes on both axes freely.
   const freeAspect = !!(t && t.kind === "widget" && t.freeAspect);
+  // An auto-height card measures its own height (useCardSize), so it offers the
+  // side grips only — a vertical drag would be undone on the next frame.
+  const handles = widgetHandles(t && t.kind === "widget" && t.autoHeight);
 
   if (!o) return <div className="whandle-layer" ref={layerRef} />;
 
@@ -118,7 +120,7 @@ export function WidgetHandleLayer(): JSX.Element {
 
   return (
     <div className="whandle-layer" ref={layerRef}>
-      {RESIZE_HANDLES.map((h) => {
+      {handles.map((h) => {
         const c = worldToScreen(camera, centers[h].x, centers[h].y);
         return (
           <div

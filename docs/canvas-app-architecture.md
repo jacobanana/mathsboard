@@ -39,7 +39,7 @@ save a few lines are noted but deferred.
 | C5 | **Text editor overlay** | `openEditor`, `autoSize`, `commitEditor`, `<textarea>` | Textarea positioning math, font/scale recovery, empty→remove vs `updateObject`. |
 | C6 | **Pointer/gesture state machine** | `onPointerDown/Move/release`, 11 imperative refs | The bulk of the file. Dispatches by `tool`: pen/eraser, select (resize/move/collapse), lasso, pan, deferred text, two-finger pinch, capture, `ignoreSingle`. |
 | C7 | **Selection algebra** | `singleSelection`, `toggleSelection`, `isInSelection`, `HitKind` | Pure helpers; also the "collapse multi-select on click" rule lives inside `release`. |
-| C8 | **Resize math** | `resizeRect`, `singleResizableObject`, `RESIZE_CURSOR`, `HANDLE_SLOP`, `MIN_OBJ` | Aspect-locked box derivation + which object is resizable + cursor per handle. |
+| C8 | **Resize math** | `resizeRect`, `singleResizableObject`, `widgetHandles`, `RESIZE_CURSOR`, `HANDLE_SLOP`, `MIN_OBJ` | Aspect-locked box derivation + which object is resizable + which handles a widget offers + cursor per handle. |
 | C9 | **Zoom / pinch** | `zoomAt`, `zoomAtRef`, `startGesture`, `updateGesture`, wheel handler | Camera manipulation shared by wheel, pinch, and (indirectly) `ZoomCluster`. |
 | C10 | **Cursor policy** | tool-cursor effect, hover-cursor branch in `onPointerMove` | Which cursor per tool; resize-handle hover feedback. |
 

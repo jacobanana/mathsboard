@@ -344,10 +344,11 @@ export interface WidgetTool<P = Record<string, unknown>> extends ToolMeta {
    * Opt in to box resizing. Widgets are HTML overlays, so their resize handles
    * can't be painted on the canvas (they'd sit under the widget) — the
    * WidgetHandleLayer floats DOM handles over the selected widget instead. Only
-   * set this when the Component fully derives its layout from `obj.w`/`obj.h`
-   * (like the die): a widget that self-measures its natural size (the worksheet)
-   * would just snap back and must NOT opt in. The box keeps its aspect ratio
-   * unless the tool also sets `freeAspect`.
+   * set this when the Component derives its layout from the box (like the die),
+   * or takes just its width from it and sets `autoHeight` (the games): a widget
+   * that self-measures BOTH axes (the worksheet) would only snap back, and must
+   * NOT opt in. The box keeps its aspect ratio unless the tool also sets
+   * `freeAspect`.
    */
   resizable?: boolean;
   /**
@@ -360,6 +361,16 @@ export interface WidgetTool<P = Record<string, unknown>> extends ToolMeta {
    * card), which stay aspect-locked.
    */
   freeAspect?: boolean;
+  /**
+   * The card's HEIGHT comes from its content, not from the box (requires
+   * `resizable`): the Component sets only its width and calls `useCardSize`, so
+   * the measured height is written back to `obj.h` — the games grow to fit their
+   * words instead of squeezing them. Dragging a top/bottom handle would fight
+   * that measurement, so the WidgetHandleLayer shows only the two side handles
+   * and the learner sizes the width alone. Omit for widgets that lay themselves
+   * out inside a box the learner sets on both axes.
+   */
+  autoHeight?: boolean;
   /**
    * Optional LIVE-STATE reset after a settings edit is applied. When present,
    * editObject writes the returned patch via updateWidgetState (INPUT_ORIGIN,

@@ -7,12 +7,14 @@
 // the answer. A "Flash cards" button turns the table into a flash-cards deck. All
 // state is live widget-state (see conj.ts). The card body is the drag handle.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetProps } from "@/tools/registry";
 import { useBoardStore } from "@/board/store";
+import { useCardSize } from "@/tools/useCardSize";
 import { placeObject } from "@/board/commands";
 import { track } from "@/analytics";
 import { SpeakButton } from "@/lang/SpeakButton";
+import { PickGhost } from "@/lang/PickGhost";
 import { usePickPlace } from "@/lang/usePickPlace";
 import {
   allFilled,
@@ -42,6 +44,11 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
+
+  // The learner sets the width; the height follows the content, so six rows plus
+  // a full form bank always fit instead of scrolling inside a fixed box.
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  useCardSize(obj, cardRef);
 
   const mo = obj as unknown as ConjObj;
   const mode = obj.mode;
@@ -169,7 +176,8 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
     <div
       className={"icj" + (done ? " done" : "")}
       data-id={obj.id}
-      style={{ width: obj.w + "px", height: obj.h + "px" }}
+      ref={cardRef}
+      style={{ width: obj.w + "px" }}
       onPointerDown={onCardPointerDown}
     >
       <div className="cj-head" style={{ height: HEAD_H + "px" }}>
@@ -309,9 +317,7 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
 
       {/* The floating form that follows the pointer while dragging. */}
       {place.dragId != null && place.ghost && table.bank[Number(place.dragId)] != null && (
-        <div className="pick-ghost" style={{ left: place.ghost.x, top: place.ghost.y }}>
-          {table.bank[Number(place.dragId)]}
-        </div>
+        <PickGhost at={place.ghost}>{table.bank[Number(place.dragId)]}</PickGhost>
       )}
     </div>
   );

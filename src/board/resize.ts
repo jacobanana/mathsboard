@@ -4,6 +4,7 @@
 
 import { getTool } from "@/tools/registry";
 import type { AnyBoardObject } from "@/board/types";
+import { RESIZE_HANDLES } from "@/board/geometry";
 import type { ResizeHandle } from "@/board/geometry";
 import type { Selection } from "@/board/store";
 
@@ -40,6 +41,16 @@ export function singleResizableObject(
   const t = getTool(o.type);
   return t && t.kind === "canvas" ? o : null;
 }
+
+/**
+ * Which resize handles a widget offers. An AUTO-HEIGHT card measures its own
+ * height (tools/useCardSize) and writes it back to the object, so a top/bottom
+ * grip would be undone on the very next frame — those cards offer the two side
+ * grips only, and the learner sizes the width alone. Every other widget gets the
+ * full eight.
+ */
+export const widgetHandles = (autoHeight?: boolean): ResizeHandle[] =>
+  autoHeight ? ["e", "w"] : RESIZE_HANDLES;
 
 /**
  * New box for an object whose `handle` is dragged to world point (wx, wy). By

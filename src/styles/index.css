@@ -1153,8 +1153,12 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 .gp-newdeck{background:var(--accent);color:#3a2a05;}
 .gp-again:hover,.gp-newdeck:hover{filter:brightness(.97);}
 
-/* --- Conjugation (.icj): learn a verb's forms --- */
-.icj{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+/* --- Conjugation (.icj): learn a verb's forms ---
+   The card sets its width only (LangConjugate) and grows to whatever the rows,
+   the form bank and the footer need; min-width keeps a long form from being
+   squeezed narrower than it can draw. useCardSize writes the measured box back
+   to the object, so the selection frame follows. */
+.icj{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;min-width:min-content;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
 .icj:active{cursor:grabbing;}
 .icj.done{animation:ifBounce .6s ease;}
 .cj-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #F0EAD6;background:#FBF7EC;}
@@ -1163,7 +1167,7 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 .cj-progress{flex:0 0 auto;font-weight:800;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
 .cj-new{flex:0 0 auto;padding:5px 10px;border-radius:9px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:12px;cursor:pointer;}
 .cj-new:hover{filter:brightness(.97);}
-.cj-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;box-sizing:border-box;overflow-y:auto;}
+.cj-body{flex:1;display:flex;flex-direction:column;gap:10px;padding:12px;box-sizing:border-box;}
 .cj-learnbar{display:flex;align-items:center;gap:10px;}
 .cj-coverbtn{flex:0 0 auto;padding:6px 12px;border-radius:10px;border:0;background:var(--hover);color:var(--bar);font-weight:800;font-size:13px;cursor:pointer;}
 .cj-coverbtn:hover{filter:brightness(.97);}
@@ -1205,7 +1209,7 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 }
 
 /* --- Gender sort (.igender): sort each noun into its gender basket --- */
-.igender{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
+.igender{pointer-events:auto;user-select:none;touch-action:none;cursor:grab;display:flex;flex-direction:column;min-width:min-content;background:#fff;border:1px solid #E4D9B8;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.16);overflow:hidden;}
 .igender:active{cursor:grabbing;}
 .igender.happy,.igender.done{animation:ifBounce .6s ease;}
 .igender.shake{animation:ifShake .5s ease;}
@@ -1214,7 +1218,7 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 .gd-progress{flex:0 0 auto;font-weight:800;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
 .gd-new{flex:0 0 auto;padding:5px 10px;border-radius:9px;border:0;background:var(--accent);color:#3a2a05;font-weight:800;font-size:12px;cursor:pointer;}
 .gd-new:hover{filter:brightness(.97);}
-.gd-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;box-sizing:border-box;}
+.gd-body{flex:1;display:flex;flex-direction:column;gap:10px;padding:12px;box-sizing:border-box;}
 .gd-pile{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:44px;align-items:center;}
 .gd-pile-empty{color:var(--muted);font-weight:800;font-size:14px;}
 .gd-word{display:flex;align-items:center;gap:7px;font-family:inherit;font-weight:800;font-size:16px;padding:8px 12px;border-radius:12px;border:3px solid #E2E5EA;background:#fff;color:#1F2937;cursor:grab;box-shadow:0 3px 8px rgba(0,0,0,.08);touch-action:none;}
@@ -1224,13 +1228,13 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 .gd-emoji{font-size:20px;}
 .gd-w{font-weight:900;}
 .gd-gloss{font-weight:600;font-size:12px;color:var(--muted);}
-.gd-baskets{flex:1;min-height:0;display:flex;gap:10px;align-items:stretch;}
-.gd-basket{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;padding:10px 8px;border-radius:14px;border:3px dashed #D7DCE4;background:#F6F8FB;cursor:default;font-family:inherit;text-align:center;transition:background .12s,border-color .12s;}
+.gd-baskets{flex:1;display:flex;gap:10px;align-items:stretch;}
+.gd-basket{flex:1;min-width:0;min-height:96px;display:flex;flex-direction:column;gap:8px;padding:10px 8px;border-radius:14px;border:3px dashed #D7DCE4;background:#F6F8FB;cursor:default;font-family:inherit;text-align:center;transition:background .12s,border-color .12s;}
 .gd-basket.active{border-color:#8B7BF9;background:#F3F1FE;cursor:pointer;}
 .gd-basket.active:hover,.gd-basket[data-over]{border-color:#6D5EF6;background:#E7E1FD;}
 .gd-basket[data-over]{transform:scale(1.02);}
 .gd-basket-head{flex:0 0 auto;font-weight:900;font-size:19px;color:#4C3BC7;letter-spacing:.5px;}
-.gd-basket-cards{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;}
+.gd-basket-cards{flex:1;display:flex;flex-direction:column;gap:6px;}
 .gd-chip{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 8px;border-radius:10px;font-weight:800;font-size:14px;}
 .gd-chip.ok{background:#EAF7EE;color:#166534;border:2px solid #16A34A;}
 .gd-chip.no{background:#FBECEC;color:#B91C1C;border:2px solid #DC2626;cursor:pointer;}
@@ -1241,8 +1245,10 @@ button.spoken-word.speakable:focus-visible{outline:2px solid currentColor;outlin
 .gd-foot-done{color:#16A34A;font-weight:800;font-size:14px;}
 
 /* The floating token dragged by usePickPlace (gender words, conjugation forms).
-   position:fixed so it tracks the pointer in viewport space, ignoring the
-   board's camera transform. */
+   position:fixed tracks the pointer in viewport space — which only works because
+   PickGhost portals it to <body>, clear of the camera transform on the widget
+   wrapper (a transformed ancestor would otherwise become its containing block).
+   PickGhost supplies the transform inline, adding the camera scale. */
 .pick-ghost{position:fixed;z-index:9999;transform:translate(-50%,-50%) rotate(-3deg);pointer-events:none;display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:12px;border:3px solid #6D5EF6;background:#EDE9FE;color:#4C3BC7;font-family:inherit;font-weight:900;font-size:16px;box-shadow:0 10px 24px rgba(76,59,199,.35);}
 
 /* --- Where is it? (.iprep): pick the preposition for the drawn scene --- */

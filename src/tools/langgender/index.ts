@@ -60,6 +60,8 @@ const langGenderTool = defineWidgetTool<LangGenderParams>({
   defaultSize: { w: 380, h: 400 },
   resizable: true,
   freeAspect: true,
+  // The card measures its own height (useCardSize) — width handles only.
+  autoHeight: true,
   Component: LangGender,
   Dialog: LangGenderDialog,
   resetOnEdit: (obj) => resetSessionPatch(obj as unknown as GenderObj),
