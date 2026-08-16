@@ -164,7 +164,7 @@ export function StudyNotepad({
       style={{ width: obj.w + "px", height: obj.h + "px" }}
       onPointerDown={onCardPointerDown}
     >
-      <div className="snote-head" style={{ height: HEAD_H + "px" }}>
+      <div className="snote-head widget-head" style={{ height: HEAD_H + "px" }}>
         <span className="snote-emoji" aria-hidden>
           {page?.emoji ?? headEmojiFallback}
         </span>

@@ -40,7 +40,7 @@ import type { LangConjugateParams } from "@/tools/langconjugate";
 
 const HEAD_H = 40;
 
-export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
+export function LangConjugate({ obj, onEdit }: WidgetProps<LangConjugateParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
@@ -180,7 +180,7 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
       style={{ width: obj.w + "px" }}
       onPointerDown={onCardPointerDown}
     >
-      <div className="cj-head" style={{ height: HEAD_H + "px" }}>
+      <div className="cj-head widget-head" style={{ height: HEAD_H + "px" }}>
         <span className="cj-title">
           {table.infinitiveLearning}
           {table.infinitiveLearning && (
@@ -190,7 +190,7 @@ export function LangConjugate({ obj }: WidgetProps<LangConjugateParams>) {
           <span className="cj-sub"> · {table.tenseLabel}</span>
         </span>
         {quiz && !checked && <span className="cj-progress">{correct} / {size}</span>}
-        <button className="cj-new" title="New / reshuffle" onClick={newGame}>
+        <button className="cj-new" title="New — pick the options, then start again" onClick={onEdit ?? newGame}>
           New
         </button>
       </div>

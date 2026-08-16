@@ -15,7 +15,7 @@ import { categoriesForVocab, type LevelFilter } from "@/lang/pairs";
 import { LangFlashCards } from "@/tools/langflashcards/LangFlashCards";
 import { LangFlashDialog } from "@/tools/langflashcards/Dialog";
 import {
-  resetSessionPatch,
+  newDeckPatch,
   type CustomPair,
   type Direction,
   type LangFlashObj,
@@ -77,7 +77,7 @@ const langFlashCardsTool = defineWidgetTool<LangFlashParams>({
   resizable: true,
   Component: LangFlashCards,
   Dialog: LangFlashDialog,
-  resetOnEdit: (obj) => resetSessionPatch(obj as unknown as LangFlashObj),
+  resetOnEdit: (obj) => newDeckPatch(obj as unknown as LangFlashObj),
 });
 
 export default langFlashCardsTool;

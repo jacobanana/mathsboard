@@ -122,6 +122,12 @@ export default function App(): JSX.Element {
     });
   }, []);
 
+  // Long press on a widget's top bar: ask before it goes (ui/modals ->
+  // confirmDelete). The widget layer owns the hold; App owns the sheet.
+  const confirmDeleteFor = useCallback((obj: AnyBoardObject) => {
+    setModal({ kind: "confirmDelete", objId: obj.id });
+  }, []);
+
   // Float-button "edit selected": resolve the selection, then route. Editing
   // applies to exactly one object (a stroke or multi-select has no settings
   // dialog).
@@ -197,7 +203,10 @@ export default function App(): JSX.Element {
       >
         <BoardCanvas onEditObject={openEditFor} />
         <InputOverlayLayer container={stageEl} />
-        <WidgetLayer onEditObject={openEditFor} />
+        <WidgetLayer
+          onEditObject={openEditFor}
+          onDeleteObject={confirmDeleteFor}
+        />
         <WidgetHandleLayer />
         <AnswerButtonLayer container={stageEl} />
         <TimerDoneLayer />

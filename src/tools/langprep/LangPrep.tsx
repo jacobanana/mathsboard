@@ -59,7 +59,7 @@ function Scene({ round }: { round: PrepRound }) {
   );
 }
 
-export function LangPrep({ obj }: WidgetProps<LangPrepParams>) {
+export function LangPrep({ obj, onEdit }: WidgetProps<LangPrepParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
@@ -156,10 +156,10 @@ export function LangPrep({ obj }: WidgetProps<LangPrepParams>) {
       style={{ width: obj.w + "px", height: obj.h + "px" }}
       onPointerDown={onCardPointerDown}
     >
-      <div className="pp-head" style={{ height: HEAD_H + "px" }}>
+      <div className="pp-head widget-head" style={{ height: HEAD_H + "px" }}>
         <span className="pp-title">Where is it?</span>
         <span className="pp-progress">{finished ? "Results" : `${idx + 1} / ${rounds}`}</span>
-        <button className="pp-new" title="New game" onClick={newGame}>
+        <button className="pp-new" title="New — pick the options, then start again" onClick={onEdit ?? newGame}>
           New
         </button>
       </div>

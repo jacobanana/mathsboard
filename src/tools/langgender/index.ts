@@ -14,7 +14,7 @@ import { LangGenderDialog } from "@/tools/langgender/Dialog";
 import {
   DEFAULT_COUNT,
   MIN_COUNT,
-  resetSessionPatch,
+  newRoundPatch,
   type GenderObj,
 } from "@/tools/langgender/gender";
 
@@ -64,7 +64,7 @@ const langGenderTool = defineWidgetTool<LangGenderParams>({
   autoHeight: true,
   Component: LangGender,
   Dialog: LangGenderDialog,
-  resetOnEdit: (obj) => resetSessionPatch(obj as unknown as GenderObj),
+  resetOnEdit: (obj) => newRoundPatch(obj as unknown as GenderObj),
 });
 
 export default langGenderTool;

@@ -9,7 +9,7 @@ import { LangGaps } from "@/tools/langgaps/LangGaps";
 import { LangGapsDialog } from "@/tools/langgaps/Dialog";
 import {
   DEFAULT_ROUNDS,
-  resetSessionPatch,
+  newDeckPatch,
   type Difficulty,
   type GapObj,
 } from "@/tools/langgaps/gaps";
@@ -57,7 +57,7 @@ const langGapsTool = defineWidgetTool<LangGapsParams>({
   freeAspect: true,
   Component: LangGaps,
   Dialog: LangGapsDialog,
-  resetOnEdit: (obj) => resetSessionPatch(obj as unknown as GapObj),
+  resetOnEdit: (obj) => newDeckPatch(obj as unknown as GapObj),
 });
 
 export default langGapsTool;

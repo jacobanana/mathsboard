@@ -10,7 +10,7 @@ import { LangMatchDialog } from "@/tools/langmatch/Dialog";
 import {
   DEFAULT_COUNT,
   MIN_COUNT,
-  resetSessionPatch,
+  newRoundPatch,
   type MatchObj,
 } from "@/tools/langmatch/match";
 
@@ -55,7 +55,7 @@ const langMatchTool = defineWidgetTool<LangMatchParams>({
   freeAspect: true,
   Component: LangMatch,
   Dialog: LangMatchDialog,
-  resetOnEdit: (obj) => resetSessionPatch(obj as unknown as MatchObj),
+  resetOnEdit: (obj) => newRoundPatch(obj as unknown as MatchObj),
 });
 
 export default langMatchTool;

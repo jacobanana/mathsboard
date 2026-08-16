@@ -114,7 +114,7 @@ test("typed answers sync live, and Check marks them for everyone", async ({
   }
 });
 
-test("New questions clears everyone's answers and marks", async ({
+test("New opens the settings sheet; saving it clears everyone's answers and marks", async ({
   newClient,
 }) => {
   const host = await newClient();
@@ -131,7 +131,10 @@ test("New questions clears everyone's answers and marks", async ({
     "1 / 12 correct",
   );
 
-  await host.locator('.iworksheet .iw-btn[title="New questions"]').click();
+  // New reopens the worksheet's own settings sheet (rather than silently
+  // reshuffling); saving it is what deals the fresh set.
+  await host.locator(".iworksheet .iw-top .iw-btn").first().click();
+  await host.getByRole("button", { name: "Save" }).click();
   for (const page of [host, guest]) {
     await expect(page.locator(".iworksheet .iw-in").nth(0)).toHaveValue("");
     await expect(page.locator(".iworksheet .iw-mark").nth(0)).toHaveText("");

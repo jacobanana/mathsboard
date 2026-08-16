@@ -526,3 +526,15 @@ const parseAns = (ans: string | undefined, cur: Currency): number | null =>
  *  the component reseeds (a game / currency / difficulty change). */
 export const problemStamp = (obj: MoneyObj): string =>
   `${obj.game}:${obj.difficulty}:${obj.currency}`;
+
+/** Deal a fresh problem: bump the counter the problem derives from, restamp it
+ *  for the current config, and clear the pile and the answer. Behind both ways
+ *  of asking for one — the card's New button and saving its settings sheet. */
+export const newProblemPatch = (obj: MoneyObj): Record<string, unknown> => ({
+  round: (obj.round ?? 0) + 1,
+  stamp: problemStamp(obj),
+  ...prunePlacedPatch(obj),
+  ans: undefined,
+  choice: undefined,
+  result: undefined,
+});

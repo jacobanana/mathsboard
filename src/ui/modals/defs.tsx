@@ -9,6 +9,7 @@ import { useBoardStore } from "@/board/store";
 import { useUiStore } from "@/ui/uiStore";
 import { placeObject, editObject } from "@/board/commands";
 import { getTool } from "@/tools/registry";
+import { keyHint } from "@/ui/shortcuts";
 import { setStoredName } from "@/collab/profile";
 import { IS_LANGUAGE } from "@/subject";
 import { LangNewBoard } from "@/lang/LangNewBoard";
@@ -164,6 +165,44 @@ const dialogModal = defineModal("dialog", {
   },
 });
 
+// Long press on a widget's top bar -> "Delete this?". The widget layer arms
+// the hold; App routes it here. Deliberately a confirmation and not a straight
+// delete: the press is held over a live activity that may hold a class's typed
+// answers, and on touch there is no hover to tell you what you're about to hit.
+const confirmDeleteModal = defineModal("confirmDelete", {
+  render: (state, api) => {
+    const { board, removeObject } = useBoardStore.getState();
+    const obj = board.objects.find((o) => o.id === state.objId);
+    // Already gone (a collaborator deleted it while the sheet was up).
+    if (!obj) return <p className="hint">That has already been deleted.</p>;
+    const name = getTool(obj.type)?.name ?? "this";
+    return (
+      <>
+        <h2>Delete {name}?</h2>
+        <p className="hint">
+          It goes from the board for everyone, along with anything typed into
+          it. {keyHint("undo")} brings it back.
+        </p>
+        <div className="card-actions">
+          <button className="btn" onClick={api.close}>
+            Cancel
+          </button>
+          <button
+            className="btn primary"
+            id="confirmDeleteBtn"
+            onClick={() => {
+              removeObject(obj.id);
+              api.close();
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      </>
+    );
+  },
+});
+
 const boardsModal = defineModal("boards", {
   render: (_s, api) => (
     <BoardsManager
@@ -224,6 +263,7 @@ export const MODALS: ModalDef[] = [
   helpModal,
   dialogModal,
   boardsModal,
+  confirmDeleteModal,
   saveAsModal,
   shareModal,
   joinNameModal,

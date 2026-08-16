@@ -34,6 +34,7 @@ import {
   freeSpot,
   liveSum,
   placeField,
+  newProblemPatch,
   problemStamp,
   prunePlacedPatch,
   readPlacedPieces,
@@ -65,7 +66,7 @@ const easeOutBack = (t: number) => {
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 };
 
-export function Money({ obj }: WidgetProps<MoneyParams>) {
+export function Money({ obj, onEdit }: WidgetProps<MoneyParams>) {
   const updateWidgetState = useBoardStore((s) => s.updateWidgetState);
   const moveObject = useBoardStore((s) => s.moveObject);
   const pushHistory = useBoardStore((s) => s.pushHistory);
@@ -234,15 +235,7 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
   function newProblem() {
     window.clearTimeout(autoTimerRef.current);
     setFx(null);
-    const m = fresh() ?? mo;
-    updateWidgetState(obj.id, {
-      round: (m.round ?? 0) + 1,
-      stamp: problemStamp(m),
-      ...prunePlacedPatch(m),
-      ans: undefined,
-      choice: undefined,
-      result: undefined,
-    });
+    updateWidgetState(obj.id, newProblemPatch(fresh() ?? mo));
     track("tool_action", { tool: "money", action: "new" });
   }
 
@@ -334,10 +327,10 @@ export function Money({ obj }: WidgetProps<MoneyParams>) {
       style={{ width: cssW + "px", height: obj.h + "px" }}
       onPointerDown={onCardPointerDown}
     >
-      <div className="imoney-prompt" style={{ height: PROMPT_H + "px" }}>
+      <div className="imoney-prompt widget-head" style={{ height: PROMPT_H + "px" }}>
         <span className="imoney-q">{meta.prompt(problem)}</span>
         {obj.game !== "sandbox" && (
-          <button className="imoney-new" title="New problem" onClick={newProblem}>
+          <button className="imoney-new" title="New — pick the options, then start again" onClick={onEdit ?? newProblem}>
             New
           </button>
         )}

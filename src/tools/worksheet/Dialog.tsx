@@ -53,8 +53,9 @@ export function WorksheetDialog({
     <>
       <h2>Practice — type &amp; check</h2>
       <p className="hint">
-        She types each answer and taps Check to mark them. “New” makes fresh
-        questions. Drag the dark bar to move it.
+        She types each answer and taps Check to mark them. “New” reopens this
+        sheet — saving it makes a fresh set of questions. Drag the dark bar to
+        move it.
       </p>
 
       <div className="field">

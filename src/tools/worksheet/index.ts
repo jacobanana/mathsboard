@@ -154,4 +154,20 @@ export default defineWidgetTool<WorksheetParams>({
   defaultSize: { w: 300, h: 540 },
   Component: Worksheet,
   Dialog: WorksheetDialog,
+  // The card's New button opens this sheet, and submitting it always
+  // regenerates the questions (Dialog.tsx) — so every typed answer and mark
+  // belongs to a question set that no longer exists. Prune them with it, or
+  // they linger on the object as dead fields for ever.
+  resetOnEdit: (obj) => prunedAnswerFields(obj as unknown as Record<string, unknown>),
 });
+
+/** Clear every "ans:<qid>" / "mark:<qid>" field on a worksheet object. */
+export function prunedAnswerFields(
+  rec: Record<string, unknown>,
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  for (const k of Object.keys(rec)) {
+    if (k.startsWith("ans:") || k.startsWith("mark:")) patch[k] = undefined;
+  }
+  return patch;
+}

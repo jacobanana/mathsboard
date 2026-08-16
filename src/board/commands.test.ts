@@ -134,6 +134,22 @@ describe("editObject", () => {
     editObject("missing", { ...NL, intervals: 5 });
     expect(st().board.objects[0]).toBe(before);
   });
+
+  // Saving a game's settings sheet IS its "New" now (the card's New button
+  // opens it), so it has to deal a fresh round even when the settings that
+  // came back are identical — and wipe the session that belonged to the old
+  // one. Both come from the tool's resetOnEdit (tools/registry.ts).
+  it("deals a fresh round for an activity, even with the settings unchanged", () => {
+    const params = { mode: "times", level: "easy", count: 10, table: 3 };
+    placeObject("flashcards", params);
+    const id = st().selection.objectIds[0];
+    const before = st().board.objects[0] as { round?: number };
+
+    editObject(id, params);
+
+    const after = st().board.objects[0] as { round?: number };
+    expect(after.round ?? 0).toBe((before.round ?? 0) + 1);
+  });
 });
 
 describe("internal clipboard", () => {

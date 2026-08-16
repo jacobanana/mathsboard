@@ -73,7 +73,7 @@ change that seems to need another branch usually belongs in the profile instead.
 | storage | `board/persistence/` — everything hides behind `BoardRepository` |
 | pointer behaviour of a dock tool | `canvas/interactions/` — one controller per tool, dispatched by `BoardCanvas` |
 | what gets painted | `canvas/scene.ts` (the document) — interaction previews come from the controller's `drawOverlay`, never from here |
-| pan / zoom / pinch | `canvas/viewport.ts` |
+| pan / zoom / pinch | `canvas/viewport.ts` moves the camera; `canvas/gestures.ts` is where the fingers are counted — one registry shared by the canvas and the widget overlay, so a pinch works with a finger resting on a widget |
 | in-place editing | `canvas/textEditor.ts`, `canvas/mathEditor.ts`, registered via `canvas/editors.ts` |
 | overlays on top of the canvas | the `*Layer` components in `canvas/` (widgets, type-in answers, reveal buttons) and `ui/` (presence, timer alert) — each owns one overlay for every tool that opts in, so none of them is edited per tool |
 | sharing, join codes, presence, the Y.Doc | `collab/session.ts` (the one write API), `collab/docModel.ts` (how a board maps onto a Y.Doc, and how it merges), `collab/collabStore.ts` (ephemeral session state) |
