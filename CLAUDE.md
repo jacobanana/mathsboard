@@ -152,7 +152,7 @@ bash scripts/checks.sh          # typecheck + the unit suite. Silence is the pas
 
 Same thing `.claude/hooks/commit-checks.sh` runs before it will let a `git
 commit` through, and the same pair CI gates every heavier pipeline on
-(`unit-run.yml`). Both legs are seconds. Run the script rather than guessing
+(`unit-run.yml`). Both legs are fast. Run the script rather than guessing
 what it wants; `typecheck` / `unit` narrow it to one leg.
 
 ## The pre-PR gate
