@@ -1,0 +1,52 @@
+# Baked into the web image: the static file server that runs in production,
+# behind the edge proxy in the mixedmode-deploy repo.
+#
+# It holds no certificate, answers to no hostname and proxies nothing. TLS,
+# routing, compression and /api + /ys live in the edge stack; all that is left
+# here is handing back files, which is the one job that needs the files.
+#
+# Which board a request is for arrives as X-Board, set by the edge proxy on the
+# language domain and deleted by it on the maths one. A header rather than a
+# hostname so this image stays domain-agnostic - the hostnames are declared
+# once, in the deploy repo's `sites`, which is also what provisions their DNS.
+#
+# Local development and the e2e suite do not use this file: docker-compose.yml
+# bind-mounts deploy/Caddyfile over it, because with no edge proxy in front the
+# local stack needs one Caddy doing everything.
+#
+# No `encode` here on purpose. The edge proxy compresses, and compressing twice
+# costs CPU to produce the same bytes.
+
+:80 {
+	root * /srv
+
+	# The language board's own domain, serving the SAME build's language page at
+	# that domain's root. The page's asset URLs are relative and baked at
+	# /language/ depth (../assets, ../icons); served from the root the browser
+	# clamps ".." at "/", so they resolve to the shared /assets and /icons. Only
+	# the manifest has to be swapped for the language copy.
+	@language header X-Board language
+	handle @language {
+		# `route` keeps these in written order regardless of Caddy's directive
+		# sort, so the root and manifest rewrites land before the SPA fallback.
+		route {
+			# <link rel=manifest> resolves to /manifest.webmanifest at the root;
+			# serve the LANGUAGE manifest (name, icons, theme) there.
+			rewrite /manifest.webmanifest /language/manifest.webmanifest
+			# The bare root matches the /srv directory, whose index is the MATHS
+			# page, so point it explicitly at the language shell.
+			@root path /
+			rewrite @root /language/index.html
+			# Real files (hashed assets, icons, sw.js) pass through; anything
+			# else (client-side routes) falls back to the language shell.
+			try_files {path} /language/index.html
+			file_server
+		}
+	}
+
+	# The maths board: the build at its root.
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}
