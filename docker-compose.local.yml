@@ -1,6 +1,6 @@
-# LOCAL END-TO-END TEST OVERLAY - run the entire production topology on your
-# machine before deploying, with MinIO standing in for S3 and throwaway dev
-# credentials baked in (safe to commit; NEVER reuse these values in production).
+# LOCAL END-TO-END TEST OVERLAY - adds the S3 stand-in and throwaway dev
+# credentials to docker-compose.yml (safe to commit; NEVER reuse these values
+# anywhere real).
 #
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 #
@@ -10,21 +10,11 @@
 # volume (inspect at http://localhost:9001, login dev-minio / dev-minio-secret).
 
 services:
-  web:
-    # Build the frontend image from source (production pulls it from GHCR).
-    # Tagged as the same image name, so nothing is fetched from the registry.
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile.web
-    # Plain HTTP on :8080 instead of the production 80/443 + auto-TLS.
-    ports: !override
-      - "8080:8080"
-    environment:
-      SITE_ADDRESS: ":8080"
+  # `web` needs nothing added: docker-compose.yml builds it from source and
+  # publishes :8080 already, now that it describes this stack rather than
+  # doubling as the production one.
 
   api:
-    # Build the token/upload service from source (production pulls from GHCR).
-    build: ./server
     environment:
       # server_token half of the committed DEV keypair (see ysweet below).
       YSWEET_CONNECTION_STRING: ys://AAAg6DB6hG-3FlnY9HyNLEYh9I7CIBXcHHnKB184_TvKK-8@ysweet:8080

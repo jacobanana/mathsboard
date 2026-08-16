@@ -1,50 +1,46 @@
-# Production stack - one VPS, one domain, three containers:
+# The LOCAL end-to-end topology: Caddy + the token API + Y-Sweet, on :8080.
 #
-#   web    - Caddy: TLS + routing + the static frontend build
-#   api    - token endpoint + image upload proxy (server/)
-#   ysweet - the Y-Sweet sync server, persisting to S3
-#
-# Setup:  cp .env.example .env   (fill it in - see the README "Deploy" section)
-# Run:    docker compose up -d --build
-#
-# For a full LOCAL end-to-end test (no domain, no S3 account, no .env needed):
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
-# then open http://localhost:8080 - see docker-compose.local.yml.
+#
+# The overlay adds MinIO as the S3 stand-in and throwaway dev credentials, so
+# no .env, domain or S3 account is needed. That pair is what `scripts/e2e.sh
+# --stack` and .github/workflows/e2e-run.yml bring up, and it is the only thing
+# this file is for.
+#
+# PRODUCTION IS NOT HERE. The box that serves the boards is described by
+# https://github.com/jacobanana/mixedmode-deploy - `stacks/mathsboard` there,
+# alongside the other apps sharing it. What used to be in this file and is now
+# that repo's: Caddy's 80/443 and automatic TLS (its `edge` stack, one proxy for
+# every app), and Umami with its Postgres and backup sidecar (its platform
+# tier, so analytics no longer restarts when this app deploys).
+#
+# The two shapes differ in one way that matters when reading deploy/Caddyfile:
+# there is no edge proxy in front of this stack, so its Caddy does everything -
+# static files, /api and /ys - on one plain-HTTP site. In production the image
+# serves files and nothing else (deploy/web.Caddyfile).
 
 services:
   web:
-    # Image is built + pushed to GHCR by .github/workflows/publish.yml; the VPS
-    # only pulls it. For a local source build, docker-compose.local.yml adds
-    # `build:` back so `up --build` compiles from src/ instead.
-    image: ghcr.io/jacobanana/mathsboard-web:${IMAGE_TAG:-latest}
+    # Built from source here; production pulls the image CI publishes to GHCR.
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp" # HTTP/3
-    environment:
-      SITE_ADDRESS: ${SITE_ADDRESS:-:8080}
-      # The Language board's own domain. Falls back to a local-only HTTP address
-      # so the Caddyfile parses (and never attempts ACME) in local testing, where
-      # the language board is reached via ${SITE_ADDRESS}/language/ instead.
-      LANGUAGE_SITE_ADDRESS: ${LANGUAGE_SITE_ADDRESS:-http://localhost:8098}
-      # Subdomain Caddy serves Umami on. Falls back to a local-only HTTP address
-      # so the Caddyfile parses (and never attempts ACME) in local testing, where
-      # ANALYTICS_ADDRESS is unset and umami isn't running.
-      ANALYTICS_ADDRESS: ${ANALYTICS_ADDRESS:-http://localhost:8099}
+      - "8080:8080"
     volumes:
+      # Over the image's baked deploy/web.Caddyfile: this stack needs the
+      # local-only config that also proxies /api and /ys.
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data # ACME account + certificates - keep across restarts
-      - caddy_config:/config
     depends_on:
       - api
       - ysweet
 
   api:
-    image: ghcr.io/jacobanana/mathsboard-api:${IMAGE_TAG:-latest}
+    build: ./server
     restart: unless-stopped
-    # All configuration (connection string, S3 bucket + creds) comes from .env;
-    # required:false lets the local-test overlay run without one.
+    # Every value has a dev default in the overlay; required:false lets this run
+    # without a .env at all.
     env_file:
       - path: .env
         required: false
@@ -66,80 +62,3 @@ services:
       # default); never published on the host - only Caddy talks to it.
       Y_SWEET_HOST: 0.0.0.0
       PORT: "8080"
-
-  # --- Analytics: self-hosted Umami + its Postgres -----------------------------
-  # Privacy-first, cookieless product analytics kept entirely on this box - no
-  # third-party SaaS in the data path (Swiss-hosted, like everything else).
-  # Umami stores events in a local Postgres; that Postgres is the ONLY stateful
-  # piece added here, and the nightly pg_backup job below protects it by dumping
-  # to the same S3 bucket under backups/.
-  #
-  # All three live behind the `analytics` compose profile, so the local e2e
-  # overlay (docker-compose.local.yml, which sets no profile) never starts them.
-  # Production opts in with COMPOSE_PROFILES=analytics in .env (see .env.example).
-  postgres:
-    image: postgres:16-alpine
-    profiles: ["analytics"]
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: umami
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  umami:
-    image: ghcr.io/umami-software/umami:postgresql-latest
-    profiles: ["analytics"]
-    restart: unless-stopped
-    # Served on its OWN subdomain (ANALYTICS_ADDRESS) by Caddy, at the app root -
-    # the prebuilt image doesn't honour a runtime subpath/BASE_PATH, so it can't
-    # live under /umami on the main domain. Register two websites in the dashboard
-    # (this collab domain + the static GitHub Pages build) to see them separately
-    # or combined. Change the default admin password (admin / umami) on first login.
-    environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/umami
-      DATABASE_TYPE: postgresql
-      APP_SECRET: ${UMAMI_APP_SECRET}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # Nightly pg_dump of the umami database -> s3://<bucket>/backups/, pruning
-  # dumps older than BACKUP_KEEP_DAYS (the retention policy). Reuses the same S3
-  # credentials/endpoint as the rest of the stack, mapped from the AWS_* names
-  # the api/ysweet containers already use.
-  #
-  # Scope: backs up the `umami` database only. When Phase 2 adds the board-
-  # metadata database, add a second pg_backup service (another POSTGRES_DATABASE)
-  # or switch this to a pg_dumpall sidecar so the whole instance is captured.
-  pg_backup:
-    image: eeshugerman/postgres-backup-s3:16
-    profiles: ["analytics"]
-    restart: unless-stopped
-    environment:
-      SCHEDULE: "@daily"
-      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
-      POSTGRES_HOST: postgres
-      POSTGRES_DATABASE: umami
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      S3_REGION: ${AWS_REGION}
-      S3_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      S3_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      S3_BUCKET: ${S3_BUCKET}
-      S3_PREFIX: backups
-      S3_ENDPOINT: ${AWS_ENDPOINT_URL_S3}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-volumes:
-  caddy_data:
-  caddy_config:
-  pg_data:
