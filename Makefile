@@ -28,7 +28,6 @@ COMPOSE_LOCAL := docker compose -f docker-compose.yml -f docker-compose.local.ym
         up up-d down reset logs \
         checks test test-watch e2e-install e2e e2e-local \
         app app-stop \
-        deploy deploy-down deploy-logs \
         clean
 
 help:
@@ -59,11 +58,6 @@ help:
 	@echo $(Q)  Local app, without Docker (sh only - see scripts/start_app.sh)$(Q)
 	@echo $(Q)    app           Start y-sweet + the token API + Vite on :5173$(Q)
 	@echo $(Q)    app-stop      Stop it$(Q)
-	@$(BLANK)
-	@echo $(Q)  Production deploy (Docker, needs .env)$(Q)
-	@echo $(Q)    deploy        Pull the published images and run the production stack detached$(Q)
-	@echo $(Q)    deploy-down   Stop the production stack$(Q)
-	@echo $(Q)    deploy-logs   Follow the production stack logs$(Q)
 	@$(BLANK)
 	@echo $(Q)  Housekeeping$(Q)
 	@echo $(Q)    clean         Remove the build output (dist/)$(Q)
@@ -134,17 +128,9 @@ app:
 app-stop:
 	bash scripts/stop_app.sh
 
-# ---- Production deploy (Docker, needs .env) ---------------------------------
-
-deploy:
-	docker compose pull
-	docker compose up -d
-
-deploy-down:
-	docker compose down
-
-deploy-logs:
-	docker compose logs -f
+# Deploying is not a target here any more: the box runs several apps and is
+# driven from https://github.com/jacobanana/mixedmode-deploy. A push to main
+# builds the images and hands over - see DEVELOPMENT.md "Deploy".
 
 # ---- Housekeeping -----------------------------------------------------------
 
