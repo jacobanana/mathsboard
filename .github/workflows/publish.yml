@@ -81,8 +81,21 @@ jobs:
               # Production routing is baked into the image now, so changing it
               # is an image rebuild rather than a config copy to the box.
               - 'deploy/web.Caddyfile'
+              # Not COPYed into the image - read by this workflow below and
+              # baked into the bundle as build-args. Listed anyway: an analytics
+              # value that changes without a rebuild changes nothing at all.
+              - 'deploy/analytics.env'
             api:
               - 'server/**'
+
+      # The tracker URL and each board's website id, baked into the bundle at
+      # build time. Committed (deploy/analytics.env) rather than held as repo
+      # variables: the URL has to track the deploy repo's analytics hostname,
+      # and when that moved, a stale variable pointed the bundle at a host
+      # nothing served - which looks like "no traffic", not like an error.
+      # Grepped, never sourced: it is data, not a shell script.
+      - name: Read the analytics config
+        run: grep -E '^UMAMI_[A-Z_]*=' deploy/analytics.env >> "$GITHUB_ENV"
 
       - name: Assemble build matrix
         id: set
@@ -90,11 +103,6 @@ jobs:
           FORCE: ${{ github.event_name == 'workflow_dispatch' }}
           WEB: ${{ steps.filter.outputs.web }}
           API: ${{ steps.filter.outputs.api }}
-          # Optional Umami tracker URL + website id, baked into the web bundle at
-          # build time. Empty unless set as repo variables (Settings -> Secrets
-          # and variables -> Actions -> Variables). See the README "Analytics".
-          UMAMI_SRC: ${{ vars.UMAMI_SRC }}
-          UMAMI_WEBSITE_ID: ${{ vars.UMAMI_WEBSITE_ID }}
         run: |
           web=$WEB
           api=$API
@@ -104,8 +112,9 @@ jobs:
           fi
           include='[]'
           if [ "$web" = "true" ]; then
-            include=$(jq -cn --argjson a "$include" --arg src "$UMAMI_SRC" --arg id "$UMAMI_WEBSITE_ID" \
-              '$a + [{"image":"web","context":".","dockerfile":"deploy/Dockerfile.web","buildArgs":"UMAMI_SRC=\($src)\nUMAMI_WEBSITE_ID=\($id)"}]')
+            include=$(jq -cn --argjson a "$include" \
+              --arg src "$UMAMI_SRC" --arg id "$UMAMI_WEBSITE_ID" --arg lang "$UMAMI_LANGUAGE_WEBSITE_ID" \
+              '$a + [{"image":"web","context":".","dockerfile":"deploy/Dockerfile.web","buildArgs":"UMAMI_SRC=\($src)\nUMAMI_WEBSITE_ID=\($id)\nUMAMI_LANGUAGE_WEBSITE_ID=\($lang)"}]')
           fi
           if [ "$api" = "true" ]; then
             include=$(jq -cn --argjson a "$include" \
@@ -172,8 +181,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           # Both Dockerfiles declare ARG APP_VERSION; web maps it to
           # VITE_APP_VERSION, api reads it at runtime. matrix.buildArgs carries
-          # per-image extras (the web image's optional UMAMI_WEBSITE_ID); it's an
-          # empty line for the api image, which build-push-action ignores.
+          # per-image extras (the web image's Umami tracker URL and the two
+          # boards' website ids); it's an empty line for the api image, which
+          # build-push-action ignores.
           build-args: |
             APP_VERSION=${{ steps.version.outputs.version }}
             ${{ matrix.buildArgs }}

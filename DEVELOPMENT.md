@@ -342,31 +342,40 @@ One secret, in Settings → Secrets and variables → Actions:
 would need — this token may start a deploy and may not push to the repo that
 describes every app on the box.
 
-### Build-time variables
+### Analytics
 
-Public values baked into the frontend bundle. Optional — unset means analytics
-is simply off.
+Self-hosted Umami: privacy-first, cookieless, no third-party in the data path
+and no consent banner. `src/analytics.ts` injects the tracker and exposes
+`track(event, data)` for feature-usage events; with nothing configured (dev, CI,
+a local build) it injects nothing and every helper is a no-op.
 
-| Variable | Used by | Value |
+**Three sites, because they are three products.** Each board reports into its
+own, so a maths lesson never lands in the language board's numbers:
+
+| Site | Reported into by | Configured in |
 |---|---|---|
-| `UMAMI_SRC` | both builds | `https://<analytics domain>/script.js` |
-| `UMAMI_WEBSITE_ID` | the self-hosted `web` image (`publish.yml`) | website id of the collab site |
-| `UMAMI_PAGES_WEBSITE_ID` | the Pages build (`deploy.yml`) | website id of the Pages site |
+| maths board | `mathsboard.…` | `UMAMI_WEBSITE_ID`, `deploy/analytics.env` |
+| language board | `langsboard.…` | `UMAMI_LANGUAGE_WEBSITE_ID`, `deploy/analytics.env` |
+| Pages build | the public static build, **both** boards | `UMAMI_PAGES_WEBSITE_ID`, a repo variable |
 
-```bash
-gh variable set UMAMI_SRC --body "https://analytics.example.com/script.js"
-gh variable set UMAMI_WEBSITE_ID --body "<website-id>"
-```
+`src/analytics.ts` picks the id by subject from one table keyed by `Subject`,
+and the language board falls back to the single id when it has none of its own —
+which is the Pages case, one origin serving both boards.
 
-Variables aren't file changes, so they **don't trigger a build** — after setting
-them, force one with `gh workflow run publish.yml` (and `gh workflow run
-deploy.yml` for the Pages build).
+**`deploy/analytics.env` is committed, and that is the point.** The tracker URL
+has to name the same host as `ANALYTICS_ADDRESS` in the deploy repo's `sites`
+map. Held as a repo variable it silently drifted when the box moved: the bundle
+went on requesting a hostname nothing served, the script 404'd, and the
+dashboard showed no traffic rather than an error. In a file, that mismatch is a
+diff — and since the file is in `publish.yml`'s `web` path filter, editing it
+rebuilds and redeploys the bundle by itself.
 
-Analytics is self-hosted Umami: privacy-first, cookieless, no third-party in the
-data path and no consent banner. `src/analytics.ts` injects the tracker only
-when both variables are set (unset in dev and CI = no-op) and exposes
-`track(event, data)` for feature-usage events. Registering a site is a dashboard
-action in Umami; running it is the deploy repo's business.
+The Pages site's id stays a repo variable (`gh variable set
+UMAMI_PAGES_WEBSITE_ID --body "<website-id>"`); a variable isn't a file change,
+so force a build with `gh workflow run deploy.yml` after setting it.
+
+Registering a site is a dashboard action in Umami — paste the id it hands back
+into `deploy/analytics.env`. Running Umami is the deploy repo's business.
 
 ### The two shapes, and the one that bites
 

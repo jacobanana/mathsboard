@@ -32,14 +32,18 @@ COPY src ./src
 # above stays cached when only the version changes.
 ARG APP_VERSION=dev
 ENV VITE_APP_VERSION=$APP_VERSION
-# Umami analytics (optional). Umami runs on its own subdomain, so the tracker URL
-# is an absolute, deployment-specific value - both it and the website id are
-# passed as build-args by publish.yml from repo variables. Empty by default ->
-# src/analytics.ts requires both, so nothing loads unless they're set.
+# Umami analytics (optional). Umami runs on its own domain, so the tracker URL
+# is an absolute, deployment-specific value; it and the two boards' website ids
+# are passed as build-args by publish.yml, which reads them from
+# deploy/analytics.env. Empty by default -> src/analytics.ts needs a URL and an
+# id for the board being served, so nothing loads unless they're set (the local
+# stack builds this image with none of them).
 ARG UMAMI_SRC=
 ARG UMAMI_WEBSITE_ID=
+ARG UMAMI_LANGUAGE_WEBSITE_ID=
 ENV VITE_UMAMI_SRC=$UMAMI_SRC
 ENV VITE_UMAMI_WEBSITE_ID=$UMAMI_WEBSITE_ID
+ENV VITE_UMAMI_LANGUAGE_WEBSITE_ID=$UMAMI_LANGUAGE_WEBSITE_ID
 RUN npm run build
 
 FROM caddy:2-alpine
